@@ -17,13 +17,20 @@ class PaymentService:
         existing = await db.execute(select(PaymentAttempt).where(PaymentAttempt.provider == provider, PaymentAttempt.idempotency_key == idempotency_key))
         attempt = existing.scalar_one_or_none()
         if attempt is not None:
+            if (attempt.user_id != user_id or attempt.amount_minor != amount_minor
+                    or attempt.currency != currency.upper() or attempt.scale != scale
+                    or attempt.purpose != purpose):
+                raise ValueError("Idempotency key conflicts with an existing request")
             return attempt
         provider_client = self.providers.get(provider)
         if provider_client is None:
             raise ValueError("Unsupported payment provider")
+        if isinstance(provider_client, DisabledProvider):
+            raise TypeError("Payment provider is not configured")
         attempt = PaymentAttempt(user_id=user_id, provider=provider, purpose=purpose, amount_minor=amount_minor, currency=currency.upper(), scale=scale, idempotency_key=idempotency_key, correlation_id=str(uuid4()), status="pending")
         db.add(attempt)
-        await db.flush()
+        # The local identity must survive a process crash during provider creation.
+        await db.commit()
         try:
             remote = await provider_client.create_checkout(CheckoutRequest(amount_minor=amount_minor, currency=currency.upper(), scale=scale, correlation_id=attempt.correlation_id, return_url=return_url), idempotency_key=idempotency_key)
         except Exception as exc:

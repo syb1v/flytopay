@@ -17,6 +17,8 @@ async def receive_provider_webhook(
 ) -> dict[str, object]:
     if provider not in {"platega", "pay2328", "telegram_stars"}:
         raise HTTPException(status_code=404, detail="Unknown provider")
+    # No provider authenticator is connected yet. Never persist an unauthenticated event.
+    raise HTTPException(status_code=503, detail="Webhook authentication is not configured")
     payload = await request.json()
     deduplication_key = x_event_id or str(payload.get("id") or payload.get("event_id") or "")
     if not deduplication_key:
