@@ -14,7 +14,8 @@ from aiogram.types import (
 )
 
 from flytopay.config import get_settings
-from flytopay.telegram.admin import admin_keyboard, is_admin
+from flytopay.db.session import session_factory
+from flytopay.telegram.admin import admin_keyboard, demo_cards_report, is_admin, overview
 
 router = Router(name="flytopay")
 
@@ -40,16 +41,15 @@ async def admin_handler(message: Message) -> None:
     await message.answer("Админ-панель Flytopay", reply_markup=admin_keyboard())
 
 
-@router.callback_query(lambda query: query.data in {"admin:users", "admin:demo_cards"})
+@router.callback_query(lambda query: query.data in {"admin:users", "admin:demo_cards", "admin:status"})
 async def admin_callback(query: CallbackQuery) -> None:
     if not is_admin(query.from_user.id):
         await query.answer("Доступ запрещён", show_alert=True)
         return
-    if query.data == "admin:users":
-        await query.message.answer("Пользователи доступны в dashboard; Telegram allowlist активен.")
-    else:
-        await query.message.answer("Demo-карты: используйте /admin_seed_demo после проверки env.")
-    await query.answer()
+    async with session_factory() as db:
+        text = await overview(db) if query.data in {"admin:users", "admin:status"} else await demo_cards_report(db)
+    await query.message.answer(text, parse_mode="HTML")
+    await query.answer("Готово")
 
 
 def create_dispatcher() -> Dispatcher:
