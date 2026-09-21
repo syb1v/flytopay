@@ -15,6 +15,8 @@ class ProductResponse(ReadModel):
     currency: str
     provider_code: str
     enabled: bool
+    max_cards_per_cardholder: int | None = None
+    provider_settings: list | None = None
 
 
 class CardResponse(ReadModel):

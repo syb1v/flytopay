@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flytopay.auth.session import current_user_id
+from flytopay.cards.catalog import sync_provider_catalog
 from flytopay.cards.models import CardProduct, Rental, UserCard
 from flytopay.cards.schemas import CardResponse, ProductResponse, RentalResponse
 from flytopay.db.session import get_db
@@ -16,6 +17,7 @@ router = APIRouter(prefix="/api/v1", tags=["Cards"])
 @router.get("/catalog/products", response_model=list[ProductResponse])
 async def products(db: Annotated[AsyncSession, Depends(get_db)]) -> list[ProductResponse]:
     # Publishing a product requires an explicit program mapping and approved tariff.
+    await sync_provider_catalog(db)
     result = await db.execute(select(CardProduct).where(CardProduct.enabled.is_(True)).order_by(CardProduct.created_at))
     return [ProductResponse.model_validate(item) for item in result.scalars()]
 

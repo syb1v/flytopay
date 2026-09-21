@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from flytopay.db.base import Base, Timestamped, uuid_column
@@ -16,6 +16,8 @@ class CardProduct(Timestamped, Base):
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     provider_code: Mapped[str] = mapped_column(String(64))
     enabled: Mapped[bool] = mapped_column(default=False)
+    max_cards_per_cardholder: Mapped[int | None] = mapped_column(Integer)
+    provider_settings: Mapped[list | None] = mapped_column(JSON)
 
 
 class UserCard(Timestamped, Base):
