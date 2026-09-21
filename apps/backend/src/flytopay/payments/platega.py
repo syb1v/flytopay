@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from flytopay.config import get_settings
+from flytopay.payments.http import payment_http
 from flytopay.payments.providers import CheckoutRequest, CheckoutResponse
 
 
@@ -25,6 +26,10 @@ class PlategaClient:
 
     @staticmethod
     def _amount(request: CheckoutRequest) -> int | str:
+        if request.currency not in {"USD", "RUB"} or request.scale != 2 or request.amount_minor <= 0:
+            raise ValueError("Invalid Platega amount or currency")
+        if request.currency == "RUB" and request.amount_minor % 100:
+            raise ValueError("Platega RUB amount must contain whole rubles")
         value = Decimal(request.amount_minor) / (Decimal(10) ** request.scale)
         return int(value) if request.currency == "RUB" else format(value, "f")
 
@@ -38,9 +43,8 @@ class PlategaClient:
             "payload": request.correlation_id,
         }
         headers = {"X-MerchantId": self.merchant_id or "", "X-Secret": self.secret or "", "Content-Type": "application/json"}
-        response = await (self.client or httpx.AsyncClient(timeout=30)).post(f"{self.base_url}/transaction/process", json=payload, headers=headers)
-        if self.client is None:
-            await response.aclose()
+        async with payment_http(self.client) as client:
+            response = await client.post(f"{self.base_url}/transaction/process", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
         remote_id = str(data.get("transactionId") or data.get("id") or data.get("uuid") or "")
@@ -53,8 +57,7 @@ class PlategaClient:
         if not self.is_configured:
             raise RuntimeError("Platega is not configured")
         headers = {"X-MerchantId": self.merchant_id or "", "X-Secret": self.secret or ""}
-        response = await (self.client or httpx.AsyncClient(timeout=30)).get(f"{self.base_url}/transaction/{provider_payment_id}", headers=headers)
-        if self.client is None:
-            await response.aclose()
+        async with payment_http(self.client) as client:
+            response = await client.get(f"{self.base_url}/transaction/{provider_payment_id}", headers=headers)
         response.raise_for_status()
         return response.json()
