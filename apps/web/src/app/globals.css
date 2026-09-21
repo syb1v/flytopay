@@ -1,4 +1,16 @@
 :root { color-scheme: dark; --graphite: #101619; --lime: #b8f13d; --white: #f3f6f8; --muted: #91a0aa; }
+.details-overlay { position:fixed; inset:0; z-index:50; background:#05090bcc; backdrop-filter:blur(6px); }
+.details-dialog { position:fixed; z-index:51; top:50%; left:50%; transform:translate(-50%,-50%); width:min(520px,calc(100% - 32px)); max-height:90dvh; overflow:auto; padding:24px; border:1px solid #354147; border-radius:24px; background:#192126; }
+.details-dialog .card-visual { margin-top:20px; }
+.details-dialog dd { margin:0; font-variant-numeric:tabular-nums; }
+.ui-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 16px; border:1px solid transparent; border-radius:12px; font:inherit; font-weight:600; cursor:pointer; }
+.ui-button-primary { background:var(--lime); color:var(--graphite); }
+.ui-button-secondary { background:#192126; color:var(--white); border-color:#354147; }
+.ui-button-ghost { background:transparent; color:var(--muted); }
+button:focus-visible,a:focus-visible { outline:2px solid var(--lime); outline-offset:4px; }
+button:disabled { opacity:.5; cursor:not-allowed; }
+.card-visual-top strong { display:flex; align-items:center; }
+@media(max-width:600px) { .details-dialog { top:auto; bottom:0; left:0; transform:none; width:100%; border-radius:24px 24px 0 0; padding-bottom:max(24px,env(safe-area-inset-bottom)); } }
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
 body { margin: 0; background: var(--graphite); color: var(--white); font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
