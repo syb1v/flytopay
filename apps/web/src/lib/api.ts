@@ -33,6 +33,21 @@ export async function getWallet(): Promise<Wallet> {
   return response.json() as Promise<Wallet>;
 }
 
+export type Card = { id: string; status: string; masked_pan: string | null; last_four: string | null; balance_minor: number | null; currency: string; scale: number; rental_expires_at: string | null };
+export type Rental = { id: string; card_id: string; term_days: number; status: string; starts_at: string | null; expires_at: string | null; grace_expires_at: string | null; price_minor: number; currency: string; scale: number };
+
+export async function getCards(): Promise<Card[]> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/cards`, { credentials: "include" });
+  if (!response.ok) throw new Error("cards_load_failed");
+  return response.json() as Promise<Card[]>;
+}
+
+export async function getRentals(): Promise<Rental[]> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/rentals`, { credentials: "include" });
+  if (!response.ok) throw new Error("rentals_load_failed");
+  return response.json() as Promise<Rental[]>;
+}
+
 export async function createCheckout(input: { provider: "platega" | "pay2328" | "telegram_stars"; purpose: string; amount_minor: number; currency: string; scale: number; return_url: string }, idempotencyKey: string) {
   const response = await fetch(`${API_ORIGIN}/api/v1/payments/checkout`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey }, body: JSON.stringify(input) });
   const data = await response.json();
