@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 
+from flytopay.config import get_settings
 from flytopay.db.session import session_factory
 from flytopay.payments.models import PaymentProviderEvent
 
@@ -14,11 +15,17 @@ async def receive_provider_webhook(
     provider: str,
     request: Request,
     x_event_id: Annotated[str | None, Header()] = None,
+    x_telegram_bot_api_secret_token: Annotated[str | None, Header()] = None,
 ) -> dict[str, object]:
     if provider not in {"platega", "pay2328", "telegram_stars"}:
         raise HTTPException(status_code=404, detail="Unknown provider")
-    # No provider authenticator is connected yet. Never persist an unauthenticated event.
-    raise HTTPException(status_code=503, detail="Webhook authentication is not configured")
+    if provider == "telegram_stars":
+        expected = get_settings().telegram_webhook_secret
+        if not expected or x_telegram_bot_api_secret_token != expected:
+            raise HTTPException(status_code=503, detail="Webhook authentication is not configured")
+    else:
+        # Provider-specific authenticators are connected in their webhook adapters.
+        raise HTTPException(status_code=503, detail="Webhook authentication is not configured")
     payload = await request.json()
     deduplication_key = x_event_id or str(payload.get("id") or payload.get("event_id") or "")
     if not deduplication_key:

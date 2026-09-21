@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     web_origin: str = Field(default="http://localhost:3000", validation_alias="WEB_ORIGIN")
     api_origin: str = Field(default="http://localhost:8000", validation_alias="API_ORIGIN")
     telegram_bot_token: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_TOKEN")
+    telegram_webhook_secret: str | None = Field(default=None, validation_alias="TELEGRAM_WEBHOOK_SECRET")
     platega_merchant_id: str | None = Field(default=None, validation_alias="PLATEGA_MERCHANT_ID")
     platega_secret: str | None = Field(default=None, validation_alias="PLATEGA_SECRET")
     platega_base_url: str = Field(default="https://app.platega.io", validation_alias="PLATEGA_BASE_URL")

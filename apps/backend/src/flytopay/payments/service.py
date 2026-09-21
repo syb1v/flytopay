@@ -6,12 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from flytopay.payments.models import PaymentAttempt
 from flytopay.payments.pay2328 import Pay2328Client
 from flytopay.payments.platega import PlategaClient
-from flytopay.payments.providers import CheckoutRequest, DisabledProvider, PaymentProvider
+from flytopay.payments.providers import (
+    CheckoutRequest,
+    DisabledProvider,
+    PaymentProvider,
+    TelegramStarsProvider,
+)
 
 
 class PaymentService:
     def __init__(self, providers: dict[str, PaymentProvider] | None = None) -> None:
-        self.providers = providers or {"platega": PlategaClient(), "pay2328": Pay2328Client(), "telegram_stars": DisabledProvider("telegram_stars")}
+        self.providers = providers or {"platega": PlategaClient(), "pay2328": Pay2328Client(), "telegram_stars": TelegramStarsProvider()}
 
     async def create_checkout(self, db: AsyncSession, user_id: UUID, *, provider: str, purpose: str, amount_minor: int, currency: str, scale: int, return_url: str, idempotency_key: str) -> PaymentAttempt:
         if amount_minor <= 0:
@@ -27,7 +32,7 @@ class PaymentService:
         provider_client = self.providers.get(provider)
         if provider_client is None:
             raise ValueError("Unsupported payment provider")
-        if isinstance(provider_client, DisabledProvider):
+        if isinstance(provider_client, (DisabledProvider, TelegramStarsProvider)):
             raise TypeError("Payment provider is not configured")
         attempt = PaymentAttempt(user_id=user_id, provider=provider, purpose=purpose, amount_minor=amount_minor, currency=currency.upper(), scale=scale, idempotency_key=idempotency_key, correlation_id=str(uuid4()), status="pending")
         db.add(attempt)
