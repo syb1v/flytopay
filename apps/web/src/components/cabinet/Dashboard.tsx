@@ -30,6 +30,8 @@ export function Dashboard() {
   const t = copy[language];
 
   useEffect(() => {
+    window.Telegram?.WebApp?.ready();
+    window.Telegram?.WebApp?.expand();
     Promise.all([getWallet(), getCards(), getRentals()]).then(([nextWallet, nextCards, nextRentals]) => {
       setWallet(nextWallet);
       setCards(nextCards);

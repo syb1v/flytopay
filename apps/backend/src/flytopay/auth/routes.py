@@ -2,6 +2,7 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,10 +15,14 @@ from flytopay.db.session import get_db
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
 
+class TelegramLoginRequest(BaseModel):
+    init_data: str
+
+
 @router.post("/telegram")
-async def telegram_login(init_data: str, response: Response, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+async def telegram_login(payload: TelegramLoginRequest, response: Response, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     try:
-        values = validate_init_data(init_data, get_settings().telegram_bot_token or "")
+        values = validate_init_data(payload.init_data, get_settings().telegram_bot_token or "")
     except TelegramInitDataError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Telegram authentication") from exc
     try:
