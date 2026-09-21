@@ -19,4 +19,5 @@ coverage/
 *.sql.gz
 secrets/
 credentials/
+backups/
 .DS_Store

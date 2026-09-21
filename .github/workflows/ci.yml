@@ -21,3 +21,58 @@ jobs:
       - run: npm install
       - run: npm run typecheck
       - run: npm run build
+  images:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [backend, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/syb1v/flytopay-api
+          tags: type=sha
+      - uses: docker/build-push-action@v6
+        with:
+          context: apps/backend
+          push: true
+          tags: ghcr.io/syb1v/flytopay-api:sha-${{ github.sha }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: apps/web
+          push: true
+          tags: ghcr.io/syb1v/flytopay-web:sha-${{ github.sha }}
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: images
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/flytopay
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/flytopay ~/.ssh/known_hosts
+      - name: Login server to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/flytopay "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+      - name: Upload deployment files
+        run: scp -i ~/.ssh/flytopay docker-compose.prod.yml infra/Caddyfile.prod infra/deploy.sh infra/backup.sh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/"
+      - name: Deploy immutable images
+        env:
+          IMAGE_TAG: sha-${{ github.sha }}
+        run: ssh -i ~/.ssh/flytopay "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "sudo install -d -o ${{ secrets.DEPLOY_USER }} -g ${{ secrets.DEPLOY_USER }} /opt/flytopay && cp /tmp/docker-compose.prod.yml /tmp/Caddyfile.prod /tmp/deploy.sh /tmp/backup.sh /opt/flytopay/ && chmod +x /opt/flytopay/deploy.sh /opt/flytopay/backup.sh && cd /opt/flytopay && IMAGE_TAG=$IMAGE_TAG ./deploy.sh"

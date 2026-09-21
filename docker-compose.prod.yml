@@ -1,0 +1,47 @@
+services:
+  api:
+    image: ${IMAGE_PREFIX:-ghcr.io/syb1v/flytopay}-api:${IMAGE_TAG:-latest}
+    env_file: .env
+    command: uvicorn flytopay.main:app --host 0.0.0.0 --port 8000 --proxy-headers
+    expose: ["8000"]
+    restart: unless-stopped
+    depends_on: [postgres, redis]
+  worker:
+    image: ${IMAGE_PREFIX:-ghcr.io/syb1v/flytopay}-api:${IMAGE_TAG:-latest}
+    env_file: .env
+    command: celery -A flytopay.worker.celery_app worker --loglevel=INFO
+    restart: unless-stopped
+    depends_on: [postgres, redis]
+  scheduler:
+    image: ${IMAGE_PREFIX:-ghcr.io/syb1v/flytopay}-api:${IMAGE_TAG:-latest}
+    env_file: .env
+    command: celery -A flytopay.worker.celery_app beat --loglevel=INFO
+    restart: unless-stopped
+    depends_on: [postgres, redis]
+  web:
+    image: ${IMAGE_PREFIX:-ghcr.io/syb1v/flytopay}-web:${IMAGE_TAG:-latest}
+    environment: {NEXT_PUBLIC_API_ORIGIN: "${NEXT_PUBLIC_API_ORIGIN:-https://api.flytopay.net}"}
+    expose: ["3000"]
+    restart: unless-stopped
+  postgres:
+    image: postgres:16-alpine
+    env_file: .env
+    environment: {POSTGRES_DB: "${POSTGRES_DB:-flytopay}", POSTGRES_USER: "${POSTGRES_USER:-flytopay}", POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"}
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes: ["redis_data:/data"]
+    restart: unless-stopped
+  proxy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    volumes: ["./infra/Caddyfile.prod:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
+    depends_on: [web, api]
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

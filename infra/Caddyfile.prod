@@ -1,0 +1,8 @@
+flytopay.net, www.flytopay.net {
+  encode gzip
+  reverse_proxy web:3000
+}
+api.flytopay.net, webhooks.flytopay.net {
+  encode gzip
+  reverse_proxy api:8000
+}
