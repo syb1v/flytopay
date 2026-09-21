@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from flytopay.admin.routes import router as admin_router
 from flytopay.api.health import router as health_router
 from flytopay.auth.routes import router as auth_router
 from flytopay.cards.onboarding import router as issuance_router
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(telegram_router)
     app.include_router(cards_router)
     app.include_router(issuance_router)
+    app.include_router(admin_router)
     return app
 
 
