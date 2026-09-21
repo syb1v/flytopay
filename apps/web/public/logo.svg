@@ -39,12 +39,6 @@
               Z"/>
         </defs>
 
-        <rect width="1280" height="1280" fill="#000"/>
-
-        <g fill="#A2FF32" opacity="0.28" filter="url(#greenGlow)">
-            <use href="#main-leaf"/>
-            <use href="#lower-leaf"/>
-        </g>
 
         <g fill="#A2FF32">
             <use href="#main-leaf"/>
