@@ -24,7 +24,17 @@ export function CheckoutPanel({ language = "ru" }: { language?: Language }) {
     setBusy(true);
     setStatus(null);
     try {
-      const result = await createCheckout({ provider, purpose: "wallet_deposit", amount_minor: 1000, currency: "USD", scale: 2, return_url: window.location.href }, crypto.randomUUID());
+      const result = await createCheckout(
+        {
+          provider,
+          purpose: "wallet_deposit",
+          amount_minor: 1000,
+          currency: "USD",
+          scale: 2,
+          return_url: window.location.href,
+        },
+        crypto.randomUUID(),
+      );
       setStatus(result.data.checkoutUrl ? t.paymentCreated : `Payment ${result.data.status}`);
       if (result.data.checkoutUrl) window.location.assign(result.data.checkoutUrl);
     } catch (error) {
@@ -34,5 +44,42 @@ export function CheckoutPanel({ language = "ru" }: { language?: Language }) {
     }
   }
 
-  return <section className="settings-card" aria-labelledby="checkout-title"><div className="settings-heading"><div><p className="eyebrow">{t.topUp}</p><h2 id="checkout-title">{t.topUp}</h2></div></div><div className="settings-row"><div><strong>{t.amount}</strong><span>{t.demoAmount}</span></div><div className="segmented"><button className={provider === "platega" ? "active" : ""} onClick={() => setProvider("platega")}>Platega</button><button className={provider === "pay2328" ? "active" : ""} onClick={() => setProvider("pay2328")}>2328</button><button className={provider === "telegram_stars" ? "active" : ""} onClick={() => setProvider("telegram_stars")}>Stars</button></div></div><button className="button" disabled={busy} onClick={start}>{busy ? t.creating : t.continue}</button>{status && <p className="settings-muted" role="status">{status}</p>}</section>;
+  return (
+    <section className="settings-card" aria-labelledby="checkout-title">
+      <div className="settings-heading">
+        <div>
+          <p className="eyebrow">{t.topUp}</p>
+          <h2 id="checkout-title">{t.topUp}</h2>
+        </div>
+      </div>
+      <div className="settings-row">
+        <div>
+          <strong>{t.amount}</strong>
+          <span>{t.demoAmount}</span>
+        </div>
+        <div className="segmented">
+          <button className={provider === "platega" ? "active" : ""} onClick={() => setProvider("platega")}>
+            Platega
+          </button>
+          <button className={provider === "pay2328" ? "active" : ""} onClick={() => setProvider("pay2328")}>
+            2328
+          </button>
+          <button
+            className={provider === "telegram_stars" ? "active" : ""}
+            onClick={() => setProvider("telegram_stars")}
+          >
+            Stars
+          </button>
+        </div>
+      </div>
+      <button className="button" disabled={busy} onClick={start}>
+        {busy ? t.creating : t.continue}
+      </button>
+      {status && (
+        <p className="settings-muted" role="status">
+          {status}
+        </p>
+      )}
+    </section>
+  );
 }
