@@ -51,6 +51,9 @@ jobs:
           push: true
           tags: ghcr.io/syb1v/flytopay-web:sha-${{ github.sha }}
   deploy:
+    permissions:
+      contents: read
+      packages: read
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: images
     runs-on: ubuntu-latest
@@ -68,11 +71,14 @@ jobs:
           chmod 600 ~/.ssh/flytopay ~/.ssh/known_hosts
       - name: Login server to GHCR
         env:
-          GHCR_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/flytopay "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
       - name: Upload deployment files
-        run: scp -i ~/.ssh/flytopay docker-compose.prod.yml infra/Caddyfile.prod infra/deploy.sh infra/backup.sh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/"
+        run: |
+          ssh -i ~/.ssh/flytopay "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "mkdir -p /opt/flytopay/infra"
+          scp -i ~/.ssh/flytopay docker-compose.prod.yml infra/deploy.sh infra/backup.sh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/flytopay/"
+          scp -i ~/.ssh/flytopay infra/Caddyfile.prod "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/flytopay/infra/"
       - name: Deploy immutable images
         env:
           IMAGE_TAG: sha-${{ github.sha }}
-        run: ssh -i ~/.ssh/flytopay "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "cp /tmp/docker-compose.prod.yml /tmp/Caddyfile.prod /tmp/deploy.sh /tmp/backup.sh /opt/flytopay/ && chmod +x /opt/flytopay/deploy.sh /opt/flytopay/backup.sh && cd /opt/flytopay && IMAGE_TAG=$IMAGE_TAG ./deploy.sh"
+        run: ssh -i ~/.ssh/flytopay "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" "chmod +x /opt/flytopay/deploy.sh /opt/flytopay/backup.sh && cd /opt/flytopay && IMAGE_TAG=$IMAGE_TAG ./deploy.sh"

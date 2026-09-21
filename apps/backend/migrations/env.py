@@ -1,5 +1,7 @@
 """Alembic environment for Flytopay."""
 
+import os
+
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
@@ -9,6 +11,8 @@ from flytopay.ledger import models as ledger_models  # noqa: F401
 from flytopay.payments import models as payment_models  # noqa: F401
 
 config = context.config
+if os.getenv("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"].replace("postgresql+asyncpg:", "postgresql+psycopg:").replace("%", "%%"))
 target_metadata = Base.metadata
 
 

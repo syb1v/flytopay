@@ -8,6 +8,7 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_ORIGIN=https://flytopay.net
 RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
