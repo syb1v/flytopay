@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from flytopay.db.base import Base, Timestamped, uuid_column
@@ -18,7 +18,7 @@ class TelegramAccount(Timestamped, Base):
     __tablename__ = "telegram_accounts"
     id: Mapped[UUID] = uuid_column()
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    telegram_id: Mapped[int] = mapped_column(Integer, unique=True)
+    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     username: Mapped[str | None] = mapped_column(String(255))
     user: Mapped[User] = relationship(back_populates="telegram_accounts")
 
