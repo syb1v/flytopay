@@ -50,6 +50,7 @@ export async function getCardProducts(): Promise<CardProduct[]> {
 
 export type AdminOverview = { users: number; telegramAccounts: number; cards: number; demoCards: number; rentals: number; payments: number; wallets: number };
 export async function getAdminOverview(): Promise<AdminOverview> { const response = await fetch(`${API_ORIGIN}/api/v1/admin/overview`, { credentials: "include" }); if (!response.ok) throw new Error(response.status === 403 ? "admin_forbidden" : "admin_load_failed"); const payload = await response.json(); return payload.data as AdminOverview; }
+export async function getAdminCollection(path: "users" | "cards" | "payments" | "issuances") { const response = await fetch(`${API_ORIGIN}/api/v1/admin/${path}`, { credentials: "include" }); if (!response.ok) throw new Error(response.status === 403 ? "admin_forbidden" : "admin_load_failed"); const payload = await response.json(); return payload.data as Array<Record<string, string | number | boolean | null>>; }
 
 export type CardholderInput = { product_code: string; amount_minor: number; first_name: string; last_name: string; email: string; phone: string; date_of_birth: string; country: string; address: string; city: string; state: string; zip_code: string };
 
