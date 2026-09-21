@@ -4,12 +4,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flytopay.payments.models import PaymentAttempt
+from flytopay.payments.pay2328 import Pay2328Client
+from flytopay.payments.platega import PlategaClient
 from flytopay.payments.providers import CheckoutRequest, DisabledProvider, PaymentProvider
 
 
 class PaymentService:
     def __init__(self, providers: dict[str, PaymentProvider] | None = None) -> None:
-        self.providers = providers or {name: DisabledProvider(name) for name in ("platega", "pay2328", "telegram_stars")}
+        self.providers = providers or {"platega": PlategaClient(), "pay2328": Pay2328Client(), "telegram_stars": DisabledProvider("telegram_stars")}
 
     async def create_checkout(self, db: AsyncSession, user_id: UUID, *, provider: str, purpose: str, amount_minor: int, currency: str, scale: int, return_url: str, idempotency_key: str) -> PaymentAttempt:
         if amount_minor <= 0:
