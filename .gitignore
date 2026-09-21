@@ -11,6 +11,8 @@ node_modules/
 .next/
 out/
 coverage/
+*.egg-info/
+*.tsbuildinfo
 *.log
 *.sqlite3
 *.dump
