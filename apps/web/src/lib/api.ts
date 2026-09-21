@@ -40,6 +40,13 @@ export async function getWallet(): Promise<Wallet> {
 
 export type Card = { id: string; status: string; masked_pan: string | null; last_four: string | null; balance_minor: number | null; currency: string; scale: number; rental_expires_at: string | null };
 export type Rental = { id: string; card_id: string; term_days: number; status: string; starts_at: string | null; expires_at: string | null; grace_expires_at: string | null; price_minor: number; currency: string; scale: number };
+export type CardProduct = { code: string; name: string; scheme: string; currency: string; provider_code: string; enabled: boolean; max_cards_per_cardholder: number | null; provider_settings: Array<{ key: string; type: string; value: boolean | number | string | null }> | null };
+
+export async function getCardProducts(): Promise<CardProduct[]> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/catalog/products`, { credentials: "include" });
+  if (!response.ok) throw new Error("products_load_failed");
+  return response.json() as Promise<CardProduct[]>;
+}
 
 export async function getCards(): Promise<Card[]> {
   const response = await fetch(`${API_ORIGIN}/api/v1/cards`, { credentials: "include" });
