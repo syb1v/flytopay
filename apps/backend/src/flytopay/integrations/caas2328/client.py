@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
@@ -50,22 +51,90 @@ class CaaSClient:
     async def issue_card(self, payload: dict[str, Any], *, idempotency_key: str) -> dict[str, Any]:
         return await self._mutate("/cards", payload, idempotency_key)
 
+    async def issue_card_response(self, payload: dict[str, Any], *, idempotency_key: str) -> "CaaSResponse":
+        return await self._mutate_response("/cards", payload, idempotency_key)
+
     async def order(self, order_id: str) -> dict[str, Any]:
         return await self._get(f"/orders/{order_id}")
 
+    async def order_response(self, order_id: str) -> "CaaSResponse":
+        return await self._read_response(f"/orders/{order_id}")
+
+    async def card_details(self, card_id: str) -> dict[str, Any]:
+        return await self._get(f"/cards/{card_id}")
+
+    async def card_balance(self, card_id: str) -> dict[str, Any]:
+        return await self._get(f"/cards/{card_id}/balance")
+
+    async def fund_card(self, card_id: str, payload: dict[str, Any], *, idempotency_key: str) -> "CaaSResponse":
+        return await self._mutate_response(f"/cards/{card_id}/fund", payload, idempotency_key)
+
+    async def unload_card(self, card_id: str, payload: dict[str, Any], *, idempotency_key: str) -> "CaaSResponse":
+        return await self._mutate_response(f"/cards/{card_id}/unload", payload, idempotency_key)
+
+    async def freeze_card(self, card_id: str, *, idempotency_key: str | None = None) -> "CaaSResponse":
+        return await self._mutate_response(f"/cards/{card_id}/freeze", {}, idempotency_key)
+
+    async def unfreeze_card(self, card_id: str, *, idempotency_key: str | None = None) -> "CaaSResponse":
+        return await self._mutate_response(f"/cards/{card_id}/unfreeze", {}, idempotency_key)
+
+    async def close_card(self, card_id: str, *, idempotency_key: str, reason: str | None = None) -> "CaaSResponse":
+        return await self._mutate_response(f"/cards/{card_id}", {"reason": reason} if reason else {}, idempotency_key, method="DELETE")
+
     async def _mutate(self, path: str, payload: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+        response = await self._mutate_response(path, payload, idempotency_key)
+        return response.data
+
+    async def _mutate_response(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        idempotency_key: str | None,
+        *,
+        method: str = "POST",
+    ) -> "CaaSResponse":
         if not self.is_configured:
             raise RuntimeError("CaaS API is not configured")
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "Idempotency-Key": idempotency_key}
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        if idempotency_key:
+            headers["Idempotency-Key"] = idempotency_key
         owned = self.client is None
         client = self.client or httpx.AsyncClient(timeout=30)
         try:
-            response = await client.post(f"{self.base_url}{path}", headers=headers, json=payload)
+            response = await client.request(method, f"{self.base_url}{path}", headers=headers, json=payload)
             response.raise_for_status()
             envelope = response.json()
             if not isinstance(envelope, dict) or envelope.get("success") is not True:
                 raise RuntimeError("CaaS returned an unsuccessful response")
-            return envelope.get("data") or {}
+            return CaaSResponse(status_code=response.status_code, data=envelope.get("data") or {}, envelope=envelope)
         finally:
             if owned:
                 await client.aclose()
+
+    async def _read_response(self, path: str) -> "CaaSResponse":
+        if not self.is_configured:
+            raise RuntimeError("CaaS API is not configured")
+        headers = {"Authorization": f"Bearer {self.api_key}", "Accept": "application/json"}
+        owned = self.client is None
+        client = self.client or httpx.AsyncClient(timeout=30)
+        try:
+            response = await client.get(f"{self.base_url}{path}", headers=headers)
+            response.raise_for_status()
+            envelope = response.json()
+            if not isinstance(envelope, dict) or envelope.get("success") is not True:
+                raise RuntimeError("CaaS returned an unsuccessful response")
+            return CaaSResponse(response.status_code, envelope.get("data") or {}, envelope)
+        finally:
+            if owned:
+                await client.aclose()
+
+
+@dataclass(frozen=True, slots=True)
+class CaaSResponse:
+    status_code: int
+    data: dict[str, Any]
+    envelope: dict[str, Any]
+
+    @property
+    def processing(self) -> bool:
+        return self.status_code == 202 or self.data.get("status") == "processing"

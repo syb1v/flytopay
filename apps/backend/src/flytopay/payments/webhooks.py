@@ -5,7 +5,9 @@ from sqlalchemy.exc import IntegrityError
 
 from flytopay.config import get_settings
 from flytopay.db.session import session_factory
+from flytopay.payments.finalization import finalize_payment
 from flytopay.payments.models import PaymentProviderEvent
+from flytopay.payments.service import PaymentService
 
 router = APIRouter(prefix="/api/v1/webhooks", tags=["Webhooks"])
 
@@ -38,4 +40,19 @@ async def receive_provider_webhook(
         except IntegrityError:
             await db.rollback()
             return {"success": True, "status": 202, "data": {"accepted": True, "duplicate": True}}
+        # Provider-specific remote verification/finalization is dispatched after the
+        # event is durably stored. Event payload alone never credits a wallet.
+        payment_id = payload.get("providerPaymentId") or payload.get("paymentId") or payload.get("id")
+        if payment_id:
+            from sqlalchemy import select
+
+            from flytopay.payments.models import PaymentAttempt
+            attempt = (await db.execute(select(PaymentAttempt).where(PaymentAttempt.provider == provider, PaymentAttempt.provider_payment_id == str(payment_id)))).scalar_one_or_none()
+            if attempt is not None:
+                provider_client = PaymentService().providers.get(provider)
+                if provider_client is not None:
+                    try:
+                        await finalize_payment(db, provider_client, attempt.id)
+                    except (RuntimeError, ValueError):
+                        await db.rollback()
     return {"success": True, "status": 202, "data": {"accepted": True, "duplicate": False}}

@@ -5,10 +5,12 @@ import os
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from flytopay.admin_security import models as admin_security_models  # noqa: F401
 from flytopay.cards import models as card_models  # noqa: F401
-from flytopay.issuance import models as issuance_models  # noqa: F401
 from flytopay.db import models  # noqa: F401
 from flytopay.db.base import Base
+from flytopay.integrations.caas2328.persistence import CaaSOperationRecord  # noqa: F401
+from flytopay.issuance import models as issuance_models  # noqa: F401
 from flytopay.ledger import models as ledger_models  # noqa: F401
 from flytopay.payments import models as payment_models  # noqa: F401
 
