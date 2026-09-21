@@ -1,3 +1,5 @@
+import { PreferencesPanel } from "../../components/settings/PreferencesPanel";
+
 export default function CabinetPage() {
-  return <main className="shell"><p className="eyebrow">Личный кабинет</p><h1>Flytopay</h1><p className="lead">Подключение авторизации и реальные данные будут добавлены следующим слоем.</p></main>;
+  return <main className="shell"><p className="eyebrow">Личный кабинет</p><h1>Flytopay</h1><p className="lead">Управляйте картами и настройками в одном месте.</p><PreferencesPanel /></main>;
 }
