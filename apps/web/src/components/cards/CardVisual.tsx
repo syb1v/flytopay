@@ -7,7 +7,7 @@ export function CardVisual({ maskedPan, status, balance, scheme = "VISA", holder
   const frozen = status === "frozen";
   return <article className={`bank-card-fly ${frozen ? "is-frozen" : ""}`}>
     <span className="bank-card-edge" /><span className="bank-card-shine" />
-    <div className="bank-card-top"><strong><i>F</i>LYTOPAY</strong><Nfc className="contactless-mark" aria-hidden="true" /></div>
+    <div className="bank-card-top"><strong><img src="/logo.svg" alt="" /> <span><i>F</i>LYTOPAY</span></strong><Nfc className="contactless-mark" aria-hidden="true" /></div>
     <div className="bank-card-hardware"><span className="bank-chip" />{frozen && <span className="frozen-pill">{ru ? "Заморожена" : "Frozen"}</span>}</div>
     <div className="bank-card-number">{maskedPan ?? "••••  ••••  ••••  ••••"}</div>
     <div className="bank-card-bottom"><span><small>{ru ? "Держатель" : "Cardholder"}</small>{holder}</span><span><small>{ru ? "Срок" : "Valid thru"}</small>{expiry}</span><strong>{scheme.toUpperCase()}</strong></div>
