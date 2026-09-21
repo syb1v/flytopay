@@ -14,9 +14,24 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   });
   const [authReady, setAuthReady] = useState(false);
   useEffect(() => {
-    const initData = window.Telegram?.WebApp?.initData;
-    const authenticate = initData ? loginWithTelegram(initData) : Promise.resolve();
-    authenticate.then(() => getPreferences()).then((remote) => setPreferences(remote)).catch(() => undefined).finally(() => setAuthReady(true));
+    let cancelled = false;
+    const bootstrap = async () => {
+      for (let attempt = 0; attempt < 20 && !window.Telegram?.WebApp?.initData; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      }
+      const initData = window.Telegram?.WebApp?.initData;
+      try {
+        if (initData) await loginWithTelegram(initData);
+        const remote = await getPreferences();
+        if (!cancelled) setPreferences(remote);
+      } catch {
+        // Public web pages can render without an authenticated Telegram session.
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    };
+    void bootstrap();
+    return () => { cancelled = true; };
   }, []);
   useEffect(() => { localStorage.setItem("flytopay.preferences", JSON.stringify(preferences)); }, [preferences]);
   const value = useMemo(() => ({ preferences, authReady, setLanguage: (language: Preferences["language"]) => { const next = { ...preferences, language }; setPreferences(next); updatePreferences({ language }).catch(() => undefined); }, setCurrency: (display_currency: Preferences["display_currency"]) => { const next = { ...preferences, display_currency }; setPreferences(next); updatePreferences({ display_currency }).catch(() => undefined); } }), [preferences, authReady]);

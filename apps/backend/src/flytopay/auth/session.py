@@ -30,8 +30,8 @@ async def create_session(db: AsyncSession, user_id: UUID) -> tuple[str, Session]
 
 
 async def current_user_id(
-    session_token: Annotated[str | None, Cookie(alias=SESSION_COOKIE)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    session_token: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
 ) -> UUID:
     if not session_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
