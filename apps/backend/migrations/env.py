@@ -5,6 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from flytopay.db import models  # noqa: F401
 from flytopay.db.base import Base
+from flytopay.ledger import models as ledger_models  # noqa: F401
 
 config = context.config
 target_metadata = Base.metadata
