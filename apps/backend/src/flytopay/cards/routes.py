@@ -15,6 +15,7 @@ router = APIRouter(prefix="/api/v1", tags=["Cards"])
 
 @router.get("/catalog/products", response_model=list[ProductResponse])
 async def products(db: Annotated[AsyncSession, Depends(get_db)]) -> list[ProductResponse]:
+    # Publishing a product requires an explicit program mapping and approved tariff.
     result = await db.execute(select(CardProduct).where(CardProduct.enabled.is_(True)).order_by(CardProduct.created_at))
     return [ProductResponse.model_validate(item) for item in result.scalars()]
 

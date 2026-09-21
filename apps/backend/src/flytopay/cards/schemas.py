@@ -1,10 +1,14 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
-class ProductResponse(BaseModel):
+class ReadModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductResponse(ReadModel):
     code: str
     name: str
     scheme: str
@@ -13,7 +17,7 @@ class ProductResponse(BaseModel):
     enabled: bool
 
 
-class CardResponse(BaseModel):
+class CardResponse(ReadModel):
     id: UUID
     status: str
     masked_pan: str | None
@@ -24,7 +28,7 @@ class CardResponse(BaseModel):
     rental_expires_at: datetime | None = None
 
 
-class RentalResponse(BaseModel):
+class RentalResponse(ReadModel):
     id: UUID
     card_id: UUID
     term_days: int

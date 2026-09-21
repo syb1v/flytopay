@@ -30,6 +30,8 @@ class UserCard(Timestamped, Base):
     balance_minor: Mapped[int | None] = mapped_column(BigInteger)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     scale: Mapped[int] = mapped_column(Integer, default=2)
+    cardholder_id: Mapped[str | None] = mapped_column(String(128))
+    issue_order_id: Mapped[str | None] = mapped_column(String(128), unique=True)
 
 
 class Rental(Timestamped, Base):

@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     pay2328_base_url: str = Field(default="https://api.2328.io/api", validation_alias="PAY2328_BASE_URL")
     pay2328_project_uuid: str | None = Field(default=None, validation_alias="PAY2328_PROJECT_UUID")
     caas_api_key: str | None = Field(default=None, validation_alias="CAAS_API_KEY")
+    caas_base_url: str = Field(default="https://api.2328.io/caas/v1", validation_alias="CAAS_BASE_URL")
     caas_webhook_secret: str | None = Field(default=None, validation_alias="CAAS_WEBHOOK_SECRET")
     encryption_master_key: str | None = Field(default=None, validation_alias="ENCRYPTION_MASTER_KEY")
 
