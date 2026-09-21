@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1280"
+     height="1280"
+     viewBox="0 0 1280 1280">
+
+    <defs>
+        <filter id="greenGlow"
+                x="-30%"
+                y="-30%"
+                width="160%"
+                height="160%">
+            <feGaussianBlur stdDeviation="18"/>
+        </filter>
+
+        <path id="main-leaf"
+              d="M 280 313
+              C 327 352, 376 386, 433 413
+              C 499 445, 572 462, 650 488
+              C 736 516, 814 539, 866 574
+              C 914 607, 942 648, 952 697
+              C 966 765, 944 840, 900 918
+              C 894 869, 880 827, 852 793
+              C 819 753, 774 729, 718 705
+              C 660 680, 595 665, 527 647
+              C 464 631, 407 617, 374 597
+              C 345 580, 329 557, 316 528
+              C 299 488, 290 439, 285 394
+              C 282 362, 280 336, 280 313
+              Z"/>
+
+        <path id="lower-leaf"
+              d="M 421 665
+              C 470 692, 522 705, 579 719
+              C 646 735, 710 761, 747 795
+              C 762 809, 771 825, 775 836
+              C 726 844, 678 849, 632 846
+              C 574 843, 525 825, 491 796
+              C 458 768, 437 721, 421 665
+              Z"/>
+        </defs>
+
+        <rect width="1280" height="1280" fill="#000"/>
+
+        <g fill="#A2FF32" opacity="0.28" filter="url(#greenGlow)">
+            <use href="#main-leaf"/>
+            <use href="#lower-leaf"/>
+        </g>
+
+        <g fill="#A2FF32">
+            <use href="#main-leaf"/>
+            <use href="#lower-leaf"/>
+        </g>
+    </svg>
