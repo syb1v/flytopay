@@ -24,3 +24,18 @@ export async function updatePreferences(patch: Partial<Preferences>): Promise<Pr
   if (!response.ok) throw new Error("preferences_update_failed");
   return response.json() as Promise<Preferences>;
 }
+
+export type Wallet = { currency: string; scale: number; available_minor: number; reserved_minor: number; total_minor: number };
+
+export async function getWallet(): Promise<Wallet> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/wallet`, { credentials: "include" });
+  if (!response.ok) throw new Error("wallet_load_failed");
+  return response.json() as Promise<Wallet>;
+}
+
+export async function createCheckout(input: { provider: "platega" | "pay2328" | "telegram_stars"; purpose: string; amount_minor: number; currency: string; scale: number; return_url: string }, idempotencyKey: string) {
+  const response = await fetch(`${API_ORIGIN}/api/v1/payments/checkout`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey }, body: JSON.stringify(input) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail ?? "checkout_failed");
+  return data as { data: { paymentId: string; status: string; checkoutUrl: string | null } };
+}

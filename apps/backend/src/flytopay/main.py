@@ -9,6 +9,7 @@ from flytopay.config import get_settings
 from flytopay.payments.routes import router as payments_router
 from flytopay.payments.webhooks import router as webhooks_router
 from flytopay.preferences.routes import router as preferences_router
+from flytopay.wallet.routes import router as wallet_router
 
 
 def create_app() -> FastAPI:
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(payments_router)
     app.include_router(webhooks_router)
+    app.include_router(wallet_router)
     return app
 
 
