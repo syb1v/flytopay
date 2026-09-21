@@ -32,6 +32,7 @@ class UserCard(Timestamped, Base):
     scale: Mapped[int] = mapped_column(Integer, default=2)
     cardholder_id: Mapped[str | None] = mapped_column(String(128))
     issue_order_id: Mapped[str | None] = mapped_column(String(128), unique=True)
+    is_demo: Mapped[bool] = mapped_column(default=False)
 
 
 class Rental(Timestamped, Base):

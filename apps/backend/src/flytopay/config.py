@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     api_origin: str = Field(default="http://localhost:8000", validation_alias="API_ORIGIN")
     telegram_bot_token: str | None = Field(default=None, validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_webhook_secret: str | None = Field(default=None, validation_alias="TELEGRAM_WEBHOOK_SECRET")
+    telegram_admin_ids: str = Field(default="", validation_alias="TELEGRAM_ADMIN_IDS")
     platega_merchant_id: str | None = Field(default=None, validation_alias="PLATEGA_MERCHANT_ID")
     platega_secret: str | None = Field(default=None, validation_alias="PLATEGA_SECRET")
     platega_base_url: str = Field(default="https://app.platega.io", validation_alias="PLATEGA_BASE_URL")
@@ -35,3 +36,15 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
+
+
+def telegram_admin_ids() -> frozenset[int]:
+    raw = get_settings().telegram_admin_ids
+    result: set[int] = set()
+    for value in raw.split(","):
+        try:
+            if value.strip():
+                result.add(int(value.strip()))
+        except ValueError:
+            continue
+    return frozenset(result)
