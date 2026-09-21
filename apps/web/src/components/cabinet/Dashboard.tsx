@@ -20,7 +20,7 @@ const copy = {
 } as const;
 
 export function Dashboard() {
-  const { preferences, setLanguage } = usePreferences();
+  const { preferences, authReady, setLanguage } = usePreferences();
   const language = preferences.language;
   const [view, setView] = useState<View>("home");
   const [wallet, setWallet] = useState<Wallet | null>(null);
@@ -31,6 +31,7 @@ export function Dashboard() {
   const t = copy[language];
 
   useEffect(() => {
+    if (!authReady) return;
     window.Telegram?.WebApp?.ready();
     window.Telegram?.WebApp?.expand();
     Promise.all([getWallet(), getCards(), getRentals()]).then(([nextWallet, nextCards, nextRentals]) => {
@@ -38,7 +39,7 @@ export function Dashboard() {
       setCards(nextCards);
       setRentals(nextRentals);
     }).catch(() => setDataError(true));
-  }, []);
+  }, [authReady]);
 
   function navigate(next: View) {
     setView(next);

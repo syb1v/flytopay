@@ -1,4 +1,4 @@
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "http://localhost:8000";
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "";
 
 export async function loginWithTelegram(initData: string): Promise<void> {
   const response = await fetch(`${API_ORIGIN}/api/v1/auth/telegram`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ init_data: initData }) });
