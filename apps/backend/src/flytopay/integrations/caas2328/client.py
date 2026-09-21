@@ -41,6 +41,9 @@ class CaaSClient:
         items = data.get("items", [])
         return items if isinstance(items, list) else []
 
+    async def quote(self, *, operation: str, amount_minor: int, product_code: str | None = None) -> dict[str, Any]:
+        return await self._get("/tariffs/quote", operation=operation, amountMinor=amount_minor, productCode=product_code)
+
     async def create_cardholder(self, payload: dict[str, Any], *, idempotency_key: str) -> dict[str, Any]:
         return await self._mutate("/cardholders", payload, idempotency_key)
 

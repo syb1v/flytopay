@@ -48,6 +48,15 @@ export async function getCardProducts(): Promise<CardProduct[]> {
   return response.json() as Promise<CardProduct[]>;
 }
 
+export type CardholderInput = { product_code: string; amount_minor: number; first_name: string; last_name: string; email: string; phone: string; date_of_birth: string; country: string; address: string; city: string; state: string; zip_code: string };
+
+export async function getIssueQuote(input: CardholderInput) {
+  const response = await fetch(`${API_ORIGIN}/api/v1/issuance/quote`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail ?? "quote_failed");
+  return data as { data: { amountMinor: number; feeMinor: number; totalChargeMinor: number; currency: string; planCode: string; planVersion: number } };
+}
+
 export async function getCards(): Promise<Card[]> {
   const response = await fetch(`${API_ORIGIN}/api/v1/cards`, { credentials: "include" });
   if (!response.ok) throw new Error("cards_load_failed");
