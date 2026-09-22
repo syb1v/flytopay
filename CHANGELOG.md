@@ -9,6 +9,20 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.6.0] - 2026-09-22
+
+### Added
+
+- Card funding and transfer endpoints (`POST /cards/{id}/fund`, `POST /cards/{id}/unload`) with balance validation and rate limiting.
+- Amount dialog in the cabinet for funding and transferring cards, with live balance refresh after submission.
+- Services page with issue, history, top-up and exchange tiles.
+
+### Changed
+
+- All mutating CaaS lifecycle calls (freeze, unfreeze, close, fund, unload) now execute in the Celery worker instead of the request path; the API only records the idempotent operation and queues the task.
+- Structured logging via structlog: JSON output in production, console rendering in development.
+- `caas_operation_records` gained a `request_payload` column so queued workers can replay the original request.
+
 ## [0.5.0] - 2026-09-22
 
 ### Added
@@ -71,7 +85,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/syb1v/flytopay/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/syb1v/flytopay/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/syb1v/flytopay/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/syb1v/flytopay/compare/v0.2.0...v0.3.0
