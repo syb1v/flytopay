@@ -34,6 +34,7 @@ import { CardDetailsDialog } from "../cards/CardDetailsDialog";
 import { CardVisual } from "../cards/CardVisual";
 import { IssueCardPanel } from "../cards/IssueCardPanel";
 import { TransactionsHistory } from "../cards/TransactionsHistory";
+import { Modal } from "../ui/modal";
 
 type View = "home" | "issue" | "services" | "history" | "profile";
 
@@ -175,6 +176,7 @@ export function Dashboard() {
     return "default";
   }
   const [actionError, setActionError] = useState<string | null>(null);
+  const [infoModal, setInfoModal] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<{ action: "topup" | "transfer"; card: Card } | null>(null);
 
@@ -319,7 +321,7 @@ export function Dashboard() {
               {language.toUpperCase()}
             </button>
             <span className="demo-badge">{t.demo}</span>
-            <button className="support-button" onClick={() => alert(t.coming)} aria-label={t.support}>
+            <button className="support-button" onClick={() => setInfoModal(t.coming)} aria-label={t.support}>
               ?
             </button>
             <span className="avatar-mark">А</span>
@@ -336,7 +338,7 @@ export function Dashboard() {
                 <strong>{money(wallet?.available_minor, wallet?.currency, wallet?.scale)}</strong>
                 <div className="balance-footer">
                   <small>{t.wallet}</small>
-                  <button onClick={() => alert(t.coming)}>＋ {t.topup}</button>
+                  <button onClick={() => setInfoModal(t.coming)}>＋ {t.topup}</button>
                 </div>
               </article>
               <article className="balance-card balance-secondary">
@@ -565,6 +567,15 @@ export function Dashboard() {
         </button>
       </nav>
       <CardDetailsDialog card={selectedCard} open={Boolean(selectedCard)} onClose={() => setSelectedCard(null)} />
+      <Modal
+        open={infoModal !== null}
+        onClose={() => setInfoModal(null)}
+        eyebrow="FLYTOPAY"
+        title={t.support}
+        closeLabel={language === "ru" ? "Закрыть" : "Close"}
+      >
+        <p className="settings-muted">{infoModal}</p>
+      </Modal>
       {amountDialog && (
         <AmountDialog
           title={
@@ -675,37 +686,27 @@ function AmountDialog({
   const overMax = maxMinor != null && amountMinor > maxMinor;
   const valid = amountMinor > 0 && !overMax;
   return (
-    <div className="issue-product-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="amount-dialog" role="dialog" aria-modal="true" aria-label={title}>
-        <header className="card-dialog-header">
-          <div>
-            <span className="dashboard-eyebrow">FLYTOPAY</span>
-            <h2>{title}</h2>
-          </div>
-          <button className="icon-button" onClick={onClose} aria-label={ru ? "Закрыть" : "Close"}>
-            ×
-          </button>
-        </header>
-        <p className="settings-muted">
-          {cardLabel} · {currency}
-        </p>
-        <label className="field-label">
-          {ru ? "Сумма" : "Amount"} ({currency})
-          <input
-            autoFocus
-            inputMode="decimal"
-            value={value}
-            onChange={(event) => setValue(event.target.value.replace(/[^\d.,]/g, ""))}
-            placeholder={maxMinor != null ? `${(maxMinor / 100).toFixed(2)}` : "10.00"}
-          />
-        </label>
-        {overMax && (
-          <p className="error-text">{ru ? "Недостаточно средств на карте" : "Amount exceeds card balance"}</p>
-        )}
-        <button className="lime-action" disabled={!valid || pending} onClick={() => onSubmit(amountMinor)}>
-          {pending ? "…" : submitLabel}
-        </button>
-      </section>
-    </div>
+    <Modal
+      open
+      onClose={onClose}
+      eyebrow="FLYTOPAY"
+      title={title}
+      description={`${cardLabel} · ${currency}`}
+      closeLabel={ru ? "Закрыть" : "Close"}
+    >
+      <label className="field-label">
+        {ru ? "Сумма" : "Amount"} ({currency})
+        <input
+          inputMode="decimal"
+          value={value}
+          onChange={(event) => setValue(event.target.value.replace(/[^\d.,]/g, ""))}
+          placeholder={maxMinor != null ? `${(maxMinor / 100).toFixed(2)}` : "10.00"}
+        />
+      </label>
+      {overMax && <p className="error-text">{ru ? "Недостаточно средств на карте" : "Amount exceeds card balance"}</p>}
+      <button className="lime-action" disabled={!valid || pending} onClick={() => onSubmit(amountMinor)}>
+        {pending ? "…" : submitLabel}
+      </button>
+    </Modal>
   );
 }

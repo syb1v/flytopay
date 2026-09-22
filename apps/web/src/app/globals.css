@@ -1189,17 +1189,52 @@ h1 {
 .bank-card-fly.is-frozen {
   filter: saturate(0.35);
 }
+/* Payment scheme marks: unified placement, per-scheme rendering. */
+.scheme-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+}
+.scheme-mark-visa {
+  font-size: clamp(17px, 3vw, 25px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  font-style: italic;
+}
+.scheme-mark-mc {
+  position: relative;
+  width: clamp(34px, 5vw, 48px);
+  height: clamp(24px, 3.6vw, 34px);
+}
+.scheme-mark-mc i {
+  position: absolute;
+  top: 0;
+  width: 70%;
+  height: 100%;
+  border-radius: 50%;
+}
+.scheme-mark-mc i:first-child {
+  left: 0;
+  background: #eb001b;
+}
+.scheme-mark-mc i:last-child {
+  right: 0;
+  background: #f79e1b;
+  mix-blend-mode: overlay;
+}
+/* Unified card variants: same layout, only the palette changes per type. */
+.bank-card-fly.card-variant-subs,
+.bank-card-fly.card-variant-default {
+  background:
+    radial-gradient(90% 120% at 4% 0%, #52682a99, transparent 58%),
+    radial-gradient(80% 110% at 100% 100%, #4c721e80, transparent 64%),
+    linear-gradient(142deg, #273b25, #16201a 55%, #0d1410);
+}
 .bank-card-fly.card-variant-travel {
   background:
     radial-gradient(90% 120% at 4% 0%, #4a9ad899, transparent 58%),
     radial-gradient(80% 110% at 100% 100%, #124d8580, transparent 64%),
     linear-gradient(142deg, #1d6fb0, #0c3a63 55%, #08263f);
-}
-.bank-card-fly.card-variant-subs {
-  background:
-    radial-gradient(90% 120% at 4% 0%, #a58cf099, transparent 58%),
-    radial-gradient(80% 110% at 100% 100%, #4e379880, transparent 64%),
-    linear-gradient(142deg, #6d5bd0, #33277a 55%, #21174f);
 }
 .bank-card-fly.card-variant-premium {
   background:
@@ -1512,7 +1547,7 @@ h1 {
   background: linear-gradient(135deg, #1d6fb0, #0c3a63);
 }
 .issue-tier-2 .issue-tier-visual {
-  background: linear-gradient(135deg, #6d5bd0, #33277a);
+  background: linear-gradient(135deg, #273b25, #0d1410);
 }
 .issue-tier-logo {
   position: absolute;
@@ -1615,13 +1650,14 @@ h1 {
   transform: scale(0.992);
 }
 .issue-tier-card.tier-premium {
-  background: linear-gradient(160deg, #23292c, #0a0e10);
+  background: linear-gradient(160deg, #2c343a, #0a0e10);
 }
 .issue-tier-card.tier-travel {
   background: linear-gradient(160deg, #1d6fb0, #0c3a63);
 }
-.issue-tier-card.tier-subs {
-  background: linear-gradient(160deg, #6d5bd0, #33277a);
+.issue-tier-card.tier-subs,
+.issue-tier-card.tier-default {
+  background: linear-gradient(160deg, #273b25, #0d1410);
 }
 .issue-tier-badges {
   display: flex;
@@ -1721,27 +1757,6 @@ h1 {
   color: var(--lime);
 }
 /* Fullscreen product details */
-.product-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  background: var(--graphite);
-}
-.product-screen-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: calc(10px + var(--app-safe-top)) 16px 10px;
-  border-bottom: 1px solid #ffffff0d;
-  background: #101619e8;
-  backdrop-filter: blur(16px);
-}
 .back-pill {
   display: inline-flex;
   align-items: center;
@@ -1758,10 +1773,6 @@ h1 {
 .rotate-left {
   transform: rotate(90deg);
 }
-.product-screen-title {
-  font-size: 12.5px;
-  font-weight: 700;
-}
 .dots-pill {
   padding: 6px 10px;
   border: 1px solid #2c363d;
@@ -1770,97 +1781,6 @@ h1 {
   color: var(--muted);
   font-size: 10px;
   letter-spacing: 0.2em;
-}
-.product-screen-body {
-  width: min(560px, 100%);
-  margin: 0 auto;
-  padding: 14px 18px 40px;
-}
-.product-hero {
-  overflow: hidden;
-  padding: 18px;
-  border: 1px solid #ffffff12;
-  border-radius: 24px;
-  background: linear-gradient(180deg, #1b1e2a, #0e1017);
-}
-.product-hero.tier-premium {
-  background: linear-gradient(180deg, #23292c, #0a0e10);
-}
-.product-hero.tier-travel {
-  background: linear-gradient(180deg, #1d6fb0, #0c3a63);
-}
-.product-hero.tier-subs {
-  background: linear-gradient(180deg, #6d5bd0, #33277a);
-}
-.product-hero-badges {
-  display: flex;
-  gap: 6px;
-}
-.product-hero-card {
-  position: relative;
-  display: flex;
-  width: min(260px, 80%);
-  aspect-ratio: 1.586;
-  margin: 16px auto;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 14px;
-  overflow: hidden;
-  border: 1px solid #ffffff26;
-  border-radius: 16px;
-  background: linear-gradient(to top right, #0f172a, #29303c, #1c2430);
-  color: #fff;
-}
-.product-hero-logo {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #ffffffcc;
-}
-.product-hero-orb {
-  display: flex;
-  width: 56px;
-  height: 56px;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  margin: auto;
-  border: 1px solid #ffffff40;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #cbd5e1, #475569, #0f172a);
-  font-size: 24px;
-}
-.product-hero-number {
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
-  color: #ffffffb3;
-}
-.product-hero-currency {
-  position: absolute;
-  right: 14px;
-  bottom: 12px;
-  font-size: 12px;
-  font-weight: 800;
-}
-.product-hero-chip {
-  position: absolute;
-  bottom: 40px;
-  left: 14px;
-  width: 24px;
-  height: 35px;
-  object-fit: fill;
-}
-.product-hero h2 {
-  margin: 14px 0 4px;
-  font-size: 21px;
-  text-align: center;
-}
-.product-hero p {
-  margin: 0;
-  color: #ffffffb8;
-  font-size: 12.5px;
-  text-align: center;
 }
 .product-feature-grid {
   display: grid;
@@ -1985,15 +1905,6 @@ h1 {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.45;
-}
-.product-screen-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  padding: 12px 18px max(12px, var(--app-safe-bottom));
-  border-top: 1px solid #ffffff0f;
-  background: #101619f0;
-  backdrop-filter: blur(18px);
 }
 .product-buy {
   width: 100%;
@@ -2164,17 +2075,42 @@ h1 {
   color: var(--muted);
   font-size: 13px;
 }
-/* Amount dialog */
-.amount-dialog {
-  position: relative;
-  width: min(420px, 100%);
+/* Unified modal system */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #05090bcc;
+  backdrop-filter: blur(8px);
+}
+.modal-content {
+  position: fixed;
+  z-index: 61;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 32px));
+  max-height: 90dvh;
+  overflow: auto;
   padding: 24px;
   border: 1px solid #3a474c;
   border-radius: 24px;
   background: #192126;
   box-shadow: 0 30px 100px #0009;
 }
-.amount-dialog .field-label input {
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.modal-header h2 {
+  margin: 4px 0 0;
+  font-size: 21px;
+  letter-spacing: -0.4px;
+}
+.modal-body .field-label input {
   display: block;
   width: 100%;
   margin-top: 7px;
@@ -2186,10 +2122,25 @@ h1 {
   font-size: 20px;
   font-weight: 700;
 }
-.amount-dialog .lime-action {
+.modal-body .lime-action {
   width: 100%;
   justify-content: center;
 }
+.product-modal-card {
+  margin-bottom: 14px;
+}
+@media (max-width: 600px) {
+  .modal-content {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    border-radius: 24px 24px 0 0;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+}
+/* Amount dialog */
 /* Services */
 .services-panel {
   max-width: 760px;

@@ -1,6 +1,21 @@
 import { Nfc } from "lucide-react";
 import { usePreferences } from "../providers/PreferencesProvider";
 
+const SCHEMES = new Set(["VISA", "MASTERCARD", "MC"]);
+
+function SchemeMark({ scheme }: { scheme: string }) {
+  const normalized = scheme.toUpperCase();
+  if (normalized === "MASTERCARD" || normalized === "MC") {
+    return (
+      <span className="scheme-mark scheme-mark-mc" aria-label="Mastercard">
+        <i />
+        <i />
+      </span>
+    );
+  }
+  return <strong className="scheme-mark scheme-mark-visa">{normalized}</strong>;
+}
+
 export function CardVisual({
   maskedPan,
   status,
@@ -21,8 +36,10 @@ export function CardVisual({
   const { preferences } = usePreferences();
   const ru = preferences.language === "ru";
   const frozen = status === "frozen";
+  const normalizedScheme = SCHEMES.has(scheme.toUpperCase()) ? scheme.toUpperCase() : "VISA";
+  const safeVariant = ["default", "travel", "subs", "premium"].includes(variant) ? variant : "default";
   return (
-    <article className={`bank-card-fly card-variant-${variant} ${frozen ? "is-frozen" : ""}`}>
+    <article className={`bank-card-fly card-variant-${safeVariant} ${frozen ? "is-frozen" : ""}`}>
       <span className="bank-card-edge" />
       <span className="bank-card-shine" />
       <div className="bank-card-top">
@@ -48,7 +65,7 @@ export function CardVisual({
           <small>{ru ? "Срок" : "Valid thru"}</small>
           {expiry}
         </span>
-        <strong>{scheme.toUpperCase()}</strong>
+        <SchemeMark scheme={normalizedScheme} />
       </div>
       {balance && <div className="bank-card-balance">{balance}</div>}
     </article>

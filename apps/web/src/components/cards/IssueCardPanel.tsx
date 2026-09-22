@@ -24,6 +24,8 @@ import {
   type ProductPrice,
 } from "../../lib/api";
 import { usePreferences } from "../providers/PreferencesProvider";
+import { Modal } from "../ui/modal";
+import { CardVisual } from "./CardVisual";
 
 const terms = [30, 90, 180, 365] as const;
 
@@ -349,31 +351,17 @@ function ProductDetailsScreen({
   const [openForbidden, setOpenForbidden] = useState(false);
   const meta = tierMeta[tier];
   return (
-    <div className="product-screen" role="dialog" aria-modal="true">
-      <div className="product-screen-topbar">
-        <button className="back-pill" onClick={onClose}>
-          <ChevronDown size={16} className="rotate-left" />
-          <span>{ru ? "Назад" : "Back"}</span>
-        </button>
-        <span className="product-screen-title">{ru ? "Новая карта" : "New card"}</span>
-        <span className="dots-pill">•••</span>
-      </div>
-      <div className="product-screen-body">
-        <div className={`product-hero tier-${tier}`}>
-          <div className="product-hero-badges">
-            <span className="badge"> Pay</span>
-            <span className="badge">G Pay</span>
-            <span className="badge badge-accent">Alipay</span>
-          </div>
-          <div className="product-hero-card">
-            <span className="product-hero-logo">{ru ? "Плати по всему миру" : "Pay worldwide"}</span>
-            <span className="product-hero-orb">{meta.art}</span>
-            <span className="product-hero-number">•••• 8820</span>
-            <span className="product-hero-currency">{product.currency}</span>
-            <img className="product-hero-chip" src="/chip.svg" alt="" aria-hidden="true" />
-          </div>
-          <h2>{ru ? `${meta.ru} карта` : `${meta.en} card`}</h2>
-          <p>{ru ? meta.ruDesc : meta.enDesc}</p>
+    <Modal
+      open
+      onClose={onClose}
+      eyebrow="FLYTOPAY"
+      title={ru ? `${meta.ru} карта` : `${meta.en} card`}
+      description={ru ? meta.ruDesc : meta.enDesc}
+      closeLabel={ru ? "Закрыть" : "Close"}
+    >
+      <div className="modal-body">
+        <div className="product-modal-card">
+          <CardVisual variant={tier} scheme={product.scheme} expiry="12/30" holder="FLYTOPAY USER" />
         </div>
 
         <div className="product-feature-grid">
@@ -476,8 +464,7 @@ function ProductDetailsScreen({
             </p>
           </div>
         </div>
-      </div>
-      <div className="product-screen-footer">
+
         <button className="lime-action product-buy" onClick={() => onIssue(product)}>
           <Sparkles size={16} />
           {price?.total_charge_minor != null
@@ -487,7 +474,7 @@ function ProductDetailsScreen({
               : "Proceed"}
         </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 

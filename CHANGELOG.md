@@ -9,6 +9,17 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.7.0] - 2026-09-22
+
+### Changed
+
+- Unified card design: every card type (default, travel, subscriptions, premium) now shares the same layout — chip, cardholder, expiry, payment scheme mark, brand logo, and contactless icon — differing only in palette.
+- The subscriptions card now uses the main green Flytopay styling.
+- Mastercard cards render the dual-circle scheme mark instead of text.
+- All popups and dialogs migrated to a single unified Radix modal (`Modal`): card details, amount entry, product details, and info messages.
+- The product details view moved from a fullscreen page to the unified modal and now previews the real `CardVisual` component.
+- Browser `alert()` calls replaced with unified modal windows.
+
 ## [0.6.0] - 2026-09-22
 
 ### Added
@@ -86,7 +97,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/syb1v/flytopay/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/syb1v/flytopay/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/syb1v/flytopay/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/syb1v/flytopay/compare/v0.3.0...v0.4.0
