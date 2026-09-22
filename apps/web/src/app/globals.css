@@ -2164,6 +2164,97 @@ h1 {
   color: var(--muted);
   font-size: 13px;
 }
+/* Amount dialog */
+.amount-dialog {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid #3a474c;
+  border-radius: 24px;
+  background: #192126;
+  box-shadow: 0 30px 100px #0009;
+}
+.amount-dialog .field-label input {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 14px;
+  border: 1px solid #354147;
+  border-radius: 12px;
+  background: #101619;
+  color: var(--white);
+  font-size: 20px;
+  font-weight: 700;
+}
+.amount-dialog .lime-action {
+  width: 100%;
+  justify-content: center;
+}
+/* Services */
+.services-panel {
+  max-width: 760px;
+}
+.services-intro {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.service-tile {
+  display: flex;
+  min-height: 150px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid #2c363d;
+  border-radius: 20px;
+  background: #192126;
+  color: var(--white);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+.service-tile:hover {
+  border-color: var(--lime);
+  transform: translateY(-1px);
+}
+.service-tile.disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.service-tile.disabled:hover {
+  border-color: #2c363d;
+  transform: none;
+}
+.service-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: #b8f13d16;
+  color: var(--lime);
+}
+.service-tile b {
+  font-size: 15px;
+}
+.service-tile small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+@media (max-width: 560px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .recent-tx-row {
   display: flex;
   align-items: center;

@@ -14,6 +14,7 @@ from flytopay.cards.webhooks import router as caas_webhooks_router
 from flytopay.config import get_settings
 from flytopay.config_validation import validate_runtime_environment
 from flytopay.issuance.onboarding import router as issuance_checkout_router
+from flytopay.logging_config import configure_logging
 from flytopay.payments.routes import router as payments_router
 from flytopay.payments.webhooks import router as webhooks_router
 from flytopay.preferences.routes import router as preferences_router
@@ -23,6 +24,7 @@ from flytopay.wallet.routes import router as wallet_router
 
 def create_app() -> FastAPI:
     validate_runtime_environment()
+    configure_logging()
     settings = get_settings()
     app = FastAPI(title="Flytopay API", version="0.5.0")
     app.add_middleware(

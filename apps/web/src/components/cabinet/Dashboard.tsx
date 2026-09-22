@@ -20,6 +20,8 @@ import {
   getCardTransactions,
   getRentals,
   getWallet,
+  fundCard,
+  unloadCard,
   unfreezeCard,
   freezeCard,
   closeCard,
@@ -174,14 +176,37 @@ export function Dashboard() {
   }
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
+  const [amountDialog, setAmountDialog] = useState<{ action: "topup" | "transfer"; card: Card } | null>(null);
+
+  async function submitAmount(amountMinor: number) {
+    if (!amountDialog) return;
+    const { action, card } = amountDialog;
+    setActionError(null);
+    setActionPending(`${action}:${card.id}`);
+    try {
+      if (action === "topup") {
+        await fundCard(card.id, amountMinor);
+      } else {
+        await unloadCard(card.id, amountMinor);
+      }
+      setAmountDialog(null);
+      const [nextWallet, nextCards] = await Promise.all([getWallet(), getCards()]);
+      setWallet(nextWallet);
+      setCards(nextCards);
+    } catch {
+      setActionError(
+        language === "ru"
+          ? "Операция временно недоступна — попробуйте позже"
+          : "Operation is temporarily unavailable — try again later",
+      );
+    } finally {
+      setActionPending(null);
+    }
+  }
 
   async function cardAction(action: "topup" | "transfer" | "freeze" | "close", card: Card) {
     if (action === "topup" || action === "transfer") {
-      alert(
-        language === "ru"
-          ? `${action === "topup" ? "Пополнение" : "Перевод"} карты пока недоступно в демо-режиме`
-          : `${action === "topup" ? "Top up" : "Transfer"} is not available in demo mode`,
-      );
+      setAmountDialog({ action, card });
       return;
     }
     setActionError(null);
@@ -424,12 +449,47 @@ export function Dashboard() {
         )}
         {view === "issue" && <IssueCardPanel />}
         {view === "services" && (
-          <section className="page-panel">
-            <div className="panel-icon">
-              <Wrench size={40} />
+          <section className="services-panel">
+            <div className="section-heading">
+              <h2>{language === "ru" ? "Сервисы" : "Services"}</h2>
             </div>
-            <h2>Сервисы</h2>
-            <p>Раздел в разработке.</p>
+            <p className="services-intro">
+              {language === "ru"
+                ? "Всё для работы с картами Flytopay в одном месте."
+                : "Everything you need to manage Flytopay cards in one place."}
+            </p>
+            <div className="services-grid">
+              <button className="service-tile" onClick={() => navigate("issue")}>
+                <span className="service-icon">
+                  <CreditCard size={22} />
+                </span>
+                <b>{language === "ru" ? "Выпуск карты" : "Issue a card"}</b>
+                <small>
+                  {language === "ru" ? "Премиум, путешествия и подписки" : "Premium, travel and subscriptions"}
+                </small>
+              </button>
+              <button className="service-tile" onClick={() => navigate("history")}>
+                <span className="service-icon">
+                  <History size={22} />
+                </span>
+                <b>{language === "ru" ? "История операций" : "Transactions"}</b>
+                <small>{language === "ru" ? "Фильтры по картам и типам" : "Filter by card and type"}</small>
+              </button>
+              <div className="service-tile disabled" aria-disabled="true">
+                <span className="service-icon">
+                  <WalletCards size={22} />
+                </span>
+                <b>{language === "ru" ? "Пополнение баланса" : "Wallet top-up"}</b>
+                <small>{language === "ru" ? "Скоро: СБП, карта, крипта" : "Soon: SBP, card, crypto"}</small>
+              </div>
+              <div className="service-tile disabled" aria-disabled="true">
+                <span className="service-icon">
+                  <CircleDollarSign size={22} />
+                </span>
+                <b>{language === "ru" ? "Обмен валюты" : "Currency exchange"}</b>
+                <small>{language === "ru" ? "Скоро: выгодные курсы" : "Soon: favourable rates"}</small>
+              </div>
+            </div>
           </section>
         )}
         {view === "history" && (
@@ -505,6 +565,35 @@ export function Dashboard() {
         </button>
       </nav>
       <CardDetailsDialog card={selectedCard} open={Boolean(selectedCard)} onClose={() => setSelectedCard(null)} />
+      {amountDialog && (
+        <AmountDialog
+          title={
+            amountDialog.action === "topup"
+              ? language === "ru"
+                ? "Пополнить карту"
+                : "Fund card"
+              : language === "ru"
+                ? "Перевести с карты"
+                : "Transfer from card"
+          }
+          cardLabel={`•••• ${amountDialog.card.last_four ?? "—"}`}
+          currency={amountDialog.card.currency}
+          maxMinor={amountDialog.action === "transfer" ? (amountDialog.card.balance_minor ?? 0) : null}
+          pending={actionPending === `${amountDialog.action}:${amountDialog.card.id}`}
+          submitLabel={
+            amountDialog.action === "topup"
+              ? language === "ru"
+                ? "Пополнить"
+                : "Fund"
+              : language === "ru"
+                ? "Перевести"
+                : "Transfer"
+          }
+          ru={language === "ru"}
+          onClose={() => setAmountDialog(null)}
+          onSubmit={(minor) => void submitAmount(minor)}
+        />
+      )}
     </div>
   );
 }
@@ -555,6 +644,68 @@ function RecentTransactions({
           <b>{item.amount}</b>
         </div>
       ))}
+    </div>
+  );
+}
+
+function AmountDialog({
+  title,
+  cardLabel,
+  currency,
+  maxMinor,
+  pending,
+  submitLabel,
+  ru,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  cardLabel: string;
+  currency: string;
+  maxMinor: number | null;
+  pending: boolean;
+  submitLabel: string;
+  ru: boolean;
+  onClose: () => void;
+  onSubmit: (amountMinor: number) => void;
+}) {
+  const [value, setValue] = useState("");
+  const parsed = Number.parseFloat(value.replace(",", "."));
+  const amountMinor = Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
+  const overMax = maxMinor != null && amountMinor > maxMinor;
+  const valid = amountMinor > 0 && !overMax;
+  return (
+    <div className="issue-product-overlay" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="amount-dialog" role="dialog" aria-modal="true" aria-label={title}>
+        <header className="card-dialog-header">
+          <div>
+            <span className="dashboard-eyebrow">FLYTOPAY</span>
+            <h2>{title}</h2>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label={ru ? "Закрыть" : "Close"}>
+            ×
+          </button>
+        </header>
+        <p className="settings-muted">
+          {cardLabel} · {currency}
+        </p>
+        <label className="field-label">
+          {ru ? "Сумма" : "Amount"} ({currency})
+          <input
+            autoFocus
+            inputMode="decimal"
+            value={value}
+            onChange={(event) => setValue(event.target.value.replace(/[^\d.,]/g, ""))}
+            placeholder={maxMinor != null ? `${(maxMinor / 100).toFixed(2)}` : "10.00"}
+          />
+        </label>
+        {overMax && (
+          <p className="error-text">{ru ? "Недостаточно средств на карте" : "Amount exceeds card balance"}</p>
+        )}
+        <button className="lime-action" disabled={!valid || pending} onClick={() => onSubmit(amountMinor)}>
+          {pending ? "…" : submitLabel}
+        </button>
+      </section>
     </div>
   );
 }

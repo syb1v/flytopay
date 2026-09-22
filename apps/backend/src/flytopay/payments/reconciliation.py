@@ -1,6 +1,5 @@
 """Payment reconciliation worker: retry finalize for reconcile_required attempts."""
 
-import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -8,11 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flytopay.db.session import session_factory
+from flytopay.logging_config import get_logger
 from flytopay.payments.finalization import FinalizationError, finalize_payment
 from flytopay.payments.models import PaymentAttempt
 from flytopay.payments.service import PaymentService
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 MAX_ATTEMPT_AGE = timedelta(hours=24)
 DEAD_LETTER_THRESHOLD = 10

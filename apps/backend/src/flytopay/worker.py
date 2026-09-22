@@ -22,3 +22,12 @@ celery_app.conf.update(
 )
 register_caas_task(celery_app)
 register_reconciliation_task(celery_app)
+
+
+@celery_app.task(name="flytopay.caas.lifecycle")
+def caas_lifecycle_task(operation_key: str, card_id: str, kind: str) -> str:
+    import asyncio
+
+    from flytopay.cards.lifecycle_routes import execute_lifecycle
+
+    return asyncio.run(execute_lifecycle(operation_key, card_id, kind))

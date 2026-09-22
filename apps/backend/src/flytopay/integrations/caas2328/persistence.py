@@ -26,6 +26,7 @@ class CaaSOperationRecord(Base):
     provider_order_id: Mapped[str | None] = mapped_column(String(128))
     provider_card_id: Mapped[str | None] = mapped_column(String(128))
     response: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    request_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[Any] = mapped_column(DateTime(timezone=True), server_default="now()", nullable=False)
     updated_at: Mapped[Any] = mapped_column(DateTime(timezone=True), server_default="now()", onupdate=func.now(), nullable=False)
 
@@ -58,6 +59,7 @@ async def get_or_create_operation(
         operation_key=operation_key,
         operation_kind=operation_kind,
         request_fingerprint=fingerprint,
+        request_payload=payload,
     )
     db.add(record)
     await db.flush()

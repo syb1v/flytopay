@@ -2,7 +2,6 @@
 
 import hashlib
 import hmac
-import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Header, HTTPException, Request, status
@@ -11,9 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from flytopay.config import get_settings
 from flytopay.db.session import session_factory
 from flytopay.integrations.caas2328.lifecycle import normalize_webhook
+from flytopay.logging_config import get_logger
 from flytopay.payments.models import PaymentProviderEvent
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/webhooks/caas", tags=["Webhooks"])
 

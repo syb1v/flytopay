@@ -135,6 +135,30 @@ export const freezeCard = (cardId: string) => cardLifecycle("freeze", cardId);
 export const unfreezeCard = (cardId: string) => cardLifecycle("unfreeze", cardId);
 export const closeCard = (cardId: string) => cardLifecycle("close", cardId);
 
+export async function fundCard(cardId: string, amountMinor: number): Promise<CardLifecycleResult> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/fund`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrfHeaders() },
+    body: JSON.stringify({ amount_minor: amountMinor }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.detail ?? "fund_failed");
+  return data as CardLifecycleResult;
+}
+
+export async function unloadCard(cardId: string, amountMinor: number): Promise<CardLifecycleResult> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/unload`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrfHeaders() },
+    body: JSON.stringify({ amount_minor: amountMinor }),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.detail ?? "unload_failed");
+  return data as CardLifecycleResult;
+}
+
 export type CardTransaction = {
   id: string;
   type: string;
