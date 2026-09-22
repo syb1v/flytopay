@@ -31,6 +31,13 @@ export async function getPreferences(): Promise<Preferences> {
   return response.json() as Promise<Preferences>;
 }
 
+export async function getAdminStatus(): Promise<boolean> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/admin/status`, { credentials: "include" });
+  if (!response.ok) return false;
+  const payload = (await response.json()) as { data?: { isAdmin?: boolean } };
+  return payload.data?.isAdmin === true;
+}
+
 export async function updatePreferences(patch: Partial<Preferences>): Promise<Preferences> {
   const response = await fetch(`${API_ORIGIN}/api/v1/me/preferences`, {
     method: "PATCH",

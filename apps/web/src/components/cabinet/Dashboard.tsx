@@ -19,6 +19,7 @@ import { PreferencesPanel } from "../settings/PreferencesPanel";
 import {
   getCards,
   getCardTransactions,
+  getAdminStatus,
   getRentals,
   getWallet,
   fundCard,
@@ -167,11 +168,12 @@ export function Dashboard() {
     forceFullscreen();
     webApp.onEvent?.("viewportChanged", forceFullscreen);
     const retryTimer = window.setTimeout(forceFullscreen, 300);
-    Promise.all([getWallet(), getCards(), getRentals()])
-      .then(([nextWallet, nextCards, nextRentals]) => {
+    Promise.all([getWallet(), getCards(), getRentals(), getAdminStatus()])
+      .then(([nextWallet, nextCards, nextRentals, nextIsAdmin]) => {
         setWallet(nextWallet);
         setCards(nextCards);
         setRentals(nextRentals);
+        setIsAdmin(nextIsAdmin);
       })
       .catch(() => setDataError(true));
     return () => {
@@ -217,6 +219,7 @@ export function Dashboard() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [infoModal, setInfoModal] = useState<string | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [actionPending, setActionPending] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<{ action: "topup" | "transfer"; card: Card } | null>(null);
 
@@ -395,6 +398,20 @@ export function Dashboard() {
                 </div>
               </article>
             </section>
+            {isAdmin && (
+              <section className="admin-entry-card">
+                <div>
+                  <span className="dashboard-eyebrow">ADMIN ACCESS</span>
+                  <strong>{language === "ru" ? "Админ-панель" : "Admin panel"}</strong>
+                  <small>
+                    {language === "ru"
+                      ? "Пользователи, карты, платежи и выпуск"
+                      : "Users, cards, payments and issuance"}
+                  </small>
+                </div>
+                <a href="/admin">{language === "ru" ? "Открыть" : "Open"} ↗</a>
+              </section>
+            )}
             {dataError && <div className="data-warning">{t.coming}</div>}
             <section className="dashboard-section">
               <div className="section-heading">

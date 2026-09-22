@@ -23,6 +23,15 @@ async def admin_user_id(user_id: Annotated[UUID, Depends(current_user_id)], db: 
     return user_id
 
 
+@router.get("/status")
+async def admin_status(
+    user_id: Annotated[UUID, Depends(current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, object]:
+    telegram_id = await db.scalar(select(TelegramAccount.telegram_id).where(TelegramAccount.user_id == user_id))
+    return {"success": True, "data": {"isAdmin": telegram_id in telegram_admin_ids()}}
+
+
 @router.get("/overview")
 async def overview(_: Annotated[UUID, Depends(admin_user_id)], db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     return {"success": True, "data": {"users": await db.scalar(select(func.count()).select_from(User)) or 0, "telegramAccounts": await db.scalar(select(func.count()).select_from(TelegramAccount)) or 0, "cards": await db.scalar(select(func.count()).select_from(UserCard)) or 0, "demoCards": await db.scalar(select(func.count()).select_from(UserCard).where(UserCard.is_demo.is_(True))) or 0, "rentals": await db.scalar(select(func.count()).select_from(Rental)) or 0, "payments": await db.scalar(select(func.count()).select_from(PaymentAttempt)) or 0, "wallets": await db.scalar(select(func.count()).select_from(Wallet)) or 0}}

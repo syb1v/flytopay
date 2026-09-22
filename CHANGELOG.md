@@ -9,6 +9,16 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.11.1] - 2026-09-22
+
+### Added
+
+- Admin status endpoint and admin-only entry card on the home screen linking to `/admin`.
+
+### Fixed
+
+- Admin users no longer need to guess where the web admin panel is; non-admin users never see the entry.
+
 ## [0.11.0] - 2026-09-22
 
 ### Added
@@ -175,7 +185,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/syb1v/flytopay/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/syb1v/flytopay/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/syb1v/flytopay/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/syb1v/flytopay/compare/v0.10.1...v0.10.2

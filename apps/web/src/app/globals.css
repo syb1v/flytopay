@@ -2995,3 +2995,37 @@ button.tx-row:hover {
 .tx-modal-amount.muted {
   color: var(--muted);
 }
+.admin-entry-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid #4e6939;
+  border-radius: 18px;
+  background: linear-gradient(120deg, #1d2c18, #18221a);
+}
+.admin-entry-card div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.admin-entry-card strong {
+  color: var(--white);
+  font-size: 15px;
+}
+.admin-entry-card small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.admin-entry-card a {
+  flex-shrink: 0;
+  padding: 9px 13px;
+  border-radius: 11px;
+  background: var(--lime);
+  color: #172100;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
