@@ -9,6 +9,14 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.5.0] - 2026-09-22
+
+### Added
+
+- Cardholder KYC validation: structured emails, supported-country allowlist, and 18+ age enforcement.
+- Redis-backed sliding-window rate limiting for Telegram login, payment checkout, and issuance quotes (fails open on Redis outages).
+- Request correlation middleware issuing and propagating `X-Request-ID` across all endpoints.
+
 ## [0.4.0] - 2026-09-22
 
 ### Added
@@ -63,7 +71,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/syb1v/flytopay/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/syb1v/flytopay/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/syb1v/flytopay/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/syb1v/flytopay/compare/v0.1.0...v0.2.0
