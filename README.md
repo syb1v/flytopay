@@ -76,6 +76,23 @@ All cookie-authenticated mutating endpoints require the `X-CSRF-Token` header
 - The 2328 CaaS webhook endpoint URL for the provider panel:
   `https://api.flytopay.net/api/v1/webhooks/caas/` (trailing slash required).
 
+## Card issuance (2328 CaaS)
+
+1. The user tops up the Flytopay wallet (Telegram Stars today; Platega/Pay2328 once their keys are set).
+2. `POST /api/v1/issuance/quote` validates KYC fields and returns the exact 2328 total.
+3. `POST /api/v1/issuance/{id}/issue` reserves the total in the wallet, creates/reuses the 2328 cardholder,
+   and submits `POST /cards`. The card shows as "issuing".
+4. The `card.created` / `card.failed` webhook or the 30s order poller settles it: success captures the
+   reservation and activates the card, failure releases the funds.
+
+Prerequisite: the 2328 USDT wallet (`GET /account/wallet`) must hold enough funds to cover issuance and
+top-ups; otherwise 2328 rejects the order with `wallet_insufficient_balance` and the reservation is released.
+
+## Server access
+
+Password SSH login is disabled. Admin access uses the `flytopay_vps` ed25519 key; CI deploys as
+`flytopay-deploy` with its own key.
+
 ## Versioning
 
 Flytopay follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.
