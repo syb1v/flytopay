@@ -4,6 +4,11 @@ flytopay.net {
     reverse_proxy api:8000
   }
   handle {
-  reverse_proxy web:3000
+    reverse_proxy web:3000
   }
+}
+
+api.flytopay.net {
+  encode gzip
+  reverse_proxy api:8000
 }
