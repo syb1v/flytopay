@@ -9,6 +9,23 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.4.0] - 2026-09-22
+
+### Added
+
+- CSRF protection with signed double-submit cookies for all cookie-authenticated mutating endpoints.
+- CSRF token issued on Telegram login and attached by the web client to every mutating request.
+- Payment reconciliation worker retrying `reconcile_required` attempts every 5 minutes with dead-letter accounting.
+- Issuance quote idempotency: repeated `Idempotency-Key` returns the stored quote instead of duplicating PII.
+- Return URL allowlist for payment checkout restricted to Flytopay origins.
+- Explicit 409 responses for idempotency key reuse with a different request.
+
+### Changed
+
+- Webhook finalization failures are now durably recorded with a failure counter instead of being silently swallowed.
+- `caas_operation_records.updated_at` now refreshes on every state transition.
+- Renamed migration file `0010_admin_security.py` to `0012_admin_security.py` to match its revision id.
+
 ## [0.3.0] - 2026-09-22
 
 ### Added
@@ -46,7 +63,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/syb1v/flytopay/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/syb1v/flytopay/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/syb1v/flytopay/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/syb1v/flytopay/releases/tag/v0.1.0

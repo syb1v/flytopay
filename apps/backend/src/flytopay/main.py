@@ -23,7 +23,7 @@ from flytopay.wallet.routes import router as wallet_router
 def create_app() -> FastAPI:
     validate_runtime_environment()
     settings = get_settings()
-    app = FastAPI(title="Flytopay API", version="0.3.0")
+    app = FastAPI(title="Flytopay API", version="0.4.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin],
