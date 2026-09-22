@@ -1129,11 +1129,14 @@ h1 {
 }
 .bank-chip {
   position: relative;
-  width: 31px;
-  height: 42px;
+  width: 46px;
+  height: 68px;
   display: block;
   object-fit: fill;
   filter: drop-shadow(0 2px 2px #28190433);
+}
+.bank-card-hardware {
+  min-height: 72px;
 }
 .card-circuit {
   margin-left: auto;
@@ -2165,9 +2168,12 @@ body {
 @media (max-width: 760px) {
   .mobile-dashboard-nav {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
     gap: 4px;
+    left: 12px;
+    right: 12px;
+    width: auto;
     height: 72px;
     padding: 6px 6px max(6px, calc(6px + env(safe-area-inset-bottom)));
   }
@@ -2176,9 +2182,10 @@ body {
     min-width: 0;
     min-height: 0;
     height: 100%;
-    padding: 5px 2px;
+    padding: 4px 2px;
     border-radius: 14px;
-    line-height: 1;
+    line-height: 1.15;
+    white-space: normal;
   }
   .mobile-dashboard-nav button svg {
     width: 18px;
@@ -2188,8 +2195,8 @@ body {
   .mobile-dashboard-nav button span {
     display: block;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-align: center;
+    white-space: normal;
   }
 }

@@ -109,8 +109,21 @@ export function Dashboard() {
 
   useEffect(() => {
     if (!authReady) return;
-    window.Telegram?.WebApp?.ready();
-    window.Telegram?.WebApp?.expand();
+    const webApp = window.Telegram?.WebApp;
+    if (!webApp) return;
+    const forceFullscreen = () => {
+      try {
+        webApp.ready();
+        webApp.disableVerticalSwipes?.();
+        webApp.requestFullscreen?.();
+        webApp.expand();
+      } catch {
+        // Older Telegram clients can reject fullscreen calls; expand remains the fallback.
+      }
+    };
+    forceFullscreen();
+    webApp.onEvent?.("viewportChanged", forceFullscreen);
+    const retryTimer = window.setTimeout(forceFullscreen, 300);
     Promise.all([getWallet(), getCards(), getRentals()])
       .then(([nextWallet, nextCards, nextRentals]) => {
         setWallet(nextWallet);
@@ -118,6 +131,10 @@ export function Dashboard() {
         setRentals(nextRentals);
       })
       .catch(() => setDataError(true));
+    return () => {
+      window.clearTimeout(retryTimer);
+      webApp.offEvent?.("viewportChanged", forceFullscreen);
+    };
   }, [authReady]);
 
   function navigate(next: View) {
