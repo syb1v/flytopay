@@ -17,6 +17,7 @@ declare global {
         ready: () => void;
         expand: () => void;
         requestFullscreen?: () => void;
+        openInvoice?: (url: string, callback?: (status: string) => void) => void;
         disableVerticalSwipes?: () => void;
         onEvent?: (event: string, callback: () => void) => void;
         offEvent?: (event: string, callback: () => void) => void;

@@ -132,6 +132,79 @@ async def _apply_terminal_status(db: AsyncSession, card: UserCard, kind: str) ->
         card.status = "closed"
 
 
+async def _execute_demo_lifecycle(db: AsyncSession, card: UserCard, record, kind: str, operation_key: str) -> str:
+    """Demo cards never touch CaaS: lifecycle runs locally with wallet accounting."""
+    from datetime import UTC, datetime
+
+    from flytopay.cards.transactions import CardTransactionRecord
+    from flytopay.ledger.service import LedgerError, credit_wallet, get_or_create_wallet
+
+    request_payload = record.request_payload or {}
+    amount_minor = request_payload.get("amountMinor")
+    wallet = await get_or_create_wallet(db, card.user_id)
+
+    def _sync_tx(tx_type: str, value: int, merchant: str | None = None) -> None:
+        db.add(
+            CardTransactionRecord(
+                card_id=card.id,
+                type=tx_type,
+                status="completed",
+                amount_minor=value,
+                merchant_name=merchant,
+                occurred_at=datetime.now(UTC),
+            )
+        )
+
+    if kind == "freeze":
+        card.status = "frozen"
+    elif kind == "unfreeze":
+        card.status = "active"
+    elif kind == "close":
+        card.status = "closed"
+    elif kind == "fund":
+        if not isinstance(amount_minor, int) or amount_minor <= 0:
+            await save_operation_response(db, record, status="failed", response={"error": "invalid_amount"})
+            await db.commit()
+            return "failed"
+        if wallet.available_minor < amount_minor:
+            await save_operation_response(db, record, status="failed", response={"error": "insufficient_wallet"})
+            await db.commit()
+            return "failed"
+        wallet.available_minor -= amount_minor
+        card.balance_minor = (card.balance_minor or 0) + amount_minor
+        _sync_tx("fund", amount_minor, None)
+    elif kind == "unload":
+        if not isinstance(amount_minor, int) or amount_minor <= 0:
+            await save_operation_response(db, record, status="failed", response={"error": "invalid_amount"})
+            await db.commit()
+            return "failed"
+        if (card.balance_minor or 0) < amount_minor:
+            await save_operation_response(db, record, status="failed", response={"error": "insufficient_card_balance"})
+            await db.commit()
+            return "failed"
+        card.balance_minor = (card.balance_minor or 0) - amount_minor
+        try:
+            await credit_wallet(
+                db,
+                card.user_id,
+                amount_minor,
+                external_key=f"unload:{operation_key}",
+                kind="card_unload",
+            )
+        except LedgerError:
+            await save_operation_response(db, record, status="failed", response={"error": "duplicate_credit"})
+            await db.commit()
+            return "failed"
+        _sync_tx("refund", amount_minor, None)
+    else:
+        await save_operation_response(db, record, status="failed", response={"error": "unknown_kind"})
+        await db.commit()
+        return "failed"
+    await save_operation_response(db, record, status="completed", response={"demo": True, "amountMinor": amount_minor})
+    await db.commit()
+    return "completed"
+
+
 async def execute_lifecycle(operation_key: str, card_id: str, kind: str) -> str:
     """Worker-side: perform the queued CaaS call and persist its outcome."""
     from flytopay.db.session import session_factory
@@ -139,7 +212,7 @@ async def execute_lifecycle(operation_key: str, card_id: str, kind: str) -> str:
     async with session_factory() as db:
         result = await db.execute(select(UserCard).where(UserCard.id == UUID(card_id)))
         card = result.scalar_one_or_none()
-        if card is None or not card.provider_card_id:
+        if card is None:
             return "failed"
         from flytopay.integrations.caas2328.persistence import CaaSOperationRecord
 
@@ -148,6 +221,10 @@ async def execute_lifecycle(operation_key: str, card_id: str, kind: str) -> str:
         ).scalar_one_or_none()
         if record is None or record.status != "processing":
             return record.status if record else "unknown"
+        if card.is_demo:
+            return await _execute_demo_lifecycle(db, card, record, kind, operation_key)
+        if not card.provider_card_id:
+            return "failed"
         caas = CaaSClient()
         if not caas.is_configured:
             return "unconfigured"

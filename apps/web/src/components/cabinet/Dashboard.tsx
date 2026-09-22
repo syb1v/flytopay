@@ -26,6 +26,7 @@ import {
   unfreezeCard,
   freezeCard,
   closeCard,
+  createCheckout,
   type Card,
   type Rental,
   type Wallet,
@@ -215,6 +216,7 @@ export function Dashboard() {
   }
   const [actionError, setActionError] = useState<string | null>(null);
   const [infoModal, setInfoModal] = useState<string | null>(null);
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const [actionPending, setActionPending] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<{ action: "topup" | "transfer"; card: Card } | null>(null);
 
@@ -379,7 +381,7 @@ export function Dashboard() {
                 <strong>{money(wallet?.available_minor, wallet?.currency, wallet?.scale)}</strong>
                 <div className="balance-footer">
                   <small>{t.wallet}</small>
-                  <button onClick={() => setInfoModal(t.coming)}>＋ {t.topup}</button>
+                  <button onClick={() => setTopUpOpen(true)}>＋ {t.topup}</button>
                 </div>
               </article>
               <article className="balance-card balance-secondary">
@@ -614,6 +616,15 @@ export function Dashboard() {
       >
         <p className="settings-muted">{infoModal}</p>
       </Modal>
+      <TopUpModal
+        open={topUpOpen}
+        ru={language === "ru"}
+        onClose={() => setTopUpOpen(false)}
+        onSuccess={async () => {
+          setTopUpOpen(false);
+          setWallet(await getWallet());
+        }}
+      />
       {amountDialog && (
         <AmountDialog
           title={
@@ -787,6 +798,101 @@ function AmountDialog({
       {overMax && <p className="error-text">{ru ? "Недостаточно средств на карте" : "Amount exceeds card balance"}</p>}
       <button className="lime-action" disabled={!valid || pending} onClick={() => onSubmit(amountMinor)}>
         {pending ? "…" : submitLabel}
+      </button>
+    </Modal>
+  );
+}
+
+function TopUpModal({
+  open,
+  ru,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  ru: boolean;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+}) {
+  const [amount, setAmount] = useState("10");
+  const [provider, setProvider] = useState<"telegram_stars" | "platega" | "pay2328">("telegram_stars");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    const numeric = Number.parseFloat(amount.replace(",", "."));
+    if (!Number.isFinite(numeric) || numeric <= 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await createCheckout(
+        {
+          provider,
+          purpose: "wallet_deposit",
+          amount_minor: Math.round(numeric * 100),
+          currency: "USD",
+          scale: 2,
+          return_url: window.location.href,
+        },
+        crypto.randomUUID(),
+      );
+      const url = result.data.checkoutUrl;
+      if (!url) throw new Error("checkout_url_missing");
+      if (provider === "telegram_stars" && window.Telegram?.WebApp?.openInvoice) {
+        window.Telegram.WebApp.openInvoice(url, (status) => {
+          if (status === "paid") void onSuccess();
+          setBusy(false);
+        });
+      } else {
+        window.location.assign(url);
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : ru ? "Платёж недоступен" : "Payment unavailable");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      eyebrow="FLYTOPAY"
+      title={ru ? "Пополнить баланс" : "Top up balance"}
+      description={ru ? "Telegram Stars: 1 ⭐ = 1 USD в демо-режиме" : "Telegram Stars: 1 ⭐ = 1 USD in demo mode"}
+      closeLabel={ru ? "Закрыть" : "Close"}
+    >
+      <label className="field-label">
+        {ru ? "Сумма" : "Amount"} (USD)
+        <input
+          inputMode="decimal"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value.replace(/[^\d.,]/g, ""))}
+        />
+      </label>
+      <div className="topup-providers">
+        <button
+          className={provider === "telegram_stars" ? "selected" : ""}
+          onClick={() => setProvider("telegram_stars")}
+        >
+          <b>⭐ Telegram Stars</b>
+          <small>{ru ? "Доступно" : "Available"}</small>
+        </button>
+        <button className="disabled" disabled>
+          <b>Platega</b>
+          <small>{ru ? "Не настроено" : "Not configured"}</small>
+        </button>
+        <button className="disabled" disabled>
+          <b>2328 Pay</b>
+          <small>{ru ? "Не настроено" : "Not configured"}</small>
+        </button>
+      </div>
+      {error && <p className="error-text">{error}</p>}
+      <button
+        className="lime-action"
+        disabled={busy || Number.parseFloat(amount.replace(",", ".")) <= 0}
+        onClick={() => void submit()}
+      >
+        {busy ? "…" : ru ? "Перейти к оплате" : "Continue to payment"}
       </button>
     </Modal>
   );

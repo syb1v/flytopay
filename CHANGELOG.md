@@ -9,6 +9,19 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.11.0] - 2026-09-22
+
+### Added
+
+- Demo card lifecycle now works locally for freeze, unfreeze, close, fund, and unload without sending fake provider IDs to CaaS.
+- Demo fund/unload operations update wallet/card balances and create transaction history records.
+- Telegram Stars checkout via Bot API invoice links and successful-payment wallet crediting.
+- Wallet top-up modal with provider selection; Telegram Stars is available when the bot token is configured, other providers show their configuration state.
+
+### Fixed
+
+- Removed the last lifecycle stubs for seeded demo cards.
+
 ## [0.10.3] - 2026-09-22
 
 ### Fixed
@@ -162,7 +175,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/syb1v/flytopay/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/syb1v/flytopay/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/syb1v/flytopay/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/syb1v/flytopay/compare/v0.10.0...v0.10.1

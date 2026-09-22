@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flytopay.config import get_settings
 from flytopay.payments.models import PaymentAttempt
 from flytopay.payments.pay2328 import Pay2328Client
 from flytopay.payments.platega import PlategaClient
@@ -21,7 +22,12 @@ class IdempotencyConflictError(ValueError):
 
 class PaymentService:
     def __init__(self, providers: dict[str, PaymentProvider] | None = None) -> None:
-        self.providers = providers or {"platega": PlategaClient(), "pay2328": Pay2328Client(), "telegram_stars": TelegramStarsProvider()}
+        settings = get_settings()
+        self.providers = providers or {
+            "platega": PlategaClient(),
+            "pay2328": Pay2328Client(),
+            "telegram_stars": TelegramStarsProvider(bot_token=settings.telegram_bot_token),
+        }
 
     async def create_checkout(self, db: AsyncSession, user_id: UUID, *, provider: str, purpose: str, amount_minor: int, currency: str, scale: int, return_url: str, idempotency_key: str) -> PaymentAttempt:
         if amount_minor <= 0:
@@ -34,7 +40,9 @@ class PaymentService:
         provider_client = self.providers.get(provider)
         if provider_client is None:
             raise ValueError("Unsupported payment provider")
-        if isinstance(provider_client, (DisabledProvider, TelegramStarsProvider)):
+        if isinstance(provider_client, DisabledProvider):
+            raise TypeError("Payment provider is not configured")
+        if isinstance(provider_client, TelegramStarsProvider) and not provider_client.is_configured:
             raise TypeError("Payment provider is not configured")
         attempt = PaymentAttempt(user_id=user_id, provider=provider, purpose=purpose, amount_minor=amount_minor, currency=currency.upper(), scale=scale, idempotency_key=idempotency_key, correlation_id=str(uuid4()), status="pending", metadata_json={"return_url": return_url})
         db.add(attempt)
