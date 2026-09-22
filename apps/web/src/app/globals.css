@@ -1432,25 +1432,46 @@ h1 {
     padding: 30px 22px;
   }
 }
-.issue-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
-  gap: 20px;
+.issue-page {
+  max-width: 640px;
 }
-.issue-main,
-.issue-summary {
-  padding: 28px;
+.issue-page h2 {
+  margin: 15px 0 8px;
+  font-size: 28px;
+}
+.issue-page > p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.issue-form {
+  display: grid;
+  gap: 4px;
+  margin-top: 24px;
+  padding: 24px;
   border: 1px solid #2c363d;
   border-radius: 24px;
   background: #192126;
 }
-.issue-main h2 {
-  margin: 15px 0 8px;
-  font-size: 28px;
+.issue-form .lime-action {
+  margin-top: 22px;
 }
-.issue-main > p {
+.quote-result {
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #b8f13d12;
+  color: var(--white);
+}
+.muted-capability {
   color: var(--muted);
-  line-height: 1.5;
+}
+/* Tier catalog cards: real CardVisual preview */
+.issue-tier-preview {
+  display: block;
+  margin-bottom: 14px;
+}
+.issue-tier-preview .bank-card-fly {
+  box-shadow: 0 14px 30px -18px #000c;
 }
 .product-grid {
   display: grid;
@@ -1531,57 +1552,6 @@ h1 {
   font-size: 13.5px;
   font-weight: 400;
 }
-.issue-tier-visual {
-  position: relative;
-  display: block;
-  width: 148px;
-  aspect-ratio: 1.62;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 15px;
-  background: linear-gradient(135deg, #273b25, #0d1410);
-  box-shadow:
-    0 10px 26px #0007,
-    inset 0 0 0 1px #ffffff26;
-}
-.issue-tier-1 .issue-tier-visual {
-  background: linear-gradient(135deg, #1d6fb0, #0c3a63);
-}
-.issue-tier-2 .issue-tier-visual {
-  background: linear-gradient(135deg, #273b25, #0d1410);
-}
-.issue-tier-logo {
-  position: absolute;
-  top: 10px;
-  left: 11px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-}
-.issue-tier-logo img {
-  width: 16px;
-  height: 16px;
-}
-.issue-tier-art {
-  position: absolute;
-  right: 6px;
-  bottom: -8px;
-  color: #ffffffa8;
-  font-size: 66px;
-  line-height: 1;
-}
-.issue-tier-chip {
-  position: absolute;
-  bottom: 11px;
-  left: 12px;
-  width: 28px;
-  height: 40px;
-  object-fit: fill;
-}
 .issue-tier-foot {
   display: flex;
   align-items: center;
@@ -1660,12 +1630,6 @@ h1 {
 .issue-tier-card.tier-default {
   background: linear-gradient(160deg, #273b25, #0d1410);
 }
-.issue-tier-badges {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1706,21 +1670,6 @@ h1 {
   margin-top: 7px;
   color: #ffffffb8;
   font-size: 12.5px;
-}
-.issue-tier-art {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  display: flex;
-  width: 52px;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #ffffff26;
-  border-radius: 12px;
-  background: #ffffff14;
-  font-size: 20px;
-  transform: rotate(6deg);
 }
 .issue-tier-foot {
   display: flex;
@@ -2232,14 +2181,6 @@ h1 {
   .product-feature-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .issue-layout {
-    grid-template-columns: 1fr;
-  }
-  .issue-tier-art {
-    width: 44px;
-    height: 34px;
-    font-size: 17px;
-  }
 }
 .field-label {
   display: block;
@@ -2283,48 +2224,10 @@ h1 {
 .term-picker small {
   color: var(--muted);
 }
-.summary-heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--lime);
-  font-weight: 800;
-}
-.capability-list {
-  margin-top: 22px;
-}
-.capability-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 13px 0;
-  border-bottom: 1px solid #2c363d;
-  font-size: 13px;
-}
-.capability-row span {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-}
 .available {
   color: var(--lime);
 }
-.muted-capability {
-  color: #5f6b72;
-}
-.summary-divider {
-  margin: 20px 0;
-  border-top: 1px solid #2c363d;
-}
-.issue-summary .lime-action {
-  width: 100%;
-  margin-top: 18px;
-}
 @media (max-width: 760px) {
-  .issue-layout {
-    display: block;
-  }
   .issue-summary {
     margin-top: 16px;
   }

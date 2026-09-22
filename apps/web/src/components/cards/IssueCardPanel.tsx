@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  Apple,
   Car,
   Check,
   ChevronDown,
@@ -99,8 +98,6 @@ export function IssueCardPanel() {
       .finally(() => setLoading(false));
   }, []);
 
-  const setting = (key: string) => selected?.provider_settings?.find((item) => item.key === key)?.value;
-
   if (loading)
     return (
       <section className="page-panel">
@@ -140,174 +137,143 @@ export function IssueCardPanel() {
         }).format(minor / 10 ** scale);
 
   return (
-    <section className="issue-layout">
-      <div className="issue-main">
-        <div className="panel-icon">
-          <CreditCard size={38} />
-        </div>
-        <h2>{ru ? "Выпуск карты" : "Issue a card"}</h2>
-        <p>
-          {ru
-            ? "Выберите тип карты — детали и цена на следующем экране."
-            : "Choose a card type — details and price on the next screen."}
-        </p>
-        <div className="issue-tiers">
-          {products.map((product, index) => {
-            const tier = tierFor(index);
-            const meta = tierMeta[tier];
-            const price = prices[product.code];
-            return (
-              <button
-                key={product.code}
-                className={`issue-tier-card tier-${tier}`}
-                onClick={() => setDetailsProduct({ product, tier, price })}
-              >
-                <span className="issue-tier-badges">
-                  <span className="badge">
-                    <Apple size={13} /> Pay
-                  </span>
-                  <span className="badge">G Pay</span>
-                  <span className="badge badge-accent">Alipay</span>
-                </span>
-                <span className="issue-tier-title">
-                  <strong>{ru ? meta.ru : meta.en}</strong>
-                  <span className="usd-tag">{product.currency}</span>
-                </span>
-                <small className="issue-tier-desc">{ru ? meta.ruDesc : meta.enDesc}</small>
-                <span className="issue-tier-art" aria-hidden="true">
-                  {meta.art}
-                </span>
-                <span className="issue-tier-foot">
-                  <span className="issue-tier-price">
-                    {price?.total_charge_minor != null ? (
-                      <strong>{money(price.total_charge_minor, price.currency, price.scale)}</strong>
-                    ) : (
-                      <strong className="muted-capability">{ru ? "Цена по запросу" : "Price on quote"}</strong>
-                    )}
-                    <small>{ru ? "Цена выпуска" : "Issuance price"}</small>
-                  </span>
-                  <span className="issue-tier-rate">
-                    {price?.available ? <Crown size={15} className="crown" /> : null}
-                    <small>{ru ? "Подробнее" : "Details"} →</small>
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {!products.length && (
-          <div className="unavailable-note">
-            <LockKeyhole size={18} />
-            {ru ? "Каталог 2328 пока недоступен." : "2328 catalog is unavailable."}
-          </div>
-        )}
-
-        {showForm && selected && (
-          <>
-            <div className="issue-form-heading">{ru ? "Данные держателя" : "Cardholder details"}</div>
-            <label className="field-label">
-              {ru ? "Имя" : "First name"}
-              <input value={form.first_name} onChange={(event) => update("first_name", event.target.value)} />
-            </label>
-            <label className="field-label">
-              {ru ? "Фамилия" : "Last name"}
-              <input value={form.last_name} onChange={(event) => update("last_name", event.target.value)} />
-            </label>
-            <label className="field-label">
-              Email
-              <input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
-            </label>
-            <label className="field-label">
-              {ru ? "Телефон E.164" : "Phone E.164"}
-              <input
-                value={form.phone}
-                onChange={(event) => update("phone", event.target.value)}
-                placeholder="+15551234567"
-              />
-            </label>
-            <label className="field-label">
-              {ru ? "Дата рождения" : "Date of birth"}
-              <input
-                type="date"
-                value={form.date_of_birth}
-                onChange={(event) => update("date_of_birth", event.target.value)}
-              />
-            </label>
-            <label className="field-label">
-              {ru ? "Страна держателя" : "Cardholder country"}
-              <select value={country} onChange={(event) => setCountry(event.target.value)}>
-                <option value="US">United States</option>
-                <option value="GB">United Kingdom</option>
-                <option value="DE">Germany</option>
-                <option value="AE">United Arab Emirates</option>
-                <option value="TR">Türkiye</option>
-              </select>
-            </label>
-            <label className="field-label">
-              {ru ? "Адрес" : "Address"}
-              <input value={form.address} onChange={(event) => update("address", event.target.value)} />
-            </label>
-            <div className="form-grid">
-              <label className="field-label">
-                {ru ? "Город" : "City"}
-                <input value={form.city} onChange={(event) => update("city", event.target.value)} />
-              </label>
-              <label className="field-label">
-                {ru ? "Регион" : "State"}
-                <input value={form.state} onChange={(event) => update("state", event.target.value)} />
-              </label>
-            </div>
-            <label className="field-label">
-              {ru ? "Индекс" : "ZIP code"}
-              <input value={form.zip_code} onChange={(event) => update("zip_code", event.target.value)} />
-            </label>
-            <div className="term-picker">
-              <span>{ru ? "Срок выпуска" : "Issue term"}</span>
-              <div>
-                {terms.map((value) => (
-                  <button className={term === value ? "selected" : ""} key={value} onClick={() => setTerm(value)}>
-                    {value} <small>{ru ? "дн." : "days"}</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+    <section className="issue-page">
+      <div className="panel-icon">
+        <CreditCard size={38} />
       </div>
-      <aside className="issue-summary">
-        <div className="summary-heading">
-          <Sparkles size={18} />
-          {ru ? "Возможности продукта" : "Product capabilities"}
+      <h2>{ru ? "Выпуск карты" : "Issue a card"}</h2>
+      <p>
+        {ru
+          ? "Выберите тип карты — детали и цена на следующем экране."
+          : "Choose a card type — details and price on the next screen."}
+      </p>
+      <div className="issue-tiers">
+        {products.map((product, index) => {
+          const tier = tierFor(index);
+          const meta = tierMeta[tier];
+          const price = prices[product.code];
+          return (
+            <button
+              key={product.code}
+              className={`issue-tier-card tier-${tier}`}
+              onClick={() => setDetailsProduct({ product, tier, price })}
+            >
+              <span className="issue-tier-preview">
+                <CardVisual variant={tier} scheme={product.scheme} holder="FLYTOPAY USER" expiry="12/30" />
+              </span>
+              <span className="issue-tier-title">
+                <strong>{ru ? meta.ru : meta.en}</strong>
+                <span className="usd-tag">{product.currency}</span>
+              </span>
+              <small className="issue-tier-desc">{ru ? meta.ruDesc : meta.enDesc}</small>
+              <span className="issue-tier-foot">
+                <span className="issue-tier-price">
+                  {price?.total_charge_minor != null ? (
+                    <strong>{money(price.total_charge_minor, price.currency, price.scale)}</strong>
+                  ) : (
+                    <strong className="muted-capability">{ru ? "Цена по запросу" : "Price on quote"}</strong>
+                  )}
+                  <small>{ru ? "Цена выпуска" : "Issuance price"}</small>
+                </span>
+                <span className="issue-tier-rate">
+                  {price?.available ? <Crown size={15} className="crown" /> : null}
+                  <small>{ru ? "Подробнее" : "Details"} →</small>
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {!products.length && (
+        <div className="unavailable-note">
+          <LockKeyhole size={18} />
+          {ru ? "Каталог 2328 пока недоступен." : "2328 catalog is unavailable."}
         </div>
-        <div className="capability-list">
-          <Capability label="3DS" value={setting("three_ds")} />
-          <Capability label="Apple Pay" icon={<Apple size={15} />} value={setting("apple_pay")} />
-          <Capability label="Google Pay" icon={<Smartphone size={15} />} value={setting("google_pay")} />
-          <Capability
-            label={ru ? "Лимит карт на держателя" : "Cards per cardholder"}
-            value={selected?.max_cards_per_cardholder}
-          />
+      )}
+
+      {showForm && selected && (
+        <div className="issue-form">
+          <div className="issue-form-heading">{ru ? "Данные держателя" : "Cardholder details"}</div>
+          <label className="field-label">
+            {ru ? "Имя" : "First name"}
+            <input value={form.first_name} onChange={(event) => update("first_name", event.target.value)} />
+          </label>
+          <label className="field-label">
+            {ru ? "Фамилия" : "Last name"}
+            <input value={form.last_name} onChange={(event) => update("last_name", event.target.value)} />
+          </label>
+          <label className="field-label">
+            Email
+            <input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
+          </label>
+          <label className="field-label">
+            {ru ? "Телефон E.164" : "Phone E.164"}
+            <input
+              value={form.phone}
+              onChange={(event) => update("phone", event.target.value)}
+              placeholder="+15551234567"
+            />
+          </label>
+          <label className="field-label">
+            {ru ? "Дата рождения" : "Date of birth"}
+            <input
+              type="date"
+              value={form.date_of_birth}
+              onChange={(event) => update("date_of_birth", event.target.value)}
+            />
+          </label>
+          <label className="field-label">
+            {ru ? "Страна держателя" : "Cardholder country"}
+            <select value={country} onChange={(event) => setCountry(event.target.value)}>
+              <option value="US">United States</option>
+              <option value="GB">United Kingdom</option>
+              <option value="DE">Germany</option>
+              <option value="AE">United Arab Emirates</option>
+              <option value="TR">Türkiye</option>
+            </select>
+          </label>
+          <label className="field-label">
+            {ru ? "Адрес" : "Address"}
+            <input value={form.address} onChange={(event) => update("address", event.target.value)} />
+          </label>
+          <div className="form-grid">
+            <label className="field-label">
+              {ru ? "Город" : "City"}
+              <input value={form.city} onChange={(event) => update("city", event.target.value)} />
+            </label>
+            <label className="field-label">
+              {ru ? "Регион" : "State"}
+              <input value={form.state} onChange={(event) => update("state", event.target.value)} />
+            </label>
+          </div>
+          <label className="field-label">
+            {ru ? "Индекс" : "ZIP code"}
+            <input value={form.zip_code} onChange={(event) => update("zip_code", event.target.value)} />
+          </label>
+          <div className="term-picker">
+            <span>{ru ? "Срок выпуска" : "Issue term"}</span>
+            <div>
+              {terms.map((value) => (
+                <button className={term === value ? "selected" : ""} key={value} onClick={() => setTerm(value)}>
+                  {value} <small>{ru ? "дн." : "days"}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+          {quote && (
+            <p className="quote-result">
+              {ru ? "Итого с комиссией" : "Total with fee"}:{" "}
+              <strong>
+                {(quote.totalChargeMinor / 100).toFixed(2)} {quote.currency}
+              </strong>
+            </p>
+          )}
+          {quoteError && <p className="error-text">{quoteError}</p>}
+          <button className="lime-action" onClick={askQuote}>
+            {ru ? "Рассчитать стоимость" : "Calculate price"}
+          </button>
         </div>
-        <div className="summary-divider" />
-        {quote ? (
-          <p className="quote-result">
-            {ru ? "Итого с комиссией" : "Total with fee"}:{" "}
-            <strong>
-              {(quote.totalChargeMinor / 100).toFixed(2)} {quote.currency}
-            </strong>
-          </p>
-        ) : (
-          <p className="settings-muted">
-            {ru
-              ? "Заполните данные — сервер запросит точный quote 2328."
-              : "Fill in the details — the server will request an exact 2328 quote."}
-          </p>
-        )}
-        {quoteError && <p className="error-text">{quoteError}</p>}
-        <button className="lime-action" disabled={!selected || !showForm} onClick={askQuote}>
-          {ru ? "Рассчитать стоимость" : "Calculate price"}
-        </button>
-      </aside>
+      )}
 
       {detailsProduct && (
         <ProductDetailsScreen
@@ -510,30 +476,6 @@ function Accordion({
         <ChevronDown size={16} className={open ? "chev-up" : ""} />
       </button>
       {open && <div className="product-accordion-content">{children}</div>}
-    </div>
-  );
-}
-
-function Capability({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: boolean | number | string | null | undefined;
-  icon?: React.ReactNode;
-}) {
-  const available =
-    value === true || (typeof value === "number" && value > 0) || (typeof value === "string" && value.length > 0);
-  return (
-    <div className="capability-row">
-      <span>
-        {icon}
-        {label}
-      </span>
-      <b className={available ? "available" : "muted-capability"}>
-        {typeof value === "boolean" ? (value ? "✓" : "—") : (value ?? "—")}
-      </b>
     </div>
   );
 }

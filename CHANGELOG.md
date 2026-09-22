@@ -9,6 +9,20 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.8.0] - 2026-09-22
+
+### Added
+
+- Demo cards for admin users: premium, travel, and subscriptions variants per user with distinct balances.
+- Local card transaction records with a demo-history fallback so demo cards show real grouped history without CaaS.
+- Demo seed creates wallet balances and per-card transaction sets (purchases, declines, refunds, top-ups).
+- Tier catalog cards now render a live `CardVisual` preview of each product.
+
+### Changed
+
+- Issuance screen flattened: removed the nested layout container that constrained tier cards.
+- Removed the "Product capabilities" sidebar and its quote button; the exact quote now appears inline in the cardholder form.
+
 ## [0.7.0] - 2026-09-22
 
 ### Changed
@@ -97,7 +111,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/syb1v/flytopay/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/syb1v/flytopay/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/syb1v/flytopay/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/syb1v/flytopay/compare/v0.4.0...v0.5.0

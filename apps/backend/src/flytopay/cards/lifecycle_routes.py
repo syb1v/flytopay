@@ -271,13 +271,44 @@ async def card_transactions(
     limit: int = 50,
 ) -> list[CardTransaction]:
     card = await _owned_card(db, user_id, card_id)
+    bounded = max(1, min(limit, 200))
+    if card.is_demo:
+        from flytopay.cards.transactions import CardTransactionRecord
+
+        result = await db.execute(
+            select(CardTransactionRecord)
+            .where(CardTransactionRecord.card_id == card.id)
+            .order_by(CardTransactionRecord.occurred_at.desc())
+            .limit(bounded)
+        )
+        return [
+            CardTransaction(
+                id=str(record.id),
+                type=record.type,
+                status=record.status,
+                amount_minor=record.amount_minor,
+                fee_minor=record.fee_minor,
+                currency=record.currency,
+                scale=record.scale,
+                merchant_name=record.merchant_name,
+                mcc=record.mcc,
+                mcc_description=None,
+                merchant_country=record.merchant_country,
+                decline_code=record.decline_code,
+                fee_type=record.fee_type,
+                occurred_at=record.occurred_at,
+                authorization_code=None,
+                related_authorization_code=None,
+            )
+            for record in result.scalars()
+        ]
     if not card.provider_card_id:
         return []
     caas = CaaSClient()
     if not caas.is_configured:
         return []
     try:
-        data = await caas.card_transactions(card.provider_card_id, limit=max(1, min(limit, 200)))
+        data = await caas.card_transactions(card.provider_card_id, limit=bounded)
     except Exception as exc:
         raise HTTPException(status_code=502, detail="CaaS transactions unavailable") from exc
     items = data.get("items", [])
