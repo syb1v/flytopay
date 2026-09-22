@@ -22,6 +22,7 @@ Changes for the next release will be collected here.
 - All mutating CaaS lifecycle calls (freeze, unfreeze, close, fund, unload) now execute in the Celery worker instead of the request path; the API only records the idempotent operation and queues the task.
 - Structured logging via structlog: JSON output in production, console rendering in development.
 - `caas_operation_records` gained a `request_payload` column so queued workers can replay the original request.
+- Removed the legacy design prototype folder and brand book from the repository (superseded by the production UI and design tokens).
 
 ## [0.5.0] - 2026-09-22
 
