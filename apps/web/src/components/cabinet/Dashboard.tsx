@@ -127,6 +127,7 @@ export function Dashboard() {
   const [activeIndex, setActiveIndex] = useState(0);
   const cardsScroller = useRef<HTMLDivElement>(null);
   const activeIndexRef = useRef(activeIndex);
+  const lastCardIndexRef = useRef(0);
   activeIndexRef.current = activeIndex;
   const [telegramUser, setTelegramUser] = useState<{ name: string; id: string; initial: string }>({
     name: "Flytopay",
@@ -222,6 +223,7 @@ export function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [actionPending, setActionPending] = useState<string | null>(null);
   const [amountDialog, setAmountDialog] = useState<{ action: "topup" | "transfer"; card: Card } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ action: "freeze" | "close"; card: Card } | null>(null);
 
   async function submitAmount(amountMinor: number) {
     if (!amountDialog) return;
@@ -254,6 +256,14 @@ export function Dashboard() {
       setAmountDialog({ action, card });
       return;
     }
+    if (action === "freeze" || action === "close") {
+      setConfirmAction({ action, card });
+      return;
+    }
+    await executeCardAction(action, card);
+  }
+
+  async function executeCardAction(action: "freeze" | "close", card: Card) {
     setActionError(null);
     setActionPending(`${action}:${card.id}`);
     try {
@@ -290,10 +300,13 @@ export function Dashboard() {
         closest = index;
       }
     });
-    setActiveIndex(Math.min(closest, cards.length - 1));
+    setActiveIndex(closest);
+    if (closest < cards.length) lastCardIndexRef.current = closest;
   }
 
-  const activeCard = cards[Math.min(activeIndex, Math.max(cards.length - 1, 0))];
+  const activeCard = activeIndex < cards.length ? cards[activeIndex] : undefined;
+  const summaryCard = activeCard ?? cards[Math.min(lastCardIndexRef.current, Math.max(cards.length - 1, 0))];
+  const cardsTotalMinor = cards.reduce((total, card) => total + (card.balance_minor ?? 0), 0);
   const renderCard = (card: Card) => (
     <CardVisual
       maskedPan={masked(card)}
@@ -391,7 +404,13 @@ export function Dashboard() {
                 <div className="balance-label">
                   <CreditCard size={18} /> {t.cardsBalance}
                 </div>
-                <strong>{money(activeCard?.balance_minor, activeCard?.currency, activeCard?.scale)}</strong>
+                <strong>
+                  {money(
+                    cardsTotalMinor,
+                    activeCard?.currency ?? wallet?.currency,
+                    activeCard?.scale ?? wallet?.scale ?? 2,
+                  )}
+                </strong>
                 <div className="balance-footer">
                   <small>{activeCard ? `${t.activeCard} · •••• ${activeCard.last_four ?? "—"}` : t.coming}</small>
                   <button onClick={() => navigate("issue")}>{t.issue} ↗</button>
@@ -432,7 +451,14 @@ export function Dashboard() {
                           {renderCard(card)}
                         </button>
                       ))}
-                      <button className="new-card-tile new-card-size" onClick={() => navigate("issue")}>
+                      <button
+                        className="new-card-tile new-card-size"
+                        data-active={activeIndex === cards.length ? "true" : "false"}
+                        onClick={() => {
+                          setActiveIndex(cards.length);
+                          navigate("issue");
+                        }}
+                      >
                         <span>＋</span>
                         <b>{t.newCard}</b>
                         <small>{t.newCardHint}</small>
@@ -460,7 +486,7 @@ export function Dashboard() {
                 )}
               </div>
             </section>
-            {activeCard && (
+            {activeCard ? (
               <section className="card-action-grid" aria-label={language === "ru" ? "Действия карты" : "Card actions"}>
                 <button onClick={() => cardAction("topup", activeCard)}>
                   <WalletCards size={21} />
@@ -494,15 +520,28 @@ export function Dashboard() {
                   <span>{language === "ru" ? "Закрыть" : "Close"}</span>
                 </button>
               </section>
+            ) : (
+              <section className="card-actions-banner" onClick={() => navigate("issue")}>
+                <div className="card-actions-banner-copy">
+                  <span className="dashboard-eyebrow">FLYTOPAY</span>
+                  <strong>{language === "ru" ? "Оплачивайте зарубежные сервисы" : "Pay for global services"}</strong>
+                  <small>{language === "ru" ? "Просто. Быстро. Без границ." : "Simple. Fast. Borderless."}</small>
+                </div>
+                <span className="card-actions-banner-orbit" aria-hidden="true">
+                  ✈
+                </span>
+              </section>
             )}
             {actionError && <div className="data-warning">{actionError}</div>}
             <section className="dashboard-section selected-card-summary">
               <div className="section-heading">
                 <h2>{t.recent}</h2>
-                <span className="selected-card-label">{activeCard ? `•••• ${activeCard.last_four ?? "—"}` : "—"}</span>
+                <span className="selected-card-label">
+                  {summaryCard ? `•••• ${summaryCard.last_four ?? "—"}` : "—"}
+                </span>
               </div>
-              {activeCard ? (
-                <RecentTransactions cardId={activeCard.id} emptyLabel={t.noTransactions} errorLabel={t.coming} />
+              {summaryCard ? (
+                <RecentTransactions cardId={summaryCard.id} emptyLabel={t.noTransactions} errorLabel={t.coming} />
               ) : (
                 <div className="history-empty-row">{t.coming}</div>
               )}
@@ -670,6 +709,53 @@ export function Dashboard() {
           onClose={() => setAmountDialog(null)}
           onSubmit={(minor) => void submitAmount(minor)}
         />
+      )}
+      {confirmAction && (
+        <Modal
+          open
+          onClose={() => setConfirmAction(null)}
+          eyebrow="FLYTOPAY"
+          title={
+            confirmAction.action === "close"
+              ? language === "ru"
+                ? "Закрыть карту?"
+                : "Close card?"
+              : confirmAction.card.status === "frozen"
+                ? language === "ru"
+                  ? "Разморозить карту?"
+                  : "Unfreeze card?"
+                : language === "ru"
+                  ? "Заморозить карту?"
+                  : "Freeze card?"
+          }
+          closeLabel={language === "ru" ? "Отмена" : "Cancel"}
+        >
+          <p className="settings-muted">
+            {confirmAction.action === "close"
+              ? language === "ru"
+                ? "Карту нельзя будет использовать после закрытия."
+                : "The card cannot be used after closing."
+              : language === "ru"
+                ? "Операцию можно будет отменить позже."
+                : "You can reverse this operation later."}
+          </p>
+          <div className="modal-confirm-actions">
+            <button className="secondary-action" onClick={() => setConfirmAction(null)}>
+              {language === "ru" ? "Отмена" : "Cancel"}
+            </button>
+            <button
+              className={confirmAction.action === "close" ? "danger-action" : "lime-action"}
+              onClick={() => {
+                const action = confirmAction.action;
+                const card = confirmAction.card;
+                setConfirmAction(null);
+                void executeCardAction(action, card);
+              }}
+            >
+              {language === "ru" ? "Подтвердить" : "Confirm"}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

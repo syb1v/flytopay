@@ -118,6 +118,9 @@ async def _enqueue_lifecycle(
         record = await get_or_create_operation(db, operation_key=key, operation_kind=kind, path=f"/cards/{card.id}/{kind}", payload=payload)
     if record.status != "processing" or record.response:
         return LifecycleResponse(card_id=card.id, status=card.status, operation_status=record.status, order_id=record.provider_order_id)
+    if card.is_demo:
+        operation_status = await _execute_demo_lifecycle(db, card, record, kind, key)
+        return LifecycleResponse(card_id=card.id, status=card.status, operation_status=operation_status, order_id=None)
     await db.commit()
     _enqueue_task(key, str(card.id), kind)
     return LifecycleResponse(card_id=card.id, status=card.status, operation_status="processing", order_id=None)

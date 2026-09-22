@@ -117,34 +117,36 @@ export function CardVisual({
           </div>
           {balance && <div className="bank-card-balance">{balance}</div>}
         </article>
-        <article
-          className={`bank-card-fly bank-card-back card-variant-${safeVariant} ${frozen ? "is-frozen" : ""}`}
-          aria-hidden="true"
-        >
-          <span className="bank-card-edge" />
-          <div className="card-back-magstripe" />
-          <div className="card-back-signature">
-            <span className="card-back-signature-line" />
-            <span className="card-back-cvv">
-              <small>CVV</small>
-              <b>{cvv ?? "•••"}</b>
-            </span>
-          </div>
-          <div className="card-back-note">
-            {ru
-              ? "Карта предназначена только для онлайн-платежей. Не передавайте реквизиты третьим лицам."
-              : "For online payments only. Never share card details with third parties."}
-          </div>
-          <div className="bank-card-top">
-            <strong>
-              <img src="/logo.svg" alt="" />{" "}
-              <span>
-                <i>F</i>LYTOPAY
+        {flippable && (
+          <article
+            className={`bank-card-fly bank-card-back card-variant-${safeVariant} ${frozen ? "is-frozen" : ""}`}
+            aria-hidden="true"
+          >
+            <span className="bank-card-edge" />
+            <div className="card-back-magstripe" />
+            <div className="card-back-signature">
+              <span className="card-back-signature-line" />
+              <span className="card-back-cvv">
+                <small>CVV</small>
+                <b>{cvv ?? "•••"}</b>
               </span>
-            </strong>
-            <SchemeMark scheme={normalizedScheme} />
-          </div>
-        </article>
+            </div>
+            <div className="card-back-note">
+              {ru
+                ? "Карта предназначена только для онлайн-платежей. Не передавайте реквизиты третьим лицам."
+                : "For online payments only. Never share card details with third parties."}
+            </div>
+            <div className="bank-card-top">
+              <strong>
+                <img src="/logo.svg" alt="" />{" "}
+                <span>
+                  <i>F</i>LYTOPAY
+                </span>
+              </strong>
+              <SchemeMark scheme={normalizedScheme} />
+            </div>
+          </article>
+        )}
       </div>
     </div>
   );

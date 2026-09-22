@@ -3029,3 +3029,85 @@ button.tx-row:hover {
   font-weight: 800;
   text-decoration: none;
 }
+.card-actions-banner {
+  position: relative;
+  display: flex;
+  min-height: 124px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  overflow: hidden;
+  margin-top: 14px;
+  padding: 18px 22px;
+  border: 1px solid #52773b;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 80% 50%, #5b8a3b55 0 12%, transparent 13%), linear-gradient(135deg, #1d3218, #15221a);
+  cursor: pointer;
+}
+.card-actions-banner::before {
+  content: "";
+  position: absolute;
+  right: 5%;
+  bottom: -55px;
+  width: 150px;
+  height: 150px;
+  border: 1px solid #b8f13d66;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 16px #b8f13d0d,
+    0 0 0 32px #b8f13d08;
+}
+.card-actions-banner-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  max-width: 72%;
+  flex-direction: column;
+  gap: 5px;
+}
+.card-actions-banner-copy strong {
+  color: var(--white);
+  font-size: 16px;
+}
+.card-actions-banner-copy small {
+  color: #c5d8b7;
+  font-size: 12px;
+}
+.card-actions-banner-orbit {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 1px solid #b8f13d66;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #b8f13d, #4d7d2d 48%, #1f3920 50%);
+  color: #e9ffc4;
+  font-size: 26px;
+  transform: rotate(-25deg);
+  box-shadow: 0 12px 30px #0008;
+}
+.modal-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.modal-confirm-actions > button {
+  flex: 1;
+  justify-content: center;
+}
+.danger-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #ff9b9b;
+  color: #371515;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}

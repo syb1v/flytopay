@@ -9,6 +9,20 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.11.2] - 2026-09-22
+
+### Added
+
+- Confirmation modal before freeze/unfreeze and close operations.
+- Full-width travel banner replacing card actions on the New card carousel tile.
+
+### Changed
+
+- Demo card lifecycle operations now execute immediately in the API worker path without waiting for a CaaS request.
+- Total cards balance is shown in the home balance block instead of the currently selected card balance.
+- Recent operations remain visible for the last selected card after switching to the New card tile.
+- Ordinary card renders no longer mount a hidden back face, preventing the one-frame back-side flash on the home page.
+
 ## [0.11.1] - 2026-09-22
 
 ### Added
@@ -185,7 +199,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.2...HEAD
+[0.11.2]: https://github.com/syb1v/flytopay/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/syb1v/flytopay/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/syb1v/flytopay/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/syb1v/flytopay/compare/v0.10.2...v0.10.3
