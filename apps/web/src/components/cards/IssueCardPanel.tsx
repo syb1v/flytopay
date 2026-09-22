@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Apple, Check, CreditCard, Globe2, LockKeyhole, Smartphone } from "lucide-react";
+import { Apple, Check, CreditCard, Globe2, LockKeyhole, Smartphone, X } from "lucide-react";
 import { getCardProducts, getIssueQuote, type CardProduct, type CardholderInput } from "../../lib/api";
 import { usePreferences } from "../providers/PreferencesProvider";
 
@@ -12,6 +12,8 @@ export function IssueCardPanel() {
   const ru = preferences.language === "ru";
   const [products, setProducts] = useState<CardProduct[]>([]);
   const [selected, setSelected] = useState<CardProduct | null>(null);
+  const [detailsProduct, setDetailsProduct] = useState<CardProduct | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [term, setTerm] = useState<number>(30);
   const [country, setCountry] = useState("US");
   const [form, setForm] = useState({
@@ -76,12 +78,12 @@ export function IssueCardPanel() {
             ? "Выберите реальный продукт и заполните данные держателя."
             : "Choose a real product and enter the cardholder details."}
         </p>
-        <div className="product-grid">
+        <div className="product-grid issue-product-grid">
           {products.map((product) => (
             <button
               className={`product-option ${selected?.code === product.code ? "selected" : ""}`}
               key={product.code}
-              onClick={() => setSelected(product)}
+              onClick={() => setDetailsProduct(product)}
             >
               <span className="product-option-icon">
                 <CreditCard size={19} />
@@ -102,72 +104,77 @@ export function IssueCardPanel() {
             {ru ? "Каталог 2328 пока недоступен." : "2328 catalog is unavailable."}
           </div>
         )}
-        <label className="field-label">
-          {ru ? "Имя" : "First name"}
-          <input value={form.first_name} onChange={(event) => update("first_name", event.target.value)} />
-        </label>
-        <label className="field-label">
-          {ru ? "Фамилия" : "Last name"}
-          <input value={form.last_name} onChange={(event) => update("last_name", event.target.value)} />
-        </label>
-        <label className="field-label">
-          Email
-          <input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
-        </label>
-        <label className="field-label">
-          {ru ? "Телефон E.164" : "Phone E.164"}
-          <input
-            value={form.phone}
-            onChange={(event) => update("phone", event.target.value)}
-            placeholder="+15551234567"
-          />
-        </label>
-        <label className="field-label">
-          {ru ? "Дата рождения" : "Date of birth"}
-          <input
-            type="date"
-            value={form.date_of_birth}
-            onChange={(event) => update("date_of_birth", event.target.value)}
-          />
-        </label>
-        <label className="field-label">
-          {ru ? "Страна держателя" : "Cardholder country"}
-          <select value={country} onChange={(event) => setCountry(event.target.value)}>
-            <option value="US">United States</option>
-            <option value="GB">United Kingdom</option>
-            <option value="DE">Germany</option>
-            <option value="AE">United Arab Emirates</option>
-            <option value="TR">Türkiye</option>
-          </select>
-        </label>
-        <label className="field-label">
-          {ru ? "Адрес" : "Address"}
-          <input value={form.address} onChange={(event) => update("address", event.target.value)} />
-        </label>
-        <div className="form-grid">
-          <label className="field-label">
-            {ru ? "Город" : "City"}
-            <input value={form.city} onChange={(event) => update("city", event.target.value)} />
-          </label>
-          <label className="field-label">
-            {ru ? "Регион" : "State"}
-            <input value={form.state} onChange={(event) => update("state", event.target.value)} />
-          </label>
-        </div>
-        <label className="field-label">
-          {ru ? "Индекс" : "ZIP code"}
-          <input value={form.zip_code} onChange={(event) => update("zip_code", event.target.value)} />
-        </label>
-        <div className="term-picker">
-          <span>{ru ? "Срок выпуска" : "Issue term"}</span>
-          <div>
-            {terms.map((value) => (
-              <button className={term === value ? "selected" : ""} key={value} onClick={() => setTerm(value)}>
-                {value} <small>{ru ? "дн." : "days"}</small>
-              </button>
-            ))}
-          </div>
-        </div>
+        {showForm && (
+          <>
+            <div className="issue-form-heading">{ru ? "Данные держателя" : "Cardholder details"}</div>
+            <label className="field-label">
+              {ru ? "Имя" : "First name"}
+              <input value={form.first_name} onChange={(event) => update("first_name", event.target.value)} />
+            </label>
+            <label className="field-label">
+              {ru ? "Фамилия" : "Last name"}
+              <input value={form.last_name} onChange={(event) => update("last_name", event.target.value)} />
+            </label>
+            <label className="field-label">
+              Email
+              <input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} />
+            </label>
+            <label className="field-label">
+              {ru ? "Телефон E.164" : "Phone E.164"}
+              <input
+                value={form.phone}
+                onChange={(event) => update("phone", event.target.value)}
+                placeholder="+15551234567"
+              />
+            </label>
+            <label className="field-label">
+              {ru ? "Дата рождения" : "Date of birth"}
+              <input
+                type="date"
+                value={form.date_of_birth}
+                onChange={(event) => update("date_of_birth", event.target.value)}
+              />
+            </label>
+            <label className="field-label">
+              {ru ? "Страна держателя" : "Cardholder country"}
+              <select value={country} onChange={(event) => setCountry(event.target.value)}>
+                <option value="US">United States</option>
+                <option value="GB">United Kingdom</option>
+                <option value="DE">Germany</option>
+                <option value="AE">United Arab Emirates</option>
+                <option value="TR">Türkiye</option>
+              </select>
+            </label>
+            <label className="field-label">
+              {ru ? "Адрес" : "Address"}
+              <input value={form.address} onChange={(event) => update("address", event.target.value)} />
+            </label>
+            <div className="form-grid">
+              <label className="field-label">
+                {ru ? "Город" : "City"}
+                <input value={form.city} onChange={(event) => update("city", event.target.value)} />
+              </label>
+              <label className="field-label">
+                {ru ? "Регион" : "State"}
+                <input value={form.state} onChange={(event) => update("state", event.target.value)} />
+              </label>
+            </div>
+            <label className="field-label">
+              {ru ? "Индекс" : "ZIP code"}
+              <input value={form.zip_code} onChange={(event) => update("zip_code", event.target.value)} />
+            </label>
+            <div className="term-picker">
+              <span>{ru ? "Срок выпуска" : "Issue term"}</span>
+              <div>
+                {terms.map((value) => (
+                  <button className={term === value ? "selected" : ""} key={value} onClick={() => setTerm(value)}>
+                    {value} <small>{ru ? "дн." : "days"}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
       <aside className="issue-summary">
         <div className="summary-heading">
@@ -199,10 +206,59 @@ export function IssueCardPanel() {
           </p>
         )}
         {quoteError && <p className="error-text">{quoteError}</p>}
-        <button className="lime-action" disabled={!selected} onClick={askQuote}>
+        <button className="lime-action" disabled={!selected || !showForm} onClick={askQuote}>
           {ru ? "Рассчитать стоимость" : "Calculate price"}
         </button>
       </aside>
+      {detailsProduct && (
+        <div
+          className="issue-product-overlay"
+          onMouseDown={(event) => event.target === event.currentTarget && setDetailsProduct(null)}
+        >
+          <section
+            className={`issue-product-dialog ${detailsProduct.code.toLowerCase()}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="issue-product-title"
+          >
+            <button
+              className="icon-button issue-product-close"
+              onClick={() => setDetailsProduct(null)}
+              aria-label={ru ? "Закрыть" : "Close"}
+            >
+              <X size={18} />
+            </button>
+            <div className="issue-product-card-preview">
+              <img src="/chip.svg" alt="" aria-hidden="true" />
+              <span>FLYTOPAY</span>
+            </div>
+            <div className="badges">
+              <span className="badge">{detailsProduct.scheme.toUpperCase()}</span>
+              <span className="badge">{detailsProduct.currency}</span>
+            </div>
+            <h3 id="issue-product-title">{detailsProduct.name}</h3>
+            <p>
+              {ru
+                ? "Виртуальная карта для зарубежных сервисов, подписок и покупок."
+                : "A virtual card for international services, subscriptions, and purchases."}
+            </p>
+            <div className="issue-product-price">
+              <strong>{selected?.code === detailsProduct.code ? "990 ₽" : "490 ₽"}</strong>
+              <small>{ru ? "стоимость выпуска" : "issuance price"}</small>
+            </div>
+            <button
+              className="lime-action"
+              onClick={() => {
+                setSelected(detailsProduct);
+                setShowForm(true);
+                setDetailsProduct(null);
+              }}
+            >
+              {ru ? "Выбрать карту" : "Choose card"}
+            </button>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

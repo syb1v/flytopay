@@ -29,6 +29,13 @@ The web application is available at `http://localhost:3000`.
 Provider credentials are intentionally empty in the example environment.
 Live payment or card operations must never run from automated tests.
 
+The 2328 integrations use separate credentials:
+
+- `CAAS_API_KEY` authenticates the 2328 CaaS card catalog, quotes, card issuance, card balance, funding, freezing, unfreezing, and closing operations.
+- `PAY2328_API_KEY` and `PAY2328_PROJECT_UUID` authenticate the separate 2328 payment checkout adapter.
+
+The CaaS key must remain server-side. Do not expose it through `NEXT_PUBLIC_*`, browser code, HTML, logs, or Git.
+
 ## Versioning
 
 Flytopay follows [Semantic Versioning](https://semver.org/): `MAJOR.MINOR.PATCH`.

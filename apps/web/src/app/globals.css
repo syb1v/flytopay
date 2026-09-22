@@ -1129,35 +1129,11 @@ h1 {
 }
 .bank-chip {
   position: relative;
-  width: 41px;
-  height: 31px;
+  width: 31px;
+  height: 42px;
   display: block;
-  border: 1px solid #8c862b;
-  border-radius: 7px;
-  background:
-    linear-gradient(
-      90deg,
-      transparent 31%,
-      #9c963a 32%,
-      transparent 34%,
-      transparent 66%,
-      #9c963a 67%,
-      transparent 69%
-    ),
-    linear-gradient(0deg, #d8cb70 30%, #9c963a 32%, #e2d381 34%, #e2d381 65%, #9c963a 67%, #d8cb70 69%);
+  object-fit: fill;
   filter: drop-shadow(0 2px 2px #28190433);
-}
-.bank-chip:before,
-.bank-chip:after {
-  content: "";
-  position: absolute;
-  inset: 5px 7px;
-  border: 1px solid #9c963a;
-  border-radius: 3px;
-}
-.bank-chip:after {
-  inset: 0 15px;
-  border-width: 0 1px;
 }
 .card-circuit {
   margin-left: auto;
@@ -1462,6 +1438,82 @@ h1 {
   border-radius: 11px;
   background: #b8f13d16;
   color: var(--lime);
+}
+.issue-product-grid .product-option {
+  min-height: 104px;
+}
+.issue-form-heading {
+  margin-top: 26px;
+  color: var(--white);
+  font-size: 18px;
+  font-weight: 800;
+}
+.issue-product-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #05090bcc;
+  backdrop-filter: blur(8px);
+}
+.issue-product-dialog {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 24px;
+  border: 1px solid #3a474c;
+  border-radius: 24px;
+  background: #192126;
+  box-shadow: 0 30px 100px #0009;
+}
+.issue-product-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+.issue-product-card-preview {
+  display: flex;
+  height: 170px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #273b25, #0d1410);
+  color: var(--white);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.issue-product-card-preview img {
+  align-self: flex-end;
+  width: 38px;
+  height: 56px;
+  object-fit: fill;
+}
+.issue-product-card-preview span {
+  font-size: 14px;
+}
+.issue-product-dialog h3 {
+  margin: 12px 0 6px;
+  font-size: 26px;
+}
+.issue-product-dialog p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.issue-product-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 22px 0 4px;
+}
+.issue-product-price strong {
+  font-size: 28px;
+}
+.issue-product-price small {
+  color: var(--muted);
 }
 .field-label {
   display: block;
@@ -1862,6 +1914,39 @@ body {
 .card-actions-row button.danger:hover {
   border-color: #733e42;
 }
+.card-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.card-action-grid button {
+  display: flex;
+  min-height: 84px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 6px;
+  border: 1px solid #354147;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #202b31, #151d21);
+  color: var(--lime);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.card-action-grid button:hover {
+  border-color: var(--lime);
+  transform: translateY(-1px);
+}
+.card-action-grid button span {
+  color: var(--white);
+  text-align: center;
+}
+.card-action-grid button.danger {
+  color: #ff9b9b;
+}
 .card-managed {
   display: flex;
   flex-direction: column;
@@ -2042,6 +2127,39 @@ body {
 }
 .history-heading h2 {
   margin: 6px 0 0;
+}
+.card-action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.card-action-grid button {
+  display: flex;
+  min-height: 84px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 6px;
+  border: 1px solid #354147;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #202b31, #151d21);
+  color: var(--lime);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.card-action-grid button:hover {
+  border-color: var(--lime);
+  transform: translateY(-1px);
+}
+.card-action-grid button span {
+  color: var(--white);
+  text-align: center;
+}
+.card-action-grid button.danger {
+  color: #ff9b9b;
 }
 
 @media (max-width: 760px) {

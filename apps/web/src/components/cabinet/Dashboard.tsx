@@ -7,9 +7,11 @@ import {
   CreditCard,
   History,
   Home,
-  Plus,
-  UserRound,
+  Send,
+  Snowflake,
   WalletCards,
+  XCircle,
+  UserRound,
   Wrench,
 } from "lucide-react";
 import { PreferencesPanel } from "../settings/PreferencesPanel";
@@ -17,9 +19,9 @@ import { getCards, getRentals, getWallet, type Card, type Rental, type Wallet } 
 import { usePreferences } from "../providers/PreferencesProvider";
 import { CardDetailsDialog } from "../cards/CardDetailsDialog";
 import { CardVisual } from "../cards/CardVisual";
-import { ProductPickerDialog } from "../cards/ProductPickerDialog";
+import { IssueCardPanel } from "../cards/IssueCardPanel";
 
-type View = "home" | "cards" | "services" | "history" | "profile";
+type View = "home" | "issue" | "services" | "history" | "profile";
 
 function ShieldIcon() {
   return (
@@ -54,7 +56,6 @@ const copy = {
     topup: "Пополнить",
     myCards: "Мои карты",
     allCards: "Все карты",
-    cards: "Карты",
     history: "История",
     profile: "Профиль",
     issue: "Выпустить карту",
@@ -78,7 +79,6 @@ const copy = {
     topup: "Top up",
     myCards: "My cards",
     allCards: "All cards",
-    cards: "Cards",
     history: "History",
     profile: "Profile",
     issue: "Issue a card",
@@ -104,7 +104,6 @@ export function Dashboard() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [dataError, setDataError] = useState(false);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const cardsScroller = useRef<HTMLDivElement>(null);
 
@@ -196,10 +195,6 @@ export function Dashboard() {
             <Home size={18} />
             <span>{t.title}</span>
           </button>
-          <button className={view === "cards" ? "active" : ""} onClick={() => navigate("cards")}>
-            <CreditCard size={18} />
-            <span>{t.cards}</span>
-          </button>
           <button className={view === "services" ? "active" : ""} onClick={() => navigate("services")}>
             <Wrench size={18} />
             <span>Сервисы</span>
@@ -234,8 +229,8 @@ export function Dashboard() {
             <h1>
               {view === "home"
                 ? t.title
-                : view === "cards"
-                  ? t.cards
+                : view === "issue"
+                  ? t.issue
                   : view === "services"
                     ? "Сервисы"
                     : view === "history"
@@ -275,7 +270,7 @@ export function Dashboard() {
                 <strong>{money(activeCard?.balance_minor, activeCard?.currency, activeCard?.scale)}</strong>
                 <div className="balance-footer">
                   <small>{activeCard ? `${t.activeCard} · •••• ${activeCard.last_four ?? "—"}` : t.coming}</small>
-                  <button onClick={() => navigate("cards")}>{t.cards} ↗</button>
+                  <button onClick={() => navigate("issue")}>{t.issue} ↗</button>
                 </div>
               </article>
             </section>
@@ -283,7 +278,7 @@ export function Dashboard() {
             <section className="dashboard-section">
               <div className="section-heading">
                 <h2>{t.myCards}</h2>
-                <button onClick={() => navigate("cards")}>{t.allCards} ↗</button>
+                <button onClick={() => navigate("issue")}>{t.issue} ↗</button>
               </div>
               <div className="cards-scrollwrap">
                 {cards.length ? (
@@ -299,7 +294,7 @@ export function Dashboard() {
                           {renderCard(card)}
                         </button>
                       ))}
-                      <button className="new-card-tile new-card-size" onClick={() => setPickerOpen(true)}>
+                      <button className="new-card-tile new-card-size" onClick={() => navigate("issue")}>
                         <span>＋</span>
                         <b>{t.newCard}</b>
                         <small>{t.newCardHint}</small>
@@ -327,6 +322,34 @@ export function Dashboard() {
                 )}
               </div>
             </section>
+            {activeCard && (
+              <section className="card-action-grid" aria-label={language === "ru" ? "Действия карты" : "Card actions"}>
+                <button onClick={() => cardAction("topup", activeCard)}>
+                  <WalletCards size={21} />
+                  <span>{t.topup}</span>
+                </button>
+                <button onClick={() => cardAction("transfer", activeCard)}>
+                  <Send size={21} />
+                  <span>{language === "ru" ? "Перевести" : "Transfer"}</span>
+                </button>
+                <button onClick={() => cardAction("freeze", activeCard)}>
+                  <Snowflake size={21} />
+                  <span>
+                    {activeCard.status === "frozen"
+                      ? language === "ru"
+                        ? "Разморозить"
+                        : "Unfreeze"
+                      : language === "ru"
+                        ? "Заморозить"
+                        : "Freeze"}
+                  </span>
+                </button>
+                <button className="danger" onClick={() => cardAction("close", activeCard)}>
+                  <XCircle size={21} />
+                  <span>{language === "ru" ? "Закрыть" : "Close"}</span>
+                </button>
+              </section>
+            )}
             <section className="dashboard-section selected-card-summary">
               <div className="section-heading">
                 <h2>{t.recent}</h2>
@@ -336,53 +359,7 @@ export function Dashboard() {
             </section>
           </>
         )}
-        {view === "cards" && (
-          <section className="page-panel">
-            <div className="panel-icon">
-              <WalletCards size={40} />
-            </div>
-            <h2>{t.myCards}</h2>
-            {cards.length ? (
-              cards.map((card) => (
-                <div className="card-managed" key={card.id}>
-                  <button
-                    className="card-click-target"
-                    onClick={() => setSelectedCard(card)}
-                    aria-label={language === "ru" ? "Открыть реквизиты карты" : "Open card details"}
-                  >
-                    {renderCard(card)}
-                  </button>
-                  <div className="card-actions-row">
-                    <button onClick={() => cardAction("topup", card)}>
-                      {language === "ru" ? "Пополнить" : "Fund"}
-                    </button>
-                    <button onClick={() => cardAction("transfer", card)}>
-                      {language === "ru" ? "Перевести" : "Transfer"}
-                    </button>
-                    <button onClick={() => cardAction("freeze", card)}>
-                      {card.status === "frozen"
-                        ? language === "ru"
-                          ? "Разморозить"
-                          : "Unfreeze"
-                        : language === "ru"
-                          ? "Заморозить"
-                          : "Freeze"}
-                    </button>
-                    <button className="danger" onClick={() => cardAction("close", card)}>
-                      {language === "ru" ? "Закрыть" : "Close"}
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p>{t.coming}</p>
-            )}
-            <button className="lime-action" onClick={() => setPickerOpen(true)}>
-              <Plus size={17} />
-              {t.issue}
-            </button>
-          </section>
-        )}
+        {view === "issue" && <IssueCardPanel />}
         {view === "services" && (
           <section className="page-panel">
             <div className="panel-icon">
@@ -394,16 +371,6 @@ export function Dashboard() {
         )}
         {view === "history" && (
           <section className="history-panel">
-            <div className="history-heading">
-              <div>
-                <span className="dashboard-eyebrow">FLYTOPAY</span>
-                <h2>{t.history}</h2>
-              </div>
-              <button className="lime-action" onClick={() => setPickerOpen(true)}>
-                <Plus size={17} />
-                {t.issue}
-              </button>
-            </div>
             <div className="history-filters">
               <button className="selected">{language === "ru" ? "Все операции" : "All"}</button>
               <button>{language === "ru" ? "Пополнения" : "Top-ups"}</button>
@@ -479,10 +446,6 @@ export function Dashboard() {
           <Home size={18} />
           <span>{t.title}</span>
         </button>
-        <button className={view === "cards" ? "active" : ""} onClick={() => navigate("cards")}>
-          <CreditCard size={18} />
-          <span>{t.cards}</span>
-        </button>
         <button className={view === "history" ? "active" : ""} onClick={() => navigate("history")}>
           <History size={18} />
           <span>{t.history}</span>
@@ -497,7 +460,6 @@ export function Dashboard() {
         </button>
       </nav>
       <CardDetailsDialog card={selectedCard} open={Boolean(selectedCard)} onClose={() => setSelectedCard(null)} />
-      <ProductPickerDialog open={pickerOpen} onClose={() => setPickerOpen(false)} />
     </div>
   );
 }

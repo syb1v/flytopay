@@ -33,7 +33,7 @@ export function CardVisual({
         <Nfc className="contactless-mark" aria-hidden="true" />
       </div>
       <div className="bank-card-hardware">
-        <span className="bank-chip" />
+        <img className="bank-chip" src="/chip.svg" alt="" aria-hidden="true" />
         {frozen && <span className="frozen-pill">{ru ? "Заморожена" : "Frozen"}</span>}
       </div>
       <div className="bank-card-number">{maskedPan ?? "••••  ••••  ••••  ••••"}</div>
