@@ -79,22 +79,46 @@ export function IssueCardPanel() {
             : "Choose a real product and enter the cardholder details."}
         </p>
         <div className="product-grid issue-product-grid">
-          {products.map((product) => (
+          {products.map((product, index) => (
             <button
-              className={`product-option ${selected?.code === product.code ? "selected" : ""}`}
+              className={`product-option issue-tier issue-tier-${index % 3} ${selected?.code === product.code ? "selected" : ""}`}
               key={product.code}
               onClick={() => setDetailsProduct(product)}
             >
-              <span className="product-option-icon">
-                <CreditCard size={19} />
+              <span className="issue-tier-top">
+                <span className="issue-tier-info">
+                  <span className="badges">
+                    <span className="badge">
+                      <CreditCard size={13} /> {product.scheme.toUpperCase()}
+                    </span>
+                    <span className="badge">{product.currency}</span>
+                  </span>
+                  <strong className="issue-tier-name">{product.name}</strong>
+                  <small className="issue-tier-desc">
+                    {ru
+                      ? "Для зарубежных сервисов, покупок и подписок"
+                      : "For international services, purchases, and subscriptions"}
+                  </small>
+                </span>
+                <span className="issue-tier-visual" aria-hidden="true">
+                  <span className="issue-tier-logo">
+                    <img src="/logo.svg" alt="" />
+                    FLYTOPAY
+                  </span>
+                  <span className="issue-tier-art">{index % 3 === 0 ? "◌" : index % 3 === 1 ? "✦" : "◒"}</span>
+                  <img className="issue-tier-chip" src="/chip.svg" alt="" />
+                </span>
               </span>
-              <span>
-                <strong>{product.name}</strong>
-                <small>
-                  {product.scheme.toUpperCase()} · {product.currency}
-                </small>
+              <span className="issue-tier-foot">
+                <span>
+                  <strong>{index % 3 === 0 ? "9 990 ₽" : index % 3 === 1 ? "990 ₽" : "490 ₽"}</strong>
+                  <small>{ru ? "Цена выпуска" : "Issuance price"}</small>
+                </span>
+                <span className="issue-tier-rate">
+                  <strong>{selected?.code === product.code ? "Выбрано" : "Выбрать"}</strong>
+                  {selected?.code === product.code && <Check size={16} />}
+                </span>
               </span>
-              {selected?.code === product.code && <Check size={18} />}
             </button>
           ))}
         </div>

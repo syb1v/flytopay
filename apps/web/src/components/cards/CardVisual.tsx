@@ -8,6 +8,7 @@ export function CardVisual({
   scheme = "VISA",
   holder = "Flytopay user",
   expiry = "MM/YY",
+  variant = "default",
 }: {
   maskedPan?: string | null;
   status?: string;
@@ -15,12 +16,13 @@ export function CardVisual({
   scheme?: string;
   holder?: string;
   expiry?: string;
+  variant?: string;
 }) {
   const { preferences } = usePreferences();
   const ru = preferences.language === "ru";
   const frozen = status === "frozen";
   return (
-    <article className={`bank-card-fly ${frozen ? "is-frozen" : ""}`}>
+    <article className={`bank-card-fly card-variant-${variant} ${frozen ? "is-frozen" : ""}`}>
       <span className="bank-card-edge" />
       <span className="bank-card-shine" />
       <div className="bank-card-top">

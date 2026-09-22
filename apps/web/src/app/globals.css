@@ -1189,6 +1189,24 @@ h1 {
 .bank-card-fly.is-frozen {
   filter: saturate(0.35);
 }
+.bank-card-fly.card-variant-travel {
+  background:
+    radial-gradient(90% 120% at 4% 0%, #4a9ad899, transparent 58%),
+    radial-gradient(80% 110% at 100% 100%, #124d8580, transparent 64%),
+    linear-gradient(142deg, #1d6fb0, #0c3a63 55%, #08263f);
+}
+.bank-card-fly.card-variant-subs {
+  background:
+    radial-gradient(90% 120% at 4% 0%, #a58cf099, transparent 58%),
+    radial-gradient(80% 110% at 100% 100%, #4e379880, transparent 64%),
+    linear-gradient(142deg, #6d5bd0, #33277a 55%, #21174f);
+}
+.bank-card-fly.card-variant-premium {
+  background:
+    radial-gradient(90% 120% at 4% 0%, #68737a99, transparent 58%),
+    radial-gradient(80% 110% at 100% 100%, #20272b80, transparent 64%),
+    linear-gradient(142deg, #343c41, #151a1d 55%, #080b0d);
+}
 @keyframes bank-card-glare {
   0%,
   18% {
@@ -1444,6 +1462,122 @@ h1 {
 }
 .issue-product-grid .product-option {
   min-height: 104px;
+}
+.issue-tier {
+  display: block;
+  padding: 18px 18px 0;
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(160deg, #1a2329, #141b1f);
+  text-align: left;
+}
+.issue-tier-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.issue-tier-info {
+  min-width: 0;
+  flex: 1;
+  padding-bottom: 16px;
+}
+.issue-tier-name {
+  display: block;
+  margin-top: 2px;
+  font-size: 19px;
+  letter-spacing: -0.3px;
+}
+.issue-tier-desc {
+  display: block;
+  max-width: 24ch;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 400;
+}
+.issue-tier-visual {
+  position: relative;
+  display: block;
+  width: 148px;
+  aspect-ratio: 1.62;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #273b25, #0d1410);
+  box-shadow:
+    0 10px 26px #0007,
+    inset 0 0 0 1px #ffffff26;
+}
+.issue-tier-1 .issue-tier-visual {
+  background: linear-gradient(135deg, #1d6fb0, #0c3a63);
+}
+.issue-tier-2 .issue-tier-visual {
+  background: linear-gradient(135deg, #6d5bd0, #33277a);
+}
+.issue-tier-logo {
+  position: absolute;
+  top: 10px;
+  left: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+.issue-tier-logo img {
+  width: 16px;
+  height: 16px;
+}
+.issue-tier-art {
+  position: absolute;
+  right: 6px;
+  bottom: -8px;
+  color: #ffffffa8;
+  font-size: 66px;
+  line-height: 1;
+}
+.issue-tier-chip {
+  position: absolute;
+  bottom: 11px;
+  left: 12px;
+  width: 28px;
+  height: 40px;
+  object-fit: fill;
+}
+.issue-tier-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 -0px 16px;
+  padding: 13px 15px;
+  border: 1px solid #ffffff12;
+  border-radius: 16px;
+  background: #00000042;
+}
+.issue-tier-foot span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.issue-tier-foot strong {
+  font-size: 21px;
+  letter-spacing: -0.5px;
+}
+.issue-tier-foot small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.issue-tier-rate {
+  flex-direction: row !important;
+  align-items: center;
+  color: var(--lime);
+}
+.issue-tier-rate strong {
+  font-size: 14px;
 }
 .issue-form-heading {
   margin-top: 26px;
@@ -2174,14 +2308,17 @@ body {
     left: 12px;
     right: 12px;
     width: auto;
-    height: 72px;
-    padding: 6px 6px max(6px, calc(6px + env(safe-area-inset-bottom)));
+    min-height: 72px;
+    height: auto;
+    padding: 6px 6px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
   }
   .mobile-dashboard-nav button {
     width: 100%;
     min-width: 0;
     min-height: 0;
-    height: 100%;
+    min-height: 58px;
+    height: auto;
     padding: 4px 2px;
     border-radius: 14px;
     line-height: 1.15;

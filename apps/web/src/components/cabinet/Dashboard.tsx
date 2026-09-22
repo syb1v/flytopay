@@ -153,6 +153,13 @@ export function Dashboard() {
   function masked(card: Card) {
     return card.masked_pan ?? (card.last_four ? `•••• •••• •••• ${card.last_four}` : null);
   }
+  function cardVariant(card: Card) {
+    const value = (card.product_code ?? "").toLowerCase();
+    if (value.includes("travel") || value.includes("trip") || value.includes("journey")) return "travel";
+    if (value.includes("sub") || value.includes("subscription")) return "subs";
+    if (value.includes("premium") || value.includes("black") || value.includes("metal")) return "premium";
+    return "default";
+  }
   function cardAction(action: "topup" | "transfer" | "freeze" | "close", card: Card) {
     if (action === "freeze") {
       setCards((current) =>
@@ -197,6 +204,7 @@ export function Dashboard() {
       status={card.status}
       balance={money(card.balance_minor, card.currency, card.scale)}
       scheme="VISA"
+      variant={cardVariant(card)}
     />
   );
 

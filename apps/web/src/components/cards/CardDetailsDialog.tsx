@@ -33,6 +33,8 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
               <CardVisual
                 maskedPan={card.masked_pan ?? (card.last_four ? `•••• •••• •••• ${card.last_four}` : null)}
                 status={card.status}
+                variant={card.product_code ?? "default"}
+                balance={card.balance_minor == null ? undefined : `${card.balance_minor / 100} ${card.currency}`}
               />
               <dl className="details-section">
                 <div className="detail-row">
