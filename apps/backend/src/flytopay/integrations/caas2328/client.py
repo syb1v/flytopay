@@ -66,6 +66,9 @@ class CaaSClient:
     async def card_balance(self, card_id: str) -> dict[str, Any]:
         return await self._get(f"/cards/{card_id}/balance")
 
+    async def card_transactions(self, card_id: str, *, limit: int = 50) -> dict[str, Any]:
+        return await self._get(f"/cards/{card_id}/transactions", limit=limit)
+
     async def fund_card(self, card_id: str, payload: dict[str, Any], *, idempotency_key: str) -> "CaaSResponse":
         return await self._mutate_response(f"/cards/{card_id}/fund", payload, idempotency_key)
 

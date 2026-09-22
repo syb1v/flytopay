@@ -37,6 +37,38 @@ class CardholderPayload(BaseModel):
         return value.upper()
 
 
+class ProductPrice(BaseModel):
+    product_code: str
+    currency: str
+    scale: int
+    amount_minor: int | None = None
+    fee_minor: int | None = None
+    total_charge_minor: int | None = None
+    available: bool = True
+
+
+@router.get("/prices", response_model=list[ProductPrice])
+async def prices(user_id: Annotated[UUID, Depends(current_user_id)], db: Annotated[AsyncSession, Depends(get_db)]) -> list[ProductPrice]:
+    result = await db.execute(select(CardProduct).where(CardProduct.enabled.is_(True)).order_by(CardProduct.created_at))
+    products = list(result.scalars())
+    caas = CaaSClient()
+    prices: list[ProductPrice] = []
+    for product in products:
+        price = ProductPrice(product_code=product.code, currency=product.currency, scale=2)
+        if caas.is_configured:
+            try:
+                quote = await caas.quote(operation="issue", amount_minor=5000, product_code=product.code)
+                price.amount_minor = quote.get("amountMinor")
+                price.fee_minor = quote.get("feeMinor")
+                price.total_charge_minor = quote.get("totalChargeMinor")
+            except (RuntimeError, ValueError):
+                price.available = False
+        else:
+            price.available = False
+        prices.append(price)
+    return prices
+
+
 @router.post("/quote")
 async def quote(payload: CardholderPayload, user_id: Annotated[UUID, Depends(current_user_id)], db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     product = (await db.execute(select(CardProduct).where(CardProduct.code == payload.product_code, CardProduct.enabled.is_(True)))).scalar_one_or_none()
