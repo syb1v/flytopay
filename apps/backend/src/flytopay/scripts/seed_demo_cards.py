@@ -20,7 +20,6 @@ DEMO_PRODUCTS = (
     {"code": "demo-travel", "name": "Travel", "scheme": "mastercard", "suffix": "6051", "balance": 320_50},
     {"code": "demo-subs", "name": "Subscriptions", "scheme": "visa", "suffix": "2048", "balance": 45_00},
 )
-
 TRANSACTION_TEMPLATES = (
     (
         ("settlement", "completed", 2143, 25, "OPENAI *CHATGPT SUBSCR", None, "US"),
@@ -50,7 +49,7 @@ async def _ensure_products(db) -> dict[str, CardProduct]:
     for template in DEMO_PRODUCTS:
         product = (await db.execute(select(CardProduct).where(CardProduct.code == template["code"]))).scalar_one_or_none()
         if product is None:
-            product = CardProduct(id=uuid4(), code=template["code"], name=template["name"], scheme=template["scheme"], currency="USD", provider_code="demo", enabled=False)
+            product = CardProduct(id=uuid4(), code=template["code"], name=template["name"], scheme=template["scheme"], currency="USD", provider_code="demo", enabled=True)
             db.add(product)
             await db.flush()
         products[template["code"]] = product

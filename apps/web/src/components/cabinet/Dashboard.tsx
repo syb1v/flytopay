@@ -37,6 +37,7 @@ import { IssueCardPanel } from "../cards/IssueCardPanel";
 import { TransactionsHistory } from "../cards/TransactionsHistory";
 import { Modal } from "../ui/modal";
 import { Loader } from "../ui/loader";
+import { schemeForCard, tierForProduct } from "../../lib/cardTheme";
 
 type View = "home" | "issue" | "services" | "history" | "profile";
 
@@ -210,11 +211,7 @@ export function Dashboard() {
     return card.masked_pan ?? (card.last_four ? `•••• •••• •••• ${card.last_four}` : null);
   }
   function cardVariant(card: Card) {
-    const value = (card.product_code ?? "").toLowerCase();
-    if (value.includes("travel") || value.includes("trip") || value.includes("journey")) return "travel";
-    if (value.includes("sub") || value.includes("subscription")) return "subs";
-    if (value.includes("premium") || value.includes("black") || value.includes("metal")) return "premium";
-    return "default";
+    return tierForProduct(card.product_code);
   }
   const [actionError, setActionError] = useState<string | null>(null);
   const [infoModal, setInfoModal] = useState<string | null>(null);
@@ -297,7 +294,7 @@ export function Dashboard() {
       maskedPan={masked(card)}
       status={card.status}
       balance={money(card.balance_minor, card.currency, card.scale)}
-      scheme={card.scheme ?? "VISA"}
+      scheme={schemeForCard(card.scheme)}
       variant={cardVariant(card)}
     />
   );

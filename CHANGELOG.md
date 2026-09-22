@@ -7,6 +7,18 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+Changes for the next release will be collected here.
+
+## [0.10.3] - 2026-09-22
+
+### Fixed
+
+- Card tiers are now resolved from the product code through a single shared mapper on every screen (home carousel, details dialog, issuance catalog), eliminating scheme and palette mismatches between views.
+- The issuance catalog no longer assigns tiers by array index; raw provider products without a recognized type stay off the storefront.
+- Demo products are enabled in the seed so the issuance showcase shows the premium, travel, and subscriptions cards with their real schemes.
+
+## [0.10.2] - 2026-09-22
+
 ### Fixed
 
 - Returning to the home page now restores the carousel scroll position to the previously selected card instead of resetting to the first (greyed-out) card.
@@ -150,7 +162,9 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/syb1v/flytopay/compare/v0.10.2...v0.10.3
+[0.10.2]: https://github.com/syb1v/flytopay/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/syb1v/flytopay/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/syb1v/flytopay/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/syb1v/flytopay/compare/v0.8.0...v0.9.0

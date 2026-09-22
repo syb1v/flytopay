@@ -6,13 +6,10 @@ import { useEffect, useState } from "react";
 import { getCardDetails, type Card, type CardDetails } from "../../lib/api";
 import { usePreferences } from "../providers/PreferencesProvider";
 import { CardVisual } from "./CardVisual";
+import { schemeForCard, tierForProduct } from "../../lib/cardTheme";
 
 function cardVariant(card: Card) {
-  const value = (card.product_code ?? "").toLowerCase();
-  if (value.includes("travel") || value.includes("trip") || value.includes("journey")) return "travel";
-  if (value.includes("sub") || value.includes("subscription")) return "subs";
-  if (value.includes("premium") || value.includes("black") || value.includes("metal")) return "premium";
-  return "default";
+  return tierForProduct(card.product_code);
 }
 
 export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; open: boolean; onClose: () => void }) {
@@ -77,7 +74,7 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
                 <CardVisual
                   maskedPan={card.masked_pan ?? (card.last_four ? `•••• •••• •••• ${card.last_four}` : null)}
                   status={card.status}
-                  scheme={card.scheme ?? "VISA"}
+                  scheme={schemeForCard(card.scheme)}
                   holder={holder}
                   expiry={expiry}
                   cvv={details?.cvv ?? undefined}

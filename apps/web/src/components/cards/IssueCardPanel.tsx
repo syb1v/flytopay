@@ -29,35 +29,9 @@ import { CardVisual } from "./CardVisual";
 
 const terms = [30, 90, 180, 365] as const;
 
-type Tier = "premium" | "travel" | "subs";
+import { schemeForCard, tierForProduct, tierMeta, type CardTier } from "../../lib/cardTheme";
 
-const tierMeta: Record<Tier, { art: string; ru: string; en: string; ruDesc: string; enDesc: string }> = {
-  premium: {
-    art: "\u{1F310}",
-    ru: "Премиальная",
-    en: "Premium",
-    ruDesc: "Для тех, кто совершает много покупок за границей",
-    enDesc: "For frequent international purchases",
-  },
-  travel: {
-    art: "\u{1F9F3}",
-    ru: "Для путешествий",
-    en: "Travel",
-    ruDesc: "Карта в долларах для оплаты за границей",
-    enDesc: "A USD card for payments abroad",
-  },
-  subs: {
-    art: "\u{1F3A7}",
-    ru: "Для подписок",
-    en: "Subscriptions",
-    ruDesc: "Карта в долларах для оплаты сервисов",
-    enDesc: "A USD card for online services",
-  },
-};
-
-function tierFor(index: number): Tier {
-  return (["premium", "travel", "subs"] as const)[index % 3];
-}
+type Tier = CardTier;
 
 export function IssueCardPanel() {
   const { preferences } = usePreferences();
@@ -91,7 +65,9 @@ export function IssueCardPanel() {
   useEffect(() => {
     Promise.all([getCardProducts(), getProductPrices().catch(() => [])])
       .then(([items, priceList]) => {
-        setProducts(items);
+        // The issuance showcase presents typed tiers only; raw provider
+        // products without a recognized type stay off the storefront.
+        setProducts(items.filter((product) => tierForProduct(product.code) !== "default"));
         setSelected(null);
         setPrices(Object.fromEntries(priceList.map((price) => [price.product_code, price])));
       })
@@ -146,8 +122,8 @@ export function IssueCardPanel() {
           : "Choose a card type — details and price on the next screen."}
       </p>
       <div className="issue-tiers">
-        {products.map((product, index) => {
-          const tier = tierFor(index);
+        {products.map((product) => {
+          const tier = tierForProduct(product.code);
           const meta = tierMeta[tier];
           const price = prices[product.code];
           return (
@@ -157,7 +133,12 @@ export function IssueCardPanel() {
               onClick={() => setDetailsProduct({ product, tier, price })}
             >
               <span className="issue-tier-preview">
-                <CardVisual variant={tier} scheme={product.scheme} holder="FLYTOPAY USER" expiry="12/30" />
+                <CardVisual
+                  variant={tier}
+                  scheme={schemeForCard(product.scheme)}
+                  holder="FLYTOPAY USER"
+                  expiry="12/30"
+                />
               </span>
               <span className="issue-tier-title">
                 <strong>{ru ? meta.ru : meta.en}</strong>
@@ -325,7 +306,7 @@ function ProductDetailsScreen({
     >
       <div className="modal-body">
         <div className="product-modal-card">
-          <CardVisual variant={tier} scheme={product.scheme} expiry="12/30" holder="FLYTOPAY USER" />
+          <CardVisual variant={tier} scheme={schemeForCard(product.scheme)} expiry="12/30" holder="FLYTOPAY USER" />
         </div>
 
         <div className="product-feature-grid">
