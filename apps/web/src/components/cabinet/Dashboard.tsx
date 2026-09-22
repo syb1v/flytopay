@@ -123,6 +123,8 @@ export function Dashboard() {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const cardsScroller = useRef<HTMLDivElement>(null);
+  const activeIndexRef = useRef(activeIndex);
+  activeIndexRef.current = activeIndex;
   const [telegramUser, setTelegramUser] = useState<{ name: string; id: string; initial: string }>({
     name: "Flytopay",
     id: "—",
@@ -175,6 +177,21 @@ export function Dashboard() {
       webApp.offEvent?.("viewportChanged", forceFullscreen);
     };
   }, [authReady]);
+
+  // The home view unmounts when navigating away; on return the carousel renders
+  // at scrollLeft=0 while activeIndex keeps the previously selected card, leaving
+  // the first card greyed out. Restore the scroll position to the active card.
+  useEffect(() => {
+    if (view !== "home") return;
+    const element = cardsScroller.current;
+    if (!element) return;
+    const target = element.children[activeIndexRef.current] as HTMLElement | undefined;
+    if (!target) return;
+    const offset = target.offsetLeft - (element.clientWidth - target.offsetWidth) / 2;
+    if (Math.abs(element.scrollLeft - offset) > 4) {
+      element.scrollLeft = offset;
+    }
+  }, [view, cards.length]);
 
   function navigate(next: View) {
     setView(next);

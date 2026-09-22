@@ -9,6 +9,12 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Returning to the home page now restores the carousel scroll position to the previously selected card instead of resetting to the first (greyed-out) card.
+
+## [0.10.1] - 2026-09-22
+
+### Fixed
+
 - Card scheme now renders from API data in the details dialog (both sides of the flip) — Mastercard cards no longer show VISA.
 - Removed blue accents from the balance block: the top-up button and the visibility dot inherit brand colors.
 - Restored the header title on History, Services, Profile, and Issuance pages; removed duplicated section titles and the empty space above them.
@@ -144,7 +150,8 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/syb1v/flytopay/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/syb1v/flytopay/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/syb1v/flytopay/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/syb1v/flytopay/compare/v0.7.0...v0.8.0
