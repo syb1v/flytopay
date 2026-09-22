@@ -299,64 +299,68 @@ function TransactionModal({
         >
           {formatAmount(tx.amount_minor, tx.currency, tx.scale, isPositive)}
         </div>
-        <dl className="details-section">
-          <div className="detail-row">
-            <dt>{ru ? "Статус" : "Status"}</dt>
-            <dd>{statusText}</dd>
-          </div>
-          <div className="detail-row">
-            <dt>{ru ? "Тип" : "Type"}</dt>
-            <dd>{typeText}</dd>
-          </div>
-          {card && (
-            <div className="detail-row">
-              <dt>{ru ? "Карта" : "Card"}</dt>
-              <dd>
-                •••• {card.last_four ?? "—"} · {card.product_name ?? card.product_code ?? ""}
-              </dd>
-            </div>
-          )}
-          {tx.merchant_country && (
-            <div className="detail-row">
-              <dt>{ru ? "Страна" : "Country"}</dt>
-              <dd>{tx.merchant_country}</dd>
-            </div>
-          )}
-          {tx.mcc && (
-            <div className="detail-row">
-              <dt>MCC</dt>
-              <dd>
-                {tx.mcc}
-                {tx.mcc_description ? ` · ${tx.mcc_description}` : ""}
-              </dd>
-            </div>
-          )}
-          {tx.fee_minor > 0 && (
-            <div className="detail-row">
-              <dt>{ru ? "Комиссия" : "Fee"}</dt>
-              <dd>{formatAmount(tx.fee_minor, tx.currency, tx.scale, false).slice(2)}</dd>
-            </div>
-          )}
-          {tx.decline_code && (
-            <div className="detail-row">
-              <dt>{ru ? "Причина отклонения" : "Decline reason"}</dt>
-              <dd>
-                {(declineReasons[ru ? "ru" : "en"] as Record<string, string>)[tx.decline_code] ?? tx.decline_code}
-              </dd>
-            </div>
-          )}
-          {tx.occurred_at && (
-            <div className="detail-row">
-              <dt>{ru ? "Дата и время" : "Date & time"}</dt>
-              <dd>
-                {new Intl.DateTimeFormat(ru ? "ru-RU" : "en-US", {
-                  dateStyle: "long",
-                  timeStyle: "short",
-                }).format(new Date(tx.occurred_at))}
-              </dd>
-            </div>
-          )}
-        </dl>
+        <table className="info-table">
+          <tbody>
+            <tr>
+              <th>{ru ? "Статус" : "Status"}</th>
+              <td>{statusText}</td>
+            </tr>
+            <tr>
+              <th>{ru ? "Тип" : "Type"}</th>
+              <td>{typeText}</td>
+            </tr>
+            {card && (
+              <tr>
+                <th>{ru ? "Карта" : "Card"}</th>
+                <td>
+                  •••• {card.last_four ?? "—"} · {card.product_name ?? card.product_code ?? ""}
+                </td>
+              </tr>
+            )}
+            {tx.merchant_country && (
+              <tr>
+                <th>{ru ? "Страна" : "Country"}</th>
+                <td>{tx.merchant_country}</td>
+              </tr>
+            )}
+            {tx.mcc && (
+              <tr>
+                <th>MCC</th>
+                <td>
+                  {tx.mcc}
+                  {tx.mcc_description ? ` · ${tx.mcc_description}` : ""}
+                </td>
+              </tr>
+            )}
+            <tr>
+              <th>{ru ? "Комиссия" : "Fee"}</th>
+              <td>{formatAmount(tx.fee_minor, tx.currency, tx.scale, false).slice(2)}</td>
+            </tr>
+            {tx.decline_code && (
+              <tr>
+                <th>{ru ? "Причина отклонения" : "Decline reason"}</th>
+                <td>
+                  {(declineReasons[ru ? "ru" : "en"] as Record<string, string>)[tx.decline_code] ?? tx.decline_code}
+                </td>
+              </tr>
+            )}
+            {tx.occurred_at && (
+              <tr>
+                <th>{ru ? "Дата и время" : "Date & time"}</th>
+                <td>
+                  {new Intl.DateTimeFormat(ru ? "ru-RU" : "en-US", {
+                    dateStyle: "long",
+                    timeStyle: "short",
+                  }).format(new Date(tx.occurred_at))}
+                </td>
+              </tr>
+            )}
+            <tr>
+              <th>ID</th>
+              <td>{tx.id}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </Modal>
   );

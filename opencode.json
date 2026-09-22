@@ -9,7 +9,7 @@
         "apiKey": "sk-mh-439914e75a3e3752304329fe8fc12ce09e149645ade72b93f39fef0a476cc06a"
       },
       "models": {
-        "claude-opus-5": { "name": "Claude Opus 5" },
+        "claude-opus-5-5": { "name": "Claude Opus 5.5" },
         "gpt-6-astra": { "name": "GPT 6 Astra"},
         "gpt-5.6-sol": { "name": "GPT 5.6 Sol" },
         "glm-5.3": { "name": "GLM 5.3" }

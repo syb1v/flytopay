@@ -157,7 +157,7 @@ async function cardLifecycle(action: "freeze" | "unfreeze" | "close", cardId: st
   const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/${action}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...csrfHeaders() },
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
     body: JSON.stringify({}),
   });
   const data = await response.json().catch(() => null);
@@ -173,7 +173,7 @@ export async function fundCard(cardId: string, amountMinor: number): Promise<Car
   const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/fund`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...csrfHeaders() },
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
     body: JSON.stringify({ amount_minor: amountMinor }),
   });
   const data = await response.json().catch(() => null);
@@ -185,7 +185,7 @@ export async function unloadCard(cardId: string, amountMinor: number): Promise<C
   const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/unload`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...csrfHeaders() },
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
     body: JSON.stringify({ amount_minor: amountMinor }),
   });
   const data = await response.json().catch(() => null);

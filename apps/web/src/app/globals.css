@@ -3111,3 +3111,122 @@ button.tx-row:hover {
   font-weight: 700;
   cursor: pointer;
 }
+/* Loader: real brand logo */
+.fly-loader-mark {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, #a2ff321f, transparent 70%);
+  animation: fly-loader-pulse 1.6s ease-in-out infinite;
+}
+.fly-loader-mark img {
+  width: 54px;
+  height: 54px;
+  filter: drop-shadow(0 0 12px #a2ff3255);
+}
+/* Banner matches the action button row height */
+.card-actions-banner {
+  min-height: 84px;
+  margin-top: 14px;
+  padding: 12px 18px;
+  border-radius: 18px;
+}
+.card-actions-banner::before {
+  width: 110px;
+  height: 110px;
+  bottom: -46px;
+}
+.card-actions-banner-copy strong {
+  font-size: 14px;
+}
+.card-actions-banner-copy small {
+  font-size: 11px;
+}
+.card-actions-banner-orbit {
+  width: 52px;
+  height: 52px;
+  font-size: 20px;
+}
+/* Detail/transaction tables */
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid #2c363d;
+  border-radius: 14px;
+  font-size: 13px;
+}
+.info-table th,
+.info-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid #2c363d;
+  text-align: left;
+  vertical-align: top;
+}
+.info-table tr:last-child th,
+.info-table tr:last-child td {
+  border-bottom: 0;
+}
+.info-table th {
+  width: 42%;
+  color: var(--muted);
+  font-weight: 500;
+}
+.info-table td {
+  color: var(--white);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+.copy-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+.copy-field {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #2c363d;
+  border-radius: 14px;
+  background: #121a1e;
+  color: var(--white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.copy-field:hover {
+  border-color: #56773d;
+}
+.copy-field span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.copy-field small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.copy-field b {
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+.copy-field em {
+  flex-shrink: 0;
+  color: var(--lime);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+.reveal-button {
+  width: 100%;
+  margin-top: 14px;
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { LockKeyhole, MapPin, X } from "lucide-react";
+import { LockKeyhole, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCardDetails, type Card, type CardDetails } from "../../lib/api";
 import { usePreferences } from "../providers/PreferencesProvider";
@@ -17,12 +17,14 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
   const ru = preferences.language === "ru";
   const [details, setDetails] = useState<CardDetails | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     if (!open || !card) return;
     let cancelled = false;
     setState("loading");
     setDetails(null);
+    setRevealed(false);
     getCardDetails(card.id)
       .then((payload) => {
         if (cancelled) return;
@@ -91,37 +93,33 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
               )}
               {state === "ready" && details && (
                 <>
-                  <dl className="details-section">
-                    <div className="detail-row">
-                      <dt>{ru ? "Номер карты" : "Card number"}</dt>
-                      <dd>{details.masked_pan ?? "•••• •••• •••• ••••"}</dd>
-                    </div>
-                    <div className="details-split">
-                      <div className="detail-row">
-                        <dt>{ru ? "Срок действия" : "Expiry"}</dt>
-                        <dd>{expiry}</dd>
+                  {!revealed ? (
+                    <button className="lime-action reveal-button" onClick={() => setRevealed(true)}>
+                      {ru ? "Показать реквизиты" : "Show card details"}
+                    </button>
+                  ) : (
+                    <>
+                      <div className="copy-grid">
+                        <CopyField
+                          label={ru ? "Номер карты" : "Card number"}
+                          value={details.masked_pan ?? "—"}
+                          ru={ru}
+                        />
+                        <CopyField label={ru ? "Срок действия" : "Expiry"} value={expiry} ru={ru} />
+                        <CopyField label="CVV" value={details.cvv ?? "—"} ru={ru} />
+                        <CopyField label={ru ? "Держатель" : "Cardholder"} value={holder} ru={ru} />
+                        {address && addressLine.length > 0 && (
+                          <CopyField
+                            label={ru ? "Биллинговый адрес" : "Billing address"}
+                            value={addressLine.join(", ")}
+                            ru={ru}
+                          />
+                        )}
                       </div>
-                      <div className="detail-row">
-                        <dt>CVV</dt>
-                        <dd>{details.cvv ?? "•••"}</dd>
-                      </div>
-                    </div>
-                    <div className="detail-row">
-                      <dt>{ru ? "Держатель" : "Cardholder"}</dt>
-                      <dd>{holder}</dd>
-                    </div>
-                  </dl>
-                  {address && addressLine.length > 0 && (
-                    <div className="details-section">
-                      <div className="detail-row detail-row-address">
-                        <dt>{ru ? "Биллинговый адрес" : "Billing address"}</dt>
-                        <dd>
-                          {addressLine.map((line) => (
-                            <span key={line}>{line}</span>
-                          ))}
-                        </dd>
-                      </div>
-                    </div>
+                      <button className="secondary-action reveal-button" onClick={() => setRevealed(false)}>
+                        {ru ? "Скрыть реквизиты" : "Hide card details"}
+                      </button>
+                    </>
                   )}
                   <p className="secure-note">
                     <LockKeyhole size={18} aria-hidden="true" />
@@ -136,5 +134,29 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function CopyField({ label, value, ru }: { label: string; value: string; ru: boolean }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      className="copy-field"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        } catch {
+          setCopied(false);
+        }
+      }}
+    >
+      <span>
+        <small>{label}</small>
+        <b>{value}</b>
+      </span>
+      <em>{copied ? (ru ? "Скопировано" : "Copied") : ru ? "Копировать" : "Copy"}</em>
+    </button>
   );
 }

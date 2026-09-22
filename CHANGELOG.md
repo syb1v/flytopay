@@ -9,6 +9,20 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.11.3] - 2026-09-22
+
+### Fixed
+
+- Repeated freeze/unfreeze actions no longer reuse a fixed idempotency key; each action gets a unique key, so the second and later toggles execute instead of returning the first cached result.
+- Stale `processing` card operations are cleared.
+
+### Changed
+
+- Loader uses the real Flytopay logo.
+- The New card banner matches the height of the card action buttons.
+- Transaction modal renders a clean aligned table.
+- Card details are hidden by default, revealed by a button, and every field copies to clipboard on tap.
+
 ## [0.11.2] - 2026-09-22
 
 ### Added
@@ -199,7 +213,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.2...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.3...HEAD
+[0.11.3]: https://github.com/syb1v/flytopay/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/syb1v/flytopay/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/syb1v/flytopay/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/syb1v/flytopay/compare/v0.10.3...v0.11.0

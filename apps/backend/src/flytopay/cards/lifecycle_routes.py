@@ -7,7 +7,7 @@ the external call.
 
 from datetime import datetime
 from typing import Annotated, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -110,7 +110,7 @@ async def _enqueue_lifecycle(
     """Create (or return) the idempotent operation record and queue the CaaS call."""
     if not card.provider_card_id:
         raise HTTPException(status_code=503, detail="CaaS API is not configured for this card")
-    key = idempotency_key or f"{kind}-{card.id}"
+    key = idempotency_key or f"{kind}-{card.id}-{uuid4()}"
     try:
         record = await get_or_create_operation(db, operation_key=key, operation_kind=kind, path=f"/cards/{card.id}/{kind}", payload=payload)
     except IntegrityError:
