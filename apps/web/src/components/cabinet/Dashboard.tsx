@@ -15,11 +15,23 @@ import {
   Wrench,
 } from "lucide-react";
 import { PreferencesPanel } from "../settings/PreferencesPanel";
-import { getCards, getRentals, getWallet, type Card, type Rental, type Wallet } from "../../lib/api";
+import {
+  getCards,
+  getCardTransactions,
+  getRentals,
+  getWallet,
+  unfreezeCard,
+  freezeCard,
+  closeCard,
+  type Card,
+  type Rental,
+  type Wallet,
+} from "../../lib/api";
 import { usePreferences } from "../providers/PreferencesProvider";
 import { CardDetailsDialog } from "../cards/CardDetailsDialog";
 import { CardVisual } from "../cards/CardVisual";
 import { IssueCardPanel } from "../cards/IssueCardPanel";
+import { TransactionsHistory } from "../cards/TransactionsHistory";
 
 type View = "home" | "issue" | "services" | "history" | "profile";
 
@@ -160,25 +172,39 @@ export function Dashboard() {
     if (value.includes("premium") || value.includes("black") || value.includes("metal")) return "premium";
     return "default";
   }
-  function cardAction(action: "topup" | "transfer" | "freeze" | "close", card: Card) {
-    if (action === "freeze") {
-      setCards((current) =>
-        current.map((item) =>
-          item.id === card.id ? { ...item, status: item.status === "frozen" ? "active" : "frozen" } : item,
-        ),
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState<string | null>(null);
+
+  async function cardAction(action: "topup" | "transfer" | "freeze" | "close", card: Card) {
+    if (action === "topup" || action === "transfer") {
+      alert(
+        language === "ru"
+          ? `${action === "topup" ? "Пополнение" : "Перевод"} карты пока недоступно в демо-режиме`
+          : `${action === "topup" ? "Top up" : "Transfer"} is not available in demo mode`,
       );
       return;
     }
-    if (action === "close") {
-      setCards((current) => current.filter((item) => item.id !== card.id));
-      setActiveIndex((current) => Math.max(0, Math.min(current, cards.length - 2)));
-      return;
+    setActionError(null);
+    setActionPending(`${action}:${card.id}`);
+    try {
+      if (action === "freeze") {
+        const frozen = card.status === "frozen";
+        const result = frozen ? await unfreezeCard(card.id) : await freezeCard(card.id);
+        setCards((current) => current.map((item) => (item.id === card.id ? { ...item, status: result.status } : item)));
+      } else {
+        await closeCard(card.id);
+        setCards((current) => current.filter((item) => item.id !== card.id));
+        setActiveIndex((current) => Math.max(0, Math.min(current, cards.length - 2)));
+      }
+    } catch {
+      setActionError(
+        language === "ru"
+          ? "Операция временно недоступна — попробуйте позже"
+          : "Operation is temporarily unavailable — try again later",
+      );
+    } finally {
+      setActionPending(null);
     }
-    alert(
-      language === "ru"
-        ? `${action === "topup" ? "Пополнение" : "Перевод"} карты пока недоступно в демо-режиме`
-        : `${action === "topup" ? "Top up" : "Transfer"} is not available in demo mode`,
-    );
   }
   function syncActiveCard() {
     const element = cardsScroller.current;
@@ -357,7 +383,10 @@ export function Dashboard() {
                   <Send size={21} />
                   <span>{language === "ru" ? "Перевести" : "Transfer"}</span>
                 </button>
-                <button onClick={() => cardAction("freeze", activeCard)}>
+                <button
+                  disabled={actionPending === `freeze:${activeCard.id}`}
+                  onClick={() => cardAction("freeze", activeCard)}
+                >
                   <Snowflake size={21} />
                   <span>
                     {activeCard.status === "frozen"
@@ -369,18 +398,27 @@ export function Dashboard() {
                         : "Freeze"}
                   </span>
                 </button>
-                <button className="danger" onClick={() => cardAction("close", activeCard)}>
+                <button
+                  className="danger"
+                  disabled={actionPending === `close:${activeCard.id}`}
+                  onClick={() => cardAction("close", activeCard)}
+                >
                   <XCircle size={21} />
                   <span>{language === "ru" ? "Закрыть" : "Close"}</span>
                 </button>
               </section>
             )}
+            {actionError && <div className="data-warning">{actionError}</div>}
             <section className="dashboard-section selected-card-summary">
               <div className="section-heading">
                 <h2>{t.recent}</h2>
                 <span className="selected-card-label">{activeCard ? `•••• ${activeCard.last_four ?? "—"}` : "—"}</span>
               </div>
-              <div className="history-empty-row">{activeCard ? t.noTransactions : t.coming}</div>
+              {activeCard ? (
+                <RecentTransactions cardId={activeCard.id} emptyLabel={t.noTransactions} errorLabel={t.coming} />
+              ) : (
+                <div className="history-empty-row">{t.coming}</div>
+              )}
             </section>
           </>
         )}
@@ -396,25 +434,7 @@ export function Dashboard() {
         )}
         {view === "history" && (
           <section className="history-panel">
-            <div className="history-filters">
-              <button className="selected">{language === "ru" ? "Все операции" : "All"}</button>
-              <button>{language === "ru" ? "Пополнения" : "Top-ups"}</button>
-              <button>{language === "ru" ? "Покупки" : "Purchases"}</button>
-            </div>
-            {cards.length ? (
-              <div className="history-grouped">
-                {cards.map((card) => (
-                  <div className="history-card-block" key={card.id}>
-                    <div className="history-card-title">
-                      <CreditCard size={15} /> •••• {card.last_four ?? "—"} · {card.status}
-                    </div>
-                    <div className="history-empty-row">{t.noTransactions}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="history-empty-row">{t.noTransactions}</div>
-            )}
+            <TransactionsHistory cards={cards} />
           </section>
         )}
         {view === "profile" && (
@@ -485,6 +505,56 @@ export function Dashboard() {
         </button>
       </nav>
       <CardDetailsDialog card={selectedCard} open={Boolean(selectedCard)} onClose={() => setSelectedCard(null)} />
+    </div>
+  );
+}
+
+function RecentTransactions({
+  cardId,
+  emptyLabel,
+  errorLabel,
+}: {
+  cardId: string;
+  emptyLabel: string;
+  errorLabel: string;
+}) {
+  const [items, setItems] = useState<Array<{ id: string; title: string; amount: string }>>([]);
+  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setState("loading");
+    getCardTransactions(cardId, 5)
+      .then((transactions) => {
+        if (cancelled) return;
+        setItems(
+          transactions.slice(0, 5).map((tx) => ({
+            id: tx.id,
+            title: tx.merchant_name ?? tx.type,
+            amount: new Intl.NumberFormat("ru-RU", { style: "currency", currency: tx.currency }).format(
+              tx.amount_minor / 10 ** tx.scale,
+            ),
+          })),
+        );
+        setState("ready");
+      })
+      .catch(() => !cancelled && setState("error"));
+    return () => {
+      cancelled = true;
+    };
+  }, [cardId]);
+
+  if (state === "loading") return <div className="history-empty-row">…</div>;
+  if (state === "error") return <div className="history-empty-row">{errorLabel}</div>;
+  if (!items.length) return <div className="history-empty-row">{emptyLabel}</div>;
+  return (
+    <div className="history-grouped">
+      {items.map((item) => (
+        <div className="recent-tx-row" key={item.id}>
+          <span>{item.title}</span>
+          <b>{item.amount}</b>
+        </div>
+      ))}
     </div>
   );
 }

@@ -89,6 +89,72 @@ export async function getCardProducts(): Promise<CardProduct[]> {
   return response.json() as Promise<CardProduct[]>;
 }
 
+export type ProductPrice = {
+  product_code: string;
+  currency: string;
+  scale: number;
+  amount_minor: number | null;
+  fee_minor: number | null;
+  total_charge_minor: number | null;
+  available: boolean;
+};
+
+export async function getProductPrices(): Promise<ProductPrice[]> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/issuance/prices`, { credentials: "include" });
+  if (!response.ok) throw new Error("prices_load_failed");
+  return response.json() as Promise<ProductPrice[]>;
+}
+
+export type CardLifecycleResult = {
+  card_id: string;
+  status: string;
+  operation_status: string;
+  order_id: string | null;
+};
+
+async function cardLifecycle(action: "freeze" | "unfreeze" | "close", cardId: string): Promise<CardLifecycleResult> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/${action}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.detail ?? `${action}_failed`);
+  return data as CardLifecycleResult;
+}
+
+export const freezeCard = (cardId: string) => cardLifecycle("freeze", cardId);
+export const unfreezeCard = (cardId: string) => cardLifecycle("unfreeze", cardId);
+export const closeCard = (cardId: string) => cardLifecycle("close", cardId);
+
+export type CardTransaction = {
+  id: string;
+  type: string;
+  status: string;
+  amount_minor: number;
+  fee_minor: number;
+  currency: string;
+  scale: number;
+  merchant_name: string | null;
+  mcc: string | null;
+  mcc_description: string | null;
+  merchant_country: string | null;
+  decline_code: string | null;
+  fee_type: string | null;
+  occurred_at: string | null;
+  authorization_code: string | null;
+  related_authorization_code: string | null;
+};
+
+export async function getCardTransactions(cardId: string, limit = 50): Promise<CardTransaction[]> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/transactions?limit=${limit}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("transactions_load_failed");
+  return response.json() as Promise<CardTransaction[]>;
+}
+
 export type AdminOverview = {
   users: number;
   telegramAccounts: number;

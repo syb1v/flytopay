@@ -1,18 +1,73 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Apple, Check, CreditCard, Globe2, LockKeyhole, Smartphone, X } from "lucide-react";
-import { getCardProducts, getIssueQuote, type CardProduct, type CardholderInput } from "../../lib/api";
+import {
+  Apple,
+  Car,
+  Check,
+  ChevronDown,
+  CreditCard,
+  Crown,
+  LockKeyhole,
+  Plane,
+  ShieldCheck,
+  ShoppingBag,
+  Smartphone,
+  Sparkles,
+} from "lucide-react";
+import {
+  getCardProducts,
+  getProductPrices,
+  getIssueQuote,
+  type CardProduct,
+  type CardholderInput,
+  type ProductPrice,
+} from "../../lib/api";
 import { usePreferences } from "../providers/PreferencesProvider";
 
 const terms = [30, 90, 180, 365] as const;
+
+type Tier = "premium" | "travel" | "subs";
+
+const tierMeta: Record<Tier, { art: string; ru: string; en: string; ruDesc: string; enDesc: string }> = {
+  premium: {
+    art: "\u{1F310}",
+    ru: "Премиальная",
+    en: "Premium",
+    ruDesc: "Для тех, кто совершает много покупок за границей",
+    enDesc: "For frequent international purchases",
+  },
+  travel: {
+    art: "\u{1F9F3}",
+    ru: "Для путешествий",
+    en: "Travel",
+    ruDesc: "Карта в долларах для оплаты за границей",
+    enDesc: "A USD card for payments abroad",
+  },
+  subs: {
+    art: "\u{1F3A7}",
+    ru: "Для подписок",
+    en: "Subscriptions",
+    ruDesc: "Карта в долларах для оплаты сервисов",
+    enDesc: "A USD card for online services",
+  },
+};
+
+function tierFor(index: number): Tier {
+  return (["premium", "travel", "subs"] as const)[index % 3];
+}
 
 export function IssueCardPanel() {
   const { preferences } = usePreferences();
   const ru = preferences.language === "ru";
   const [products, setProducts] = useState<CardProduct[]>([]);
+  const [prices, setPrices] = useState<Record<string, ProductPrice>>({});
   const [selected, setSelected] = useState<CardProduct | null>(null);
-  const [detailsProduct, setDetailsProduct] = useState<CardProduct | null>(null);
+  const [detailsProduct, setDetailsProduct] = useState<{
+    product: CardProduct;
+    tier: Tier;
+    price?: ProductPrice;
+  } | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [term, setTerm] = useState<number>(30);
   const [country, setCountry] = useState("US");
@@ -30,16 +85,20 @@ export function IssueCardPanel() {
   const [quote, setQuote] = useState<{ totalChargeMinor: number; feeMinor: number; currency: string } | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    getCardProducts()
-      .then((items) => {
+    Promise.all([getCardProducts(), getProductPrices().catch(() => [])])
+      .then(([items, priceList]) => {
         setProducts(items);
-        setSelected(items[0] ?? null);
+        setSelected(null);
+        setPrices(Object.fromEntries(priceList.map((price) => [price.product_code, price])));
       })
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
   }, []);
+
   const setting = (key: string) => selected?.provider_settings?.find((item) => item.key === key)?.value;
+
   if (loading)
     return (
       <section className="page-panel">
@@ -49,7 +108,9 @@ export function IssueCardPanel() {
         <h2>{ru ? "Загружаем продукты" : "Loading products"}</h2>
       </section>
     );
+
   const update = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
+
   const askQuote = async () => {
     if (!selected) return;
     setQuoteError(null);
@@ -66,6 +127,16 @@ export function IssueCardPanel() {
       setQuoteError(error instanceof Error ? error.message : "quote_failed");
     }
   };
+
+  const money = (minor: number | null | undefined, currency = "USD", scale = 2) =>
+    minor == null
+      ? "—"
+      : new Intl.NumberFormat(ru ? "ru-RU" : "en-US", {
+          style: "currency",
+          currency,
+          minimumFractionDigits: scale,
+        }).format(minor / 10 ** scale);
+
   return (
     <section className="issue-layout">
       <div className="issue-main">
@@ -75,52 +146,52 @@ export function IssueCardPanel() {
         <h2>{ru ? "Выпуск карты" : "Issue a card"}</h2>
         <p>
           {ru
-            ? "Выберите реальный продукт и заполните данные держателя."
-            : "Choose a real product and enter the cardholder details."}
+            ? "Выберите тип карты — детали и цена на следующем экране."
+            : "Choose a card type — details and price on the next screen."}
         </p>
-        <div className="product-grid issue-product-grid">
-          {products.map((product, index) => (
-            <button
-              className={`product-option issue-tier issue-tier-${index % 3} ${selected?.code === product.code ? "selected" : ""}`}
-              key={product.code}
-              onClick={() => setDetailsProduct(product)}
-            >
-              <span className="issue-tier-top">
-                <span className="issue-tier-info">
-                  <span className="badges">
-                    <span className="badge">
-                      <CreditCard size={13} /> {product.scheme.toUpperCase()}
-                    </span>
-                    <span className="badge">{product.currency}</span>
+        <div className="issue-tiers">
+          {products.map((product, index) => {
+            const tier = tierFor(index);
+            const meta = tierMeta[tier];
+            const price = prices[product.code];
+            return (
+              <button
+                key={product.code}
+                className={`issue-tier-card tier-${tier}`}
+                onClick={() => setDetailsProduct({ product, tier, price })}
+              >
+                <span className="issue-tier-badges">
+                  <span className="badge">
+                    <Apple size={13} /> Pay
                   </span>
-                  <strong className="issue-tier-name">{product.name}</strong>
-                  <small className="issue-tier-desc">
-                    {ru
-                      ? "Для зарубежных сервисов, покупок и подписок"
-                      : "For international services, purchases, and subscriptions"}
-                  </small>
+                  <span className="badge">G Pay</span>
+                  <span className="badge badge-accent">Alipay</span>
                 </span>
-                <span className="issue-tier-visual" aria-hidden="true">
-                  <span className="issue-tier-logo">
-                    <img src="/logo.svg" alt="" />
-                    FLYTOPAY
+                <span className="issue-tier-title">
+                  <strong>{ru ? meta.ru : meta.en}</strong>
+                  <span className="usd-tag">{product.currency}</span>
+                </span>
+                <small className="issue-tier-desc">{ru ? meta.ruDesc : meta.enDesc}</small>
+                <span className="issue-tier-art" aria-hidden="true">
+                  {meta.art}
+                </span>
+                <span className="issue-tier-foot">
+                  <span className="issue-tier-price">
+                    {price?.total_charge_minor != null ? (
+                      <strong>{money(price.total_charge_minor, price.currency, price.scale)}</strong>
+                    ) : (
+                      <strong className="muted-capability">{ru ? "Цена по запросу" : "Price on quote"}</strong>
+                    )}
+                    <small>{ru ? "Цена выпуска" : "Issuance price"}</small>
                   </span>
-                  <span className="issue-tier-art">{index % 3 === 0 ? "◌" : index % 3 === 1 ? "✦" : "◒"}</span>
-                  <img className="issue-tier-chip" src="/chip.svg" alt="" />
+                  <span className="issue-tier-rate">
+                    {price?.available ? <Crown size={15} className="crown" /> : null}
+                    <small>{ru ? "Подробнее" : "Details"} →</small>
+                  </span>
                 </span>
-              </span>
-              <span className="issue-tier-foot">
-                <span>
-                  <strong>{index % 3 === 0 ? "9 990 ₽" : index % 3 === 1 ? "990 ₽" : "490 ₽"}</strong>
-                  <small>{ru ? "Цена выпуска" : "Issuance price"}</small>
-                </span>
-                <span className="issue-tier-rate">
-                  <strong>{selected?.code === product.code ? "Выбрано" : "Выбрать"}</strong>
-                  {selected?.code === product.code && <Check size={16} />}
-                </span>
-              </span>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
         {!products.length && (
           <div className="unavailable-note">
@@ -128,7 +199,8 @@ export function IssueCardPanel() {
             {ru ? "Каталог 2328 пока недоступен." : "2328 catalog is unavailable."}
           </div>
         )}
-        {showForm && (
+
+        {showForm && selected && (
           <>
             <div className="issue-form-heading">{ru ? "Данные держателя" : "Cardholder details"}</div>
             <label className="field-label">
@@ -202,7 +274,7 @@ export function IssueCardPanel() {
       </div>
       <aside className="issue-summary">
         <div className="summary-heading">
-          <Globe2 size={18} />
+          <Sparkles size={18} />
           {ru ? "Возможности продукта" : "Product capabilities"}
         </div>
         <div className="capability-list">
@@ -234,56 +306,224 @@ export function IssueCardPanel() {
           {ru ? "Рассчитать стоимость" : "Calculate price"}
         </button>
       </aside>
+
       {detailsProduct && (
-        <div
-          className="issue-product-overlay"
-          onMouseDown={(event) => event.target === event.currentTarget && setDetailsProduct(null)}
-        >
-          <section
-            className={`issue-product-dialog ${detailsProduct.code.toLowerCase()}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="issue-product-title"
-          >
-            <button
-              className="icon-button issue-product-close"
-              onClick={() => setDetailsProduct(null)}
-              aria-label={ru ? "Закрыть" : "Close"}
-            >
-              <X size={18} />
-            </button>
-            <div className="issue-product-card-preview">
-              <img src="/chip.svg" alt="" aria-hidden="true" />
-              <span>FLYTOPAY</span>
-            </div>
-            <div className="badges">
-              <span className="badge">{detailsProduct.scheme.toUpperCase()}</span>
-              <span className="badge">{detailsProduct.currency}</span>
-            </div>
-            <h3 id="issue-product-title">{detailsProduct.name}</h3>
-            <p>
-              {ru
-                ? "Виртуальная карта для зарубежных сервисов, подписок и покупок."
-                : "A virtual card for international services, subscriptions, and purchases."}
-            </p>
-            <div className="issue-product-price">
-              <strong>{selected?.code === detailsProduct.code ? "990 ₽" : "490 ₽"}</strong>
-              <small>{ru ? "стоимость выпуска" : "issuance price"}</small>
-            </div>
-            <button
-              className="lime-action"
-              onClick={() => {
-                setSelected(detailsProduct);
-                setShowForm(true);
-                setDetailsProduct(null);
-              }}
-            >
-              {ru ? "Выбрать карту" : "Choose card"}
-            </button>
-          </section>
-        </div>
+        <ProductDetailsScreen
+          ru={ru}
+          product={detailsProduct.product}
+          tier={detailsProduct.tier}
+          price={detailsProduct.price}
+          money={money}
+          onClose={() => setDetailsProduct(null)}
+          onIssue={(product) => {
+            setSelected(product);
+            setShowForm(true);
+            setDetailsProduct(null);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        />
       )}
     </section>
+  );
+}
+
+function ProductDetailsScreen({
+  ru,
+  product,
+  tier,
+  price,
+  money,
+  onClose,
+  onIssue,
+}: {
+  ru: boolean;
+  product: CardProduct;
+  tier: Tier;
+  price?: ProductPrice;
+  money: (minor: number | null | undefined, currency?: string, scale?: number) => string;
+  onClose: () => void;
+  onIssue: (product: CardProduct) => void;
+}) {
+  const [openConditions, setOpenConditions] = useState(true);
+  const [openWhyPasses, setOpenWhyPasses] = useState(false);
+  const [openForbidden, setOpenForbidden] = useState(false);
+  const meta = tierMeta[tier];
+  return (
+    <div className="product-screen" role="dialog" aria-modal="true">
+      <div className="product-screen-topbar">
+        <button className="back-pill" onClick={onClose}>
+          <ChevronDown size={16} className="rotate-left" />
+          <span>{ru ? "Назад" : "Back"}</span>
+        </button>
+        <span className="product-screen-title">{ru ? "Новая карта" : "New card"}</span>
+        <span className="dots-pill">•••</span>
+      </div>
+      <div className="product-screen-body">
+        <div className={`product-hero tier-${tier}`}>
+          <div className="product-hero-badges">
+            <span className="badge"> Pay</span>
+            <span className="badge">G Pay</span>
+            <span className="badge badge-accent">Alipay</span>
+          </div>
+          <div className="product-hero-card">
+            <span className="product-hero-logo">{ru ? "Плати по всему миру" : "Pay worldwide"}</span>
+            <span className="product-hero-orb">{meta.art}</span>
+            <span className="product-hero-number">•••• 8820</span>
+            <span className="product-hero-currency">{product.currency}</span>
+            <img className="product-hero-chip" src="/chip.svg" alt="" aria-hidden="true" />
+          </div>
+          <h2>{ru ? `${meta.ru} карта` : `${meta.en} card`}</h2>
+          <p>{ru ? meta.ruDesc : meta.enDesc}</p>
+        </div>
+
+        <div className="product-feature-grid">
+          <Feature
+            ru={ru}
+            title="Пополнение через СБП"
+            desc={ru ? "Карта пополняется рублями" : "Top up in RUB via SBP"}
+            icon={<span className="feature-sbp">СБП</span>}
+          />
+          <Feature
+            ru={ru}
+            title={ru ? "Плати картой оффлайн" : "Pay offline"}
+            desc="Apple Pay, Google Pay, Alipay"
+            icon={<Smartphone size={18} />}
+          />
+          <Feature
+            ru={ru}
+            title={ru ? "Оплата такси и доставки" : "Rideshare & delivery"}
+            desc="Uber, Grab, Bolt"
+            icon={<Car size={18} />}
+          />
+          <Feature
+            ru={ru}
+            title={ru ? "Маркетплейсы" : "Marketplaces"}
+            desc="Amazon, AliExpress, eBay"
+            icon={<ShoppingBag size={18} />}
+          />
+          <Feature
+            ru={ru}
+            title={ru ? "Отели и авиабилеты" : "Hotels & flights"}
+            desc="Booking, Airbnb, Skyscanner"
+            icon={<Plane size={18} />}
+          />
+          <Feature
+            ru={ru}
+            title="3DS"
+            desc={ru ? "Безопасность онлайн-платежей" : "Secure online payments"}
+            icon={<Check size={18} />}
+          />
+        </div>
+
+        <div className="product-accordion">
+          <Accordion
+            ru={ru}
+            title={ru ? "Условия" : "Conditions"}
+            open={openConditions}
+            onToggle={() => setOpenConditions(!openConditions)}
+          >
+            <div className="accordion-row">
+              <span>{ru ? "Выпуск карты" : "Card issuance"}</span>
+              <b>
+                {price?.total_charge_minor != null ? money(price.total_charge_minor, price.currency, price.scale) : "—"}
+              </b>
+            </div>
+            <div className="accordion-row">
+              <span>{ru ? "Обслуживание" : "Maintenance"}</span>
+              <b className="accent">0 ₽/{ru ? "мес" : "mo"}</b>
+            </div>
+            <div className="accordion-row">
+              <span>{ru ? "Верификация" : "Verification"}</span>
+              <b>{ru ? "базовый KYC · 1 раз" : "basic KYC · once"}</b>
+            </div>
+            <div className="accordion-row">
+              <span>{ru ? "Комиссия за деклайн" : "Decline fee"}</span>
+              <b className="accent">0 ₽</b>
+            </div>
+          </Accordion>
+          <Accordion
+            ru={ru}
+            title={ru ? "Почему карта проходит" : "Why it works"}
+            open={openWhyPasses}
+            onToggle={() => setOpenWhyPasses(!openWhyPasses)}
+          >
+            {ru
+              ? "Трастовый BIN США — принимают рекламные кабинеты и маркетплейсы. Если оплата не пройдёт — перевыпустим карту на другом BIN бесплатно, комиссия за деклайн всегда 0 ₽."
+              : "Trusted US BIN — accepted by ad platforms and marketplaces. If a payment fails we reissue on another BIN for free; decline fee is always 0."}
+          </Accordion>
+          <Accordion
+            ru={ru}
+            title={ru ? "Запрещённые операции" : "Forbidden operations"}
+            open={openForbidden}
+            onToggle={() => setOpenForbidden(!openForbidden)}
+          >
+            {ru
+              ? "Азартные игры и казино, криптобиржи, P2P-переводы физлицам, снятие наличных. Такие операции отклоняются эмитентом автоматически."
+              : "Gambling, crypto exchanges, P2P transfers to individuals, cash withdrawals. These are declined by the issuer automatically."}
+          </Accordion>
+        </div>
+
+        <div className="product-kyc">
+          <span className="product-kyc-icon">
+            <ShieldCheck size={17} />
+          </span>
+          <div>
+            <b>{ru ? "Нужна базовая верификация" : "Basic verification required"}</b>
+            <p>
+              {ru
+                ? "После оформления попросим паспорт и селфи (≈2 минуты), затем пополните карту — и она активируется."
+                : "After checkout we will ask for a passport and a selfie (≈2 minutes); then top up the card to activate it."}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="product-screen-footer">
+        <button className="lime-action product-buy" onClick={() => onIssue(product)}>
+          <Sparkles size={16} />
+          {price?.total_charge_minor != null
+            ? `${ru ? "Купить за" : "Buy for"} ${money(price.total_charge_minor, price.currency, price.scale)}`
+            : ru
+              ? "Оформить выпуск"
+              : "Proceed"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Feature({ ru, title, desc, icon }: { ru: boolean; title: string; desc: string; icon: React.ReactNode }) {
+  return (
+    <div className="product-feature">
+      <div>
+        <b>{title}</b>
+        <p>{desc}</p>
+      </div>
+      <span className="product-feature-icon">{icon}</span>
+    </div>
+  );
+}
+
+function Accordion({
+  ru,
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  ru: boolean;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="product-accordion-item">
+      <button onClick={onToggle} aria-expanded={open}>
+        <span>{title}</span>
+        <ChevronDown size={16} className={open ? "chev-up" : ""} />
+      </button>
+      {open && <div className="product-accordion-content">{children}</div>}
+    </div>
   );
 }
 
