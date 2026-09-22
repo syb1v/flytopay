@@ -1,6 +1,7 @@
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flytopay.payments.models import PaymentAttempt
@@ -37,7 +38,20 @@ class PaymentService:
         attempt = PaymentAttempt(user_id=user_id, provider=provider, purpose=purpose, amount_minor=amount_minor, currency=currency.upper(), scale=scale, idempotency_key=idempotency_key, correlation_id=str(uuid4()), status="pending")
         db.add(attempt)
         # The local identity must survive a process crash during provider creation.
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            # Concurrent request with the same key won the insert; return its record.
+            await db.rollback()
+            existing = await db.execute(select(PaymentAttempt).where(PaymentAttempt.provider == provider, PaymentAttempt.idempotency_key == idempotency_key))
+            winner = existing.scalar_one_or_none()
+            if winner is None:
+                raise
+            if (winner.user_id != user_id or winner.amount_minor != amount_minor
+                    or winner.currency != currency.upper() or winner.scale != scale
+                    or winner.purpose != purpose):
+                raise ValueError("Idempotency key conflicts with an existing request")
+            return winner
         try:
             remote = await provider_client.create_checkout(CheckoutRequest(amount_minor=amount_minor, currency=currency.upper(), scale=scale, correlation_id=attempt.correlation_id, return_url=return_url), idempotency_key=idempotency_key)
         except Exception as exc:

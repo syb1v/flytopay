@@ -12,23 +12,41 @@ from flytopay.payments.service import PaymentService
 router = APIRouter(prefix="/api/v1/webhooks", tags=["Webhooks"])
 
 
+def _platega_authenticated(secret: str | None, received: str | None) -> bool:
+    return bool(secret and received and secret == received)
+
+
+def _pay2328_authenticated(service: PaymentService, payload: dict) -> bool:
+    provider = service.providers.get("pay2328")
+    if provider is None:
+        return False
+    verify = getattr(provider, "verify_webhook", None)
+    return bool(verify and verify(payload))
+
+
 @router.post("/{provider}", status_code=status.HTTP_202_ACCEPTED)
 async def receive_provider_webhook(
     provider: str,
     request: Request,
     x_event_id: Annotated[str | None, Header()] = None,
+    x_secret: Annotated[str | None, Header(alias="X-Secret")] = None,
     x_telegram_bot_api_secret_token: Annotated[str | None, Header()] = None,
 ) -> dict[str, object]:
     if provider not in {"platega", "pay2328", "telegram_stars"}:
         raise HTTPException(status_code=404, detail="Unknown provider")
+    settings = get_settings()
+    payload = await request.json()
     if provider == "telegram_stars":
-        expected = get_settings().telegram_webhook_secret
+        expected = settings.telegram_webhook_secret
         if not expected or x_telegram_bot_api_secret_token != expected:
             raise HTTPException(status_code=503, detail="Webhook authentication is not configured")
+    elif provider == "platega":
+        if not _platega_authenticated(settings.platega_secret, x_secret):
+            raise HTTPException(status_code=401, detail="Invalid Platega webhook secret")
     else:
-        # Provider-specific authenticators are connected in their webhook adapters.
-        raise HTTPException(status_code=503, detail="Webhook authentication is not configured")
-    payload = await request.json()
+        service = PaymentService()
+        if not _pay2328_authenticated(service, payload):
+            raise HTTPException(status_code=401, detail="Invalid Pay2328 webhook signature")
     deduplication_key = x_event_id or str(payload.get("id") or payload.get("event_id") or "")
     if not deduplication_key:
         raise HTTPException(status_code=400, detail="Event identifier is required")

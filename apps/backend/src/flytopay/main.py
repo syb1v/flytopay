@@ -9,7 +9,9 @@ from flytopay.auth.routes import router as auth_router
 from flytopay.cards.lifecycle_routes import router as card_lifecycle_router
 from flytopay.cards.onboarding import router as issuance_router
 from flytopay.cards.routes import router as cards_router
+from flytopay.cards.webhooks import router as caas_webhooks_router
 from flytopay.config import get_settings
+from flytopay.config_validation import validate_runtime_environment
 from flytopay.issuance.onboarding import router as issuance_checkout_router
 from flytopay.payments.routes import router as payments_router
 from flytopay.payments.webhooks import router as webhooks_router
@@ -19,6 +21,7 @@ from flytopay.wallet.routes import router as wallet_router
 
 
 def create_app() -> FastAPI:
+    validate_runtime_environment()
     settings = get_settings()
     app = FastAPI(title="Flytopay API", version="0.2.0")
     app.add_middleware(
@@ -34,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(payments_router)
     app.include_router(webhooks_router)
+    app.include_router(caas_webhooks_router)
     app.include_router(wallet_router)
     app.include_router(telegram_router)
     app.include_router(cards_router)
