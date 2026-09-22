@@ -582,8 +582,16 @@ h1 {
   border: 0;
   border-radius: 30px;
   background: #19270022;
+  color: inherit;
+  font: inherit;
   font-weight: 700;
   cursor: pointer;
+}
+.balance-primary .balance-footer button {
+  color: #152000;
+}
+.eye-button {
+  color: inherit;
 }
 .balance-secondary .balance-footer button {
   background: #2b3824;
@@ -2954,11 +2962,6 @@ body {
     transform: scale(0.82);
     opacity: 0.6;
   }
-}
-/* Compact header for non-home views (section renders its own title) */
-.dashboard-header.compact-header > div:first-child .dashboard-eyebrow,
-.dashboard-header.compact-header > div:first-child h1 {
-  display: none;
 }
 /* Transaction row as button + card tag */
 button.tx-row {

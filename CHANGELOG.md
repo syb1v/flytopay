@@ -7,7 +7,12 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Changes for the next release will be collected here.
+### Fixed
+
+- Card scheme now renders from API data in the details dialog (both sides of the flip) — Mastercard cards no longer show VISA.
+- Removed blue accents from the balance block: the top-up button and the visibility dot inherit brand colors.
+- Restored the header title on History, Services, Profile, and Issuance pages; removed duplicated section titles and the empty space above them.
+- Recent transactions on the home screen use the exact history row design including type icons.
 
 ## [0.10.0] - 2026-09-22
 

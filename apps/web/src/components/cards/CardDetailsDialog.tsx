@@ -77,7 +77,7 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
                 <CardVisual
                   maskedPan={card.masked_pan ?? (card.last_four ? `•••• •••• •••• ${card.last_four}` : null)}
                   status={card.status}
-                  scheme="VISA"
+                  scheme={card.scheme ?? "VISA"}
                   holder={holder}
                   expiry={expiry}
                   cvv={details?.cvv ?? undefined}

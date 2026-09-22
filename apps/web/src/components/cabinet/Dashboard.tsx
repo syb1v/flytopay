@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowDownLeft,
   ArrowUpRight,
   CircleDollarSign,
   CreditCard,
@@ -325,10 +326,22 @@ export function Dashboard() {
         </div>
       </aside>
       <main className="dashboard-main">
-        <header className={`dashboard-header ${view !== "home" ? "compact-header" : ""}`}>
+        <header className="dashboard-header">
           <div>
             <span className="dashboard-eyebrow">{t.eyebrow}</span>
-            <h1>{t.title}</h1>
+            <h1>
+              {view === "home"
+                ? t.title
+                : view === "issue"
+                  ? t.issue
+                  : view === "services"
+                    ? language === "ru"
+                      ? "Сервисы"
+                      : "Services"
+                    : view === "history"
+                      ? t.history
+                      : t.profile}
+            </h1>
           </div>
           <div className="dashboard-header-actions">
             <button className="language-toggle" onClick={() => setLanguage(language === "ru" ? "en" : "ru")}>
@@ -466,9 +479,6 @@ export function Dashboard() {
         {view === "issue" && <IssueCardPanel />}
         {view === "services" && (
           <section className="services-panel">
-            <div className="section-heading">
-              <h2>{language === "ru" ? "Сервисы" : "Services"}</h2>
-            </div>
             <p className="services-intro">
               {language === "ru"
                 ? "Всё для работы с картами Flytopay в одном месте."
@@ -633,7 +643,15 @@ function RecentTransactions({
   errorLabel: string;
 }) {
   const [items, setItems] = useState<
-    Array<{ id: string; title: string; amount: string; positive: boolean; declined: boolean; time: string }>
+    Array<{
+      id: string;
+      title: string;
+      amount: string;
+      positive: boolean;
+      declined: boolean;
+      time: string;
+      isPositiveType: boolean;
+    }>
   >([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
@@ -656,6 +674,7 @@ function RecentTransactions({
               amount: positive ? `+ ${value}` : `− ${value}`,
               positive,
               declined,
+              isPositiveType: positive,
               time: tx.occurred_at
                 ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(
                     new Date(tx.occurred_at),
@@ -681,9 +700,12 @@ function RecentTransactions({
   if (state === "error") return <div className="history-empty-row">{errorLabel}</div>;
   if (!items.length) return <div className="history-empty-row">{emptyLabel}</div>;
   return (
-    <div className="recent-tx-list">
+    <div className="tx-list recent-tx-list">
       {items.map((item) => (
-        <div className="recent-tx-row" key={item.id}>
+        <div className={`tx-row ${item.declined ? "declined" : ""}`} key={item.id}>
+          <span className={`tx-icon ${item.isPositiveType && !item.declined ? "positive" : ""}`}>
+            {item.isPositiveType ? <ArrowDownLeft size={16} /> : <CreditCard size={16} />}
+          </span>
           <div className="tx-info">
             <p className="tx-title">{item.title}</p>
             <p className="tx-meta">
