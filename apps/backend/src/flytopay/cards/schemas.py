@@ -29,6 +29,8 @@ class CardResponse(ReadModel):
     scale: int
     rental_expires_at: datetime | None = None
     product_code: str | None = None
+    scheme: str | None = None
+    product_name: str | None = None
 
 
 class RentalResponse(ReadModel):

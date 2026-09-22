@@ -23,6 +23,7 @@ import {
   type ProductPrice,
 } from "../../lib/api";
 import { usePreferences } from "../providers/PreferencesProvider";
+import { Loader } from "../ui/loader";
 import { Modal } from "../ui/modal";
 import { CardVisual } from "./CardVisual";
 
@@ -100,11 +101,8 @@ export function IssueCardPanel() {
 
   if (loading)
     return (
-      <section className="page-panel">
-        <div className="panel-icon">
-          <CreditCard size={38} />
-        </div>
-        <h2>{ru ? "Загружаем продукты" : "Loading products"}</h2>
+      <section className="issue-page">
+        <Loader label={ru ? "Загружаем продукты" : "Loading products"} />
       </section>
     );
 

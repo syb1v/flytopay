@@ -2240,26 +2240,19 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+.recent-tx-list {
+  display: grid;
+  gap: 8px;
+}
 .recent-tx-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 11px 14px;
+  padding: 12px 14px;
   border: 1px solid #2c363d;
   border-radius: 14px;
   background: #192126;
-  font-size: 12.5px;
-}
-.recent-tx-row span {
-  overflow: hidden;
-  color: #c3ccd3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.recent-tx-row b {
-  flex-shrink: 0;
-  color: var(--white);
 }
 @media (max-width: 760px) {
   .product-feature-grid {
@@ -2919,4 +2912,83 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+/* Unified loader */
+.fly-loader {
+  display: flex;
+  min-height: 160px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.fly-loader-logo {
+  width: 52px;
+  height: 52px;
+}
+.fly-loader-ring {
+  transform-origin: center;
+  animation: fly-loader-spin 1.1s linear infinite;
+}
+.fly-loader-mark {
+  transform-origin: center;
+  animation: fly-loader-pulse 1.6s ease-in-out infinite;
+}
+.fly-loader p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+@keyframes fly-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fly-loader-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.82);
+    opacity: 0.6;
+  }
+}
+/* Compact header for non-home views (section renders its own title) */
+.dashboard-header.compact-header > div:first-child .dashboard-eyebrow,
+.dashboard-header.compact-header > div:first-child h1 {
+  display: none;
+}
+/* Transaction row as button + card tag */
+button.tx-row {
+  width: 100%;
+  border: 1px solid #2c363d;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+button.tx-row:hover {
+  border-color: #4c5a48;
+}
+.tx-card-tag {
+  margin-left: 6px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 11.5px;
+}
+.tx-modal-amount {
+  margin-bottom: 14px;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.tx-modal-amount.positive {
+  color: #9be26b;
+}
+.tx-modal-amount.negative {
+  color: #ff9b9b;
+}
+.tx-modal-amount.muted {
+  color: var(--muted);
 }

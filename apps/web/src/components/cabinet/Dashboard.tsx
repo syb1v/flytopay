@@ -35,6 +35,7 @@ import { CardVisual } from "../cards/CardVisual";
 import { IssueCardPanel } from "../cards/IssueCardPanel";
 import { TransactionsHistory } from "../cards/TransactionsHistory";
 import { Modal } from "../ui/modal";
+import { Loader } from "../ui/loader";
 
 type View = "home" | "issue" | "services" | "history" | "profile";
 
@@ -121,6 +122,28 @@ export function Dashboard() {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const cardsScroller = useRef<HTMLDivElement>(null);
+  const [telegramUser, setTelegramUser] = useState<{ name: string; id: string; initial: string }>({
+    name: "Flytopay",
+    id: "—",
+    initial: "F",
+  });
+
+  useEffect(() => {
+    const readUser = () => {
+      const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      if (user?.id) {
+        const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username || "Flytopay";
+        setTelegramUser({
+          name,
+          id: String(user.id),
+          initial: (user.first_name || user.username || "F").charAt(0).toUpperCase(),
+        });
+      }
+    };
+    readUser();
+    const timer = window.setTimeout(readUser, 500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!authReady) return;
@@ -256,7 +279,7 @@ export function Dashboard() {
       maskedPan={masked(card)}
       status={card.status}
       balance={money(card.balance_minor, card.currency, card.scale)}
-      scheme="VISA"
+      scheme={card.scheme ?? "VISA"}
       variant={cardVariant(card)}
     />
   );
@@ -293,28 +316,19 @@ export function Dashboard() {
             <span>Карты для зарубежных сервисов.</span>
           </div>
           <button className="profile-link" onClick={() => navigate("profile")}>
-            <span className="avatar-mark">А</span>
+            <span className="avatar-mark">{telegramUser.initial}</span>
             <span>
-              Flytopay<small>{t.profile}</small>
+              {telegramUser.name}
+              <small>{t.profile}</small>
             </span>
           </button>
         </div>
       </aside>
       <main className="dashboard-main">
-        <header className="dashboard-header">
+        <header className={`dashboard-header ${view !== "home" ? "compact-header" : ""}`}>
           <div>
             <span className="dashboard-eyebrow">{t.eyebrow}</span>
-            <h1>
-              {view === "home"
-                ? t.title
-                : view === "issue"
-                  ? t.issue
-                  : view === "services"
-                    ? "Сервисы"
-                    : view === "history"
-                      ? t.history
-                      : t.profile}
-            </h1>
+            <h1>{t.title}</h1>
           </div>
           <div className="dashboard-header-actions">
             <button className="language-toggle" onClick={() => setLanguage(language === "ru" ? "en" : "ru")}>
@@ -324,7 +338,7 @@ export function Dashboard() {
             <button className="support-button" onClick={() => setInfoModal(t.coming)} aria-label={t.support}>
               ?
             </button>
-            <span className="avatar-mark">А</span>
+            <span className="avatar-mark">{telegramUser.initial}</span>
           </div>
         </header>
         {view === "home" && (
@@ -502,10 +516,10 @@ export function Dashboard() {
         {view === "profile" && (
           <section className="profile-stack">
             <div className="profile-hero">
-              <div className="profile-avatar">А</div>
+              <div className="profile-avatar">{telegramUser.initial}</div>
               <div>
-                <span className="dashboard-eyebrow">FLYTOPAY ACCOUNT</span>
-                <h2>{language === "ru" ? "Ваш профиль" : "Your profile"}</h2>
+                <span className="dashboard-eyebrow">FLYTOPAY · {telegramUser.id}</span>
+                <h2>{telegramUser.name}</h2>
                 <p>
                   {language === "ru"
                     ? "Настройки кабинета, уведомления и безопасность"
@@ -618,7 +632,9 @@ function RecentTransactions({
   emptyLabel: string;
   errorLabel: string;
 }) {
-  const [items, setItems] = useState<Array<{ id: string; title: string; amount: string }>>([]);
+  const [items, setItems] = useState<
+    Array<{ id: string; title: string; amount: string; positive: boolean; declined: boolean; time: string }>
+  >([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
 
   useEffect(() => {
@@ -628,13 +644,25 @@ function RecentTransactions({
       .then((transactions) => {
         if (cancelled) return;
         setItems(
-          transactions.slice(0, 5).map((tx) => ({
-            id: tx.id,
-            title: tx.merchant_name ?? tx.type,
-            amount: new Intl.NumberFormat("ru-RU", { style: "currency", currency: tx.currency }).format(
+          transactions.slice(0, 5).map((tx) => {
+            const positive = tx.type === "refund" || tx.type === "topup" || tx.type === "fund";
+            const declined = tx.status === "declined" || tx.status === "canceled";
+            const value = new Intl.NumberFormat("ru-RU", { style: "currency", currency: tx.currency }).format(
               tx.amount_minor / 10 ** tx.scale,
-            ),
-          })),
+            );
+            return {
+              id: tx.id,
+              title: tx.merchant_name ?? tx.type,
+              amount: positive ? `+ ${value}` : `− ${value}`,
+              positive,
+              declined,
+              time: tx.occurred_at
+                ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(
+                    new Date(tx.occurred_at),
+                  )
+                : "",
+            };
+          }),
         );
         setState("ready");
       })
@@ -644,15 +672,32 @@ function RecentTransactions({
     };
   }, [cardId]);
 
-  if (state === "loading") return <div className="history-empty-row">…</div>;
+  if (state === "loading")
+    return (
+      <div className="recent-tx-list">
+        <Loader />
+      </div>
+    );
   if (state === "error") return <div className="history-empty-row">{errorLabel}</div>;
   if (!items.length) return <div className="history-empty-row">{emptyLabel}</div>;
   return (
-    <div className="history-grouped">
+    <div className="recent-tx-list">
       {items.map((item) => (
         <div className="recent-tx-row" key={item.id}>
-          <span>{item.title}</span>
-          <b>{item.amount}</b>
+          <div className="tx-info">
+            <p className="tx-title">{item.title}</p>
+            <p className="tx-meta">
+              {item.time}
+              <span className={item.declined ? "negative" : "positive-status"}>
+                • {item.declined ? "Отменено" : "Успешно"}
+              </span>
+            </p>
+          </div>
+          <span
+            className={`tx-amount ${item.positive ? (item.declined ? "muted" : "positive") : item.declined ? "muted" : "negative"}`}
+          >
+            {item.amount}
+          </span>
         </div>
       ))}
     </div>

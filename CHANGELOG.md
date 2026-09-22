@@ -9,6 +9,21 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.10.0] - 2026-09-22
+
+### Added
+
+- Transaction modal: tapping a history row opens unified modal with amount, status, type, card binding, country, MCC, fee, decline reason, and timestamp.
+- Unified animated loader (brand logo + spinner) for transactions history, recent activity, and product catalog.
+- Telegram identity in the cabinet: header and profile show the Telegram name and numeric id avatar.
+
+### Changed
+
+- Card scheme is now delivered by the cards API and rendered consistently everywhere (dashboard carousel, details dialog, catalog) — no more hardcoded VISA over Mastercard designs.
+- Recent transactions on the home screen now use the exact history page row design.
+- Removed duplicated page titles on Services, Profile, and Issuance screens (the section title is the single source).
+- Profile hero shows the Telegram user name instead of the generic "Your profile" label.
+
 ## [0.9.0] - 2026-09-22
 
 ### Added
@@ -124,7 +139,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/syb1v/flytopay/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/syb1v/flytopay/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/syb1v/flytopay/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/syb1v/flytopay/compare/v0.6.0...v0.7.0

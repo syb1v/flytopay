@@ -66,6 +66,8 @@ export type Card = {
   scale: number;
   rental_expires_at: string | null;
   product_code: string | null;
+  scheme: string | null;
+  product_name: string | null;
 };
 export type Rental = {
   id: string;
