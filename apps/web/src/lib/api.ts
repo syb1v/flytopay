@@ -112,6 +112,31 @@ export async function getProductPrices(): Promise<ProductPrice[]> {
   return response.json() as Promise<ProductPrice[]>;
 }
 
+export type CardDetails = {
+  card_id: string;
+  masked_pan: string | null;
+  last_four: string | null;
+  holder: string | null;
+  expiry_month: string | null;
+  expiry_year: string | null;
+  cvv: string | null;
+  currency: string;
+  status: string;
+  billing_address: {
+    line1: string | null;
+    city: string | null;
+    state: string | null;
+    postal_code: string | null;
+    country: string | null;
+  } | null;
+};
+
+export async function getCardDetails(cardId: string): Promise<CardDetails> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/details`, { credentials: "include" });
+  if (!response.ok) throw new Error("details_load_failed");
+  return response.json() as Promise<CardDetails>;
+}
+
 export type CardLifecycleResult = {
   card_id: string;
   status: string;

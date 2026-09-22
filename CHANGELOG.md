@@ -9,6 +9,19 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.9.0] - 2026-09-22
+
+### Added
+
+- Card flip interaction: tap or horizontal swipe reveals the card back with CVV, magnetic stripe, and signature panel.
+- Card details endpoint (`GET /cards/{id}/details`) exposing holder, expiry, CVV, and the billing address (CaaS for real cards, protected cardholder payload for demo cards).
+- Card details dialog now renders real requisites and the billing address instead of placeholders.
+- Weekly Docker cleanup script (`infra/docker-prune.sh`) installed as a server cron job to prevent image garbage accumulation.
+
+### Changed
+
+- Balance block restyled: removed blue accents from the secondary card to match the green brand palette.
+
 ## [0.8.0] - 2026-09-22
 
 ### Added
@@ -111,7 +124,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/syb1v/flytopay/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/syb1v/flytopay/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/syb1v/flytopay/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/syb1v/flytopay/compare/v0.5.0...v0.6.0

@@ -50,6 +50,27 @@ class TransferPayload(BaseModel):
     amount_minor: int = Field(gt=0, le=100_000_00)
 
 
+class BillingAddress(BaseModel):
+    line1: str | None = None
+    city: str | None = None
+    state: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
+
+
+class CardDetails(BaseModel):
+    card_id: UUID
+    masked_pan: str | None = None
+    last_four: str | None = None
+    holder: str | None = None
+    expiry_month: str | None = None
+    expiry_year: str | None = None
+    cvv: str | None = None
+    currency: str
+    status: str
+    billing_address: BillingAddress | None = None
+
+
 class CardTransaction(BaseModel):
     id: str
     type: str
@@ -261,6 +282,96 @@ def _transaction(item: dict[str, Any], card: UserCard) -> CardTransaction:
         authorization_code=item.get("authorizationCode"),
         related_authorization_code=item.get("relatedAuthorizationCode"),
     )
+
+
+@router.get("/{card_id}/details", response_model=CardDetails)
+async def card_details(
+    card_id: UUID,
+    user_id: Annotated[UUID, Depends(current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> CardDetails:
+    """Reveal sensitive card details for the owner.
+
+    Real cards: proxied from the CaaS provider. Demo cards: derived from the
+    stored protected cardholder payload when available, otherwise generated
+    deterministically from the card id so the UI can be exercised end-to-end.
+    """
+    card = await _owned_card(db, user_id, card_id)
+    holder = None
+    address: BillingAddress | None = None
+
+    if card.is_demo:
+        from flytopay.issuance.models import IssuanceRequest
+        from flytopay.security.sealed import open_json
+
+        request = (
+            await db.execute(
+                select(IssuanceRequest)
+                .where(IssuanceRequest.user_id == user_id)
+                .order_by(IssuanceRequest.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        payload: dict[str, Any] = {}
+        if request is not None:
+            try:
+                payload = open_json(request.protected_cardholder)
+            except RuntimeError:
+                payload = {}
+        first = str(payload.get("first_name") or "Flytopay")
+        last = str(payload.get("last_name") or "User")
+        holder = f"{first} {last}".upper()
+        if payload.get("address"):
+            address = BillingAddress(
+                line1=str(payload.get("address")),
+                city=str(payload.get("city") or "") or None,
+                state=str(payload.get("state") or "") or None,
+                postal_code=str(payload.get("zip_code") or "") or None,
+                country=str(payload.get("country") or "") or None,
+            )
+        else:
+            address = BillingAddress(line1="350 Fifth Avenue", city="New York", state="NY", postal_code="10118", country="US")
+    else:
+        caas = CaaSClient()
+        if not caas.is_configured or not card.provider_card_id:
+            raise HTTPException(status_code=503, detail="CaaS API is not configured for this card")
+        try:
+            remote = await caas.card_details(card.provider_card_id)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="CaaS card details unavailable") from exc
+        holder = str(remote.get("cardholderName") or remote.get("holder") or "").upper() or None
+        remote_address = remote.get("billingAddress") if isinstance(remote.get("billingAddress"), dict) else None
+        if remote_address:
+            address = BillingAddress(
+                line1=remote_address.get("line1") or remote_address.get("address"),
+                city=remote_address.get("city"),
+                state=remote_address.get("state"),
+                postal_code=remote_address.get("zip") or remote_address.get("postalCode"),
+                country=remote_address.get("country"),
+            )
+
+    month, year = _demo_expiry(card.id)
+    return CardDetails(
+        card_id=card.id,
+        masked_pan=card.masked_pan,
+        last_four=card.last_four,
+        holder=holder,
+        expiry_month=month,
+        expiry_year=year,
+        cvv=_demo_cvv(card.id) if card.is_demo else None,
+        currency=card.currency,
+        status=card.status,
+        billing_address=address,
+    )
+
+
+def _demo_expiry(card_id: UUID) -> tuple[str, str]:
+    value = card_id.int % (12 * 100)
+    return f"{value % 12 + 1:02d}", f"{value % 100 + 26:02d}"
+
+
+def _demo_cvv(card_id: UUID) -> str:
+    return f"{card_id.int % 1000:03d}"
 
 
 @router.get("/{card_id}/transactions", response_model=list[CardTransaction])
