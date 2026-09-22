@@ -63,5 +63,5 @@ async def receive_caas_webhook(
     if event.actionable:
         # Card state synchronization is worker-driven; ingestion is intentionally
         # decoupled so provider retries never block on processing.
-        logger.info("caas_webhook_accepted", extra={"event": event.event.value, "event_id": deduplication_key})
+        logger.info("caas_webhook_accepted", caas_event=event.event.value, event_id=deduplication_key)
     return {"success": True, "status": 202, "data": {"accepted": True, "duplicate": False}}

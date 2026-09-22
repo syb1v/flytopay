@@ -194,3 +194,12 @@ async def test_refund_captured_is_idempotent():
     entry = await refund_captured(db, wallet.user_id, 500, external_key="refund-1")
     assert entry.direction == "credit"
     assert wallet.available_minor == 10_500
+
+
+def test_structlog_logger_accepts_event_kwargs() -> None:
+    from flytopay.logging_config import configure_logging, get_logger
+
+    configure_logging()
+    logger = get_logger(__name__)
+    # Must not raise: PrintLogger lacked `.name`; kwargs (not `extra=`) are the structlog API.
+    logger.info("probe_event", caas_event="card.frozen", event_id="probe-1")
