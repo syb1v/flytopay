@@ -7,7 +7,10 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-Changes for the next release will be collected here.
+### Changed
+
+- README rewritten for the current state: full API surface, environment reference, 2328 CaaS issuance/webhook flow, operations (deploy, workers, backups, cleanup), and server access.
+- `.env.example` lists the production-only `POSTGRES_PASSWORD` and `REDIS_PASSWORD`.
 
 ## [0.13.0] - 2026-09-22
 
