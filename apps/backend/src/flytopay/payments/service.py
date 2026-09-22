@@ -15,6 +15,10 @@ from flytopay.payments.providers import (
 )
 
 
+class IdempotencyConflictError(ValueError):
+    """Raised when a stored idempotency key belongs to a different request."""
+
+
 class PaymentService:
     def __init__(self, providers: dict[str, PaymentProvider] | None = None) -> None:
         self.providers = providers or {"platega": PlategaClient(), "pay2328": Pay2328Client(), "telegram_stars": TelegramStarsProvider()}
@@ -25,17 +29,14 @@ class PaymentService:
         existing = await db.execute(select(PaymentAttempt).where(PaymentAttempt.provider == provider, PaymentAttempt.idempotency_key == idempotency_key))
         attempt = existing.scalar_one_or_none()
         if attempt is not None:
-            if (attempt.user_id != user_id or attempt.amount_minor != amount_minor
-                    or attempt.currency != currency.upper() or attempt.scale != scale
-                    or attempt.purpose != purpose):
-                raise ValueError("Idempotency key conflicts with an existing request")
+            self._verify_request_matches(attempt, user_id=user_id, purpose=purpose, amount_minor=amount_minor, currency=currency, scale=scale, return_url=return_url)
             return attempt
         provider_client = self.providers.get(provider)
         if provider_client is None:
             raise ValueError("Unsupported payment provider")
         if isinstance(provider_client, (DisabledProvider, TelegramStarsProvider)):
             raise TypeError("Payment provider is not configured")
-        attempt = PaymentAttempt(user_id=user_id, provider=provider, purpose=purpose, amount_minor=amount_minor, currency=currency.upper(), scale=scale, idempotency_key=idempotency_key, correlation_id=str(uuid4()), status="pending")
+        attempt = PaymentAttempt(user_id=user_id, provider=provider, purpose=purpose, amount_minor=amount_minor, currency=currency.upper(), scale=scale, idempotency_key=idempotency_key, correlation_id=str(uuid4()), status="pending", metadata_json={"return_url": return_url})
         db.add(attempt)
         # The local identity must survive a process crash during provider creation.
         try:
@@ -47,10 +48,7 @@ class PaymentService:
             winner = existing.scalar_one_or_none()
             if winner is None:
                 raise
-            if (winner.user_id != user_id or winner.amount_minor != amount_minor
-                    or winner.currency != currency.upper() or winner.scale != scale
-                    or winner.purpose != purpose):
-                raise ValueError("Idempotency key conflicts with an existing request")
+            self._verify_request_matches(winner, user_id=user_id, purpose=purpose, amount_minor=amount_minor, currency=currency, scale=scale, return_url=return_url)
             return winner
         try:
             remote = await provider_client.create_checkout(CheckoutRequest(amount_minor=amount_minor, currency=currency.upper(), scale=scale, correlation_id=attempt.correlation_id, return_url=return_url), idempotency_key=idempotency_key)
@@ -63,3 +61,16 @@ class PaymentService:
         attempt.checkout_url = remote.checkout_url
         await db.commit()
         return attempt
+
+    @staticmethod
+    def _verify_request_matches(attempt: PaymentAttempt, *, user_id: UUID, purpose: str, amount_minor: int, currency: str, scale: int, return_url: str) -> None:
+        stored_return_url = (attempt.metadata_json or {}).get("return_url")
+        if (
+            attempt.user_id != user_id
+            or attempt.amount_minor != amount_minor
+            or attempt.currency != currency.upper()
+            or attempt.scale != scale
+            or attempt.purpose != purpose
+            or stored_return_url != return_url
+        ):
+            raise IdempotencyConflictError("Idempotency key was reused with a different request")

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flytopay.auth.csrf import CSRF_COOKIE, issue_csrf_token
 from flytopay.auth.session import SESSION_COOKIE, create_session, current_user_id
 from flytopay.auth.telegram import TelegramInitDataError, validate_init_data
 from flytopay.config import get_settings
@@ -41,7 +42,9 @@ async def telegram_login(payload: TelegramLoginRequest, response: Response, db: 
     token, session = await create_session(db, account.user_id)
     await db.commit()
     response.set_cookie(SESSION_COOKIE, token, httponly=True, secure=get_settings().app_env == "production", samesite="lax", max_age=30 * 24 * 60 * 60)
-    return {"success": True, "status": 200, "data": {"userId": str(account.user_id), "sessionId": str(session.id)}}
+    csrf_token = issue_csrf_token()
+    response.set_cookie(CSRF_COOKIE, csrf_token, httponly=False, secure=get_settings().app_env == "production", samesite="lax", max_age=30 * 24 * 60 * 60)
+    return {"success": True, "status": 200, "data": {"userId": str(account.user_id), "sessionId": str(session.id), "csrfToken": csrf_token}}
 
 
 @router.post("/logout")

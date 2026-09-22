@@ -71,6 +71,13 @@ async def receive_provider_webhook(
                 if provider_client is not None:
                     try:
                         await finalize_payment(db, provider_client, attempt.id)
+                        event.processing_status = "processed"
                     except (RuntimeError, ValueError):
+                        # Durably record the failure so the reconciliation worker
+                        # retries instead of the error being silently swallowed.
                         await db.rollback()
+                        failures = int((event.payload or {}).get("_finalize_failures") or 0) + 1
+                        event.payload = {**(event.payload or {}), "_finalize_failures": failures}
+                        event.processing_status = "finalize_failed"
+                    await db.commit()
     return {"success": True, "status": 202, "data": {"accepted": True, "duplicate": False}}

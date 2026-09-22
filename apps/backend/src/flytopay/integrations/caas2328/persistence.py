@@ -5,7 +5,7 @@ import json
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, String, UniqueConstraint, select
+from sqlalchemy import DateTime, String, UniqueConstraint, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +27,7 @@ class CaaSOperationRecord(Base):
     provider_card_id: Mapped[str | None] = mapped_column(String(128))
     response: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[Any] = mapped_column(DateTime(timezone=True), server_default="now()", nullable=False)
-    updated_at: Mapped[Any] = mapped_column(DateTime(timezone=True), server_default="now()", nullable=False)
+    updated_at: Mapped[Any] = mapped_column(DateTime(timezone=True), server_default="now()", onupdate=func.now(), nullable=False)
 
 
 class IdempotencyConflict(ValueError):

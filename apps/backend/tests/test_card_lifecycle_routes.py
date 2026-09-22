@@ -12,9 +12,10 @@ from flytopay.main import app
 async def test_lifecycle_routes_require_auth() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         card_id = uuid4()
-        assert (await client.post(f"/api/v1/cards/{card_id}/freeze")).status_code == 401
-        assert (await client.post(f"/api/v1/cards/{card_id}/unfreeze")).status_code == 401
-        assert (await client.post(f"/api/v1/cards/{card_id}/close")).status_code == 401
+        # CSRF guard fires before session auth for cookie-less requests.
+        assert (await client.post(f"/api/v1/cards/{card_id}/freeze")).status_code == 403
+        assert (await client.post(f"/api/v1/cards/{card_id}/unfreeze")).status_code == 403
+        assert (await client.post(f"/api/v1/cards/{card_id}/close")).status_code == 403
         assert (await client.get(f"/api/v1/cards/{card_id}/transactions")).status_code == 401
 
 

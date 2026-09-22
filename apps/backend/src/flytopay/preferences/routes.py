@@ -5,12 +5,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flytopay.auth.csrf import verify_csrf
 from flytopay.auth.session import current_user_id
 from flytopay.db.models import UserPreference
 from flytopay.db.session import get_db
 from flytopay.preferences.schemas import PreferencesPatch, PreferencesResponse
 
-router = APIRouter(prefix="/api/v1/me/preferences", tags=["Preferences"])
+router = APIRouter(prefix="/api/v1/me/preferences", tags=["Preferences"], dependencies=[Depends(verify_csrf)])
 
 
 @router.get("", response_model=PreferencesResponse)

@@ -5,12 +5,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flytopay.auth.csrf import verify_csrf
 from flytopay.auth.session import current_user_id
 from flytopay.db.session import get_db
 from flytopay.issuance.models import IssuanceRequest
 from flytopay.payments.service import PaymentService
 
-router = APIRouter(prefix="/api/v1/issuance", tags=["Issuance"])
+router = APIRouter(prefix="/api/v1/issuance", tags=["Issuance"], dependencies=[Depends(verify_csrf)])
 payment_service = PaymentService()
 
 

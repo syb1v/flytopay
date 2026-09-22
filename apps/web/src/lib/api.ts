@@ -1,10 +1,17 @@
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "";
 
+function csrfHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  if (typeof document === "undefined") return extra;
+  const match = document.cookie.match(/(?:^|;\s*)flytopay_csrf=([^;]+)/);
+  const token = match?.[1] ? decodeURIComponent(match[1]) : "";
+  return token ? { ...extra, "X-CSRF-Token": token } : extra;
+}
+
 export async function loginWithTelegram(initData: string): Promise<void> {
   const response = await fetch(`${API_ORIGIN}/api/v1/auth/telegram`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...csrfHeaders() },
     body: JSON.stringify({ init_data: initData }),
   });
   if (!response.ok) throw new Error("telegram_auth_failed");
@@ -28,7 +35,7 @@ export async function updatePreferences(patch: Partial<Preferences>): Promise<Pr
   const response = await fetch(`${API_ORIGIN}/api/v1/me/preferences`, {
     method: "PATCH",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...csrfHeaders() },
     body: JSON.stringify(patch),
   });
   if (!response.ok) throw new Error("preferences_update_failed");
@@ -116,7 +123,7 @@ async function cardLifecycle(action: "freeze" | "unfreeze" | "close", cardId: st
   const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/${action}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...csrfHeaders() },
     body: JSON.stringify({}),
   });
   const data = await response.json().catch(() => null);
@@ -196,7 +203,7 @@ export async function getIssueQuote(input: CardholderInput) {
   const response = await fetch(`${API_ORIGIN}/api/v1/issuance/quote`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...csrfHeaders() },
     body: JSON.stringify(input),
   });
   const data = await response.json();
@@ -239,7 +246,7 @@ export async function createCheckout(
   const response = await fetch(`${API_ORIGIN}/api/v1/payments/checkout`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+    headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey, ...csrfHeaders() },
     body: JSON.stringify(input),
   });
   const data = await response.json();

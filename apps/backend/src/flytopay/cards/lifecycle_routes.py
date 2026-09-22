@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flytopay.auth.csrf import verify_csrf
 from flytopay.auth.session import current_user_id
 from flytopay.cards.models import UserCard
 from flytopay.db.session import get_db
@@ -20,7 +21,7 @@ from flytopay.integrations.caas2328.persistence import (
     save_operation_response,
 )
 
-router = APIRouter(prefix="/api/v1/cards", tags=["Cards"])
+router = APIRouter(prefix="/api/v1/cards", tags=["Cards"], dependencies=[Depends(verify_csrf)])
 
 
 class LifecycleResponse(BaseModel):
