@@ -212,12 +212,47 @@ export type CardTransaction = {
   related_authorization_code: string | null;
 };
 
-export async function getCardTransactions(cardId: string, limit = 50): Promise<CardTransaction[]> {
-  const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/transactions?limit=${limit}`, {
+const TRANSACTIONS_TTL_MS = 60_000;
+const TRANSACTIONS_FETCH_LIMIT = 100;
+const transactionsCache = new Map<string, { at: number; data: CardTransaction[] }>();
+const transactionsInFlight = new Map<string, Promise<CardTransaction[]>>();
+
+async function fetchCardTransactions(cardId: string): Promise<CardTransaction[]> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/cards/${cardId}/transactions?limit=${TRANSACTIONS_FETCH_LIMIT}`, {
     credentials: "include",
   });
   if (!response.ok) throw new Error("transactions_load_failed");
   return response.json() as Promise<CardTransaction[]>;
+}
+
+/**
+ * Cached card history: one network request per card per TTL window, shared by
+ * the home screen, history page and prefetch. Concurrent callers reuse the
+ * same in-flight request.
+ */
+export async function getCardTransactions(cardId: string, limit = 50): Promise<CardTransaction[]> {
+  const cached = transactionsCache.get(cardId);
+  if (cached && Date.now() - cached.at < TRANSACTIONS_TTL_MS) return cached.data.slice(0, limit);
+  let pending = transactionsInFlight.get(cardId);
+  if (!pending) {
+    pending = fetchCardTransactions(cardId)
+      .then((data) => {
+        transactionsCache.set(cardId, { at: Date.now(), data });
+        return data;
+      })
+      .finally(() => transactionsInFlight.delete(cardId));
+    transactionsInFlight.set(cardId, pending);
+  }
+  return (await pending).slice(0, limit);
+}
+
+export function prefetchCardTransactions(cardIds: string[]): void {
+  for (const id of cardIds) void getCardTransactions(id).catch(() => undefined);
+}
+
+export function invalidateCardTransactions(cardId?: string): void {
+  if (cardId) transactionsCache.delete(cardId);
+  else transactionsCache.clear();
 }
 
 export type AdminOverview = {

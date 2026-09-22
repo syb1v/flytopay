@@ -9,6 +9,22 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.12.0] - 2026-09-22
+
+### Added
+
+- Animated Mini App opening splash (brand logo, glow, progress bar) with a smooth fade into the home screen.
+- Smooth, fast page transitions and staggered element entrance on every view (respects reduced-motion).
+- Client-side transaction cache (60s TTL, shared in-flight requests) with prefetch of all card histories right after login.
+- History pagination: 20 operations per page with "Show more" / "Collapse".
+- Home recent operations show 3 items with an expander for the rest.
+
+### Changed
+
+- Card details: expiry and CVV share one row.
+- The card back shows only the last four digits and a masked CVV until details are revealed; holder and expiry on the front are masked until reveal as well.
+- History is sorted by date across all cards.
+
 ## [0.11.3] - 2026-09-22
 
 ### Fixed
@@ -213,7 +229,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.11.3...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/syb1v/flytopay/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/syb1v/flytopay/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/syb1v/flytopay/compare/v0.11.1...v0.11.2
 [0.11.1]: https://github.com/syb1v/flytopay/compare/v0.11.0...v0.11.1

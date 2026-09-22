@@ -43,6 +43,8 @@ function formatAmount(minor: number, currency: string, scale: number, positive: 
   return positive ? `+ ${value}` : `− ${value}`;
 }
 
+const PAGE_SIZE = 20;
+
 function dateGroupLabel(date: Date, ru: boolean) {
   return new Intl.DateTimeFormat(ru ? "ru-RU" : "en-US", { day: "numeric", month: "long" }).format(date);
 }
@@ -60,8 +62,11 @@ export function TransactionsHistory({ cards }: { cards: Card[] }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedTx, setSelectedTx] = useState<CardTransaction | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  const cardByNothing = useMemo(() => new Map<string, Card>(), []);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filter, filterCard, filterType]);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +81,9 @@ export function TransactionsHistory({ cards }: { cards: Card[] }) {
     )
       .then((results) => {
         if (cancelled) return;
-        setTransactions(results.flat() as CardTransaction[]);
+        const merged = results.flat() as CardTransaction[];
+        merged.sort((a, b) => (b.occurred_at ?? "").localeCompare(a.occurred_at ?? ""));
+        setTransactions(merged);
       })
       .catch(() => !cancelled && setError(true))
       .finally(() => !cancelled && setLoading(false));
@@ -104,13 +111,13 @@ export function TransactionsHistory({ cards }: { cards: Card[] }) {
 
   const grouped = useMemo(() => {
     const groups = new Map<string, CardTransaction[]>();
-    for (const tx of filtered) {
+    for (const tx of filtered.slice(0, visibleCount)) {
       const key = tx.occurred_at ? dateGroupLabel(new Date(tx.occurred_at), ru) : ru ? "Без даты" : "No date";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(tx);
     }
     return Array.from(groups.entries());
-  }, [filtered, ru]);
+  }, [filtered, ru, visibleCount]);
 
   const typeOptions = Array.from(new Set(transactions.map((tx) => tx.type)));
 
@@ -262,6 +269,23 @@ export function TransactionsHistory({ cards }: { cards: Card[] }) {
           </div>
         ))}
       </div>
+
+      {filtered.length > PAGE_SIZE && (
+        <div className="tx-pager">
+          <span>
+            {ru ? "Показано" : "Showing"} {Math.min(visibleCount, filtered.length)} / {filtered.length}
+          </span>
+          {visibleCount < filtered.length ? (
+            <button className="secondary-action" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>
+              {ru ? "Показать ещё" : "Show more"}
+            </button>
+          ) : (
+            <button className="secondary-action" onClick={() => setVisibleCount(PAGE_SIZE)}>
+              {ru ? "Свернуть" : "Collapse"}
+            </button>
+          )}
+        </div>
+      )}
 
       {selectedTx && (
         <TransactionModal tx={selectedTx} card={cardOf(selectedTx)} ru={ru} onClose={() => setSelectedTx(null)} />

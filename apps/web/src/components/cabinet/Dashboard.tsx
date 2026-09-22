@@ -19,6 +19,8 @@ import { PreferencesPanel } from "../settings/PreferencesPanel";
 import {
   getCards,
   getCardTransactions,
+  invalidateCardTransactions,
+  prefetchCardTransactions,
   getAdminStatus,
   getRentals,
   getWallet,
@@ -123,6 +125,8 @@ export function Dashboard() {
   const [cards, setCards] = useState<Card[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [dataError, setDataError] = useState(false);
+  const [booting, setBooting] = useState(true);
+  const [splashLeaving, setSplashLeaving] = useState(false);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const cardsScroller = useRef<HTMLDivElement>(null);
@@ -173,15 +177,36 @@ export function Dashboard() {
       .then(([nextWallet, nextCards, nextRentals, nextIsAdmin]) => {
         setWallet(nextWallet);
         setCards(nextCards);
+        prefetchCardTransactions(nextCards.map((card) => card.id));
         setRentals(nextRentals);
         setIsAdmin(nextIsAdmin);
       })
-      .catch(() => setDataError(true));
+      .catch(() => setDataError(true))
+      .finally(() => setBooting(false));
     return () => {
       window.clearTimeout(retryTimer);
       webApp.offEvent?.("viewportChanged", forceFullscreen);
     };
   }, [authReady]);
+
+  // Splash: stays until the first data load finishes (min 700ms, max 4s), then fades out.
+  useEffect(() => {
+    const safety = window.setTimeout(() => setBooting(false), 4000);
+    return () => window.clearTimeout(safety);
+  }, []);
+  const splashStart = useRef(Date.now());
+  useEffect(() => {
+    if (booting) return;
+    const wait = Math.max(0, 700 - (Date.now() - splashStart.current));
+    const leave = window.setTimeout(() => setSplashLeaving(true), wait);
+    return () => window.clearTimeout(leave);
+  }, [booting]);
+  const [splashGone, setSplashGone] = useState(false);
+  useEffect(() => {
+    if (!splashLeaving) return;
+    const done = window.setTimeout(() => setSplashGone(true), 520);
+    return () => window.clearTimeout(done);
+  }, [splashLeaving]);
 
   // The home view unmounts when navigating away; on return the carousel renders
   // at scrollLeft=0 while activeIndex keeps the previously selected card, leaving
@@ -237,6 +262,7 @@ export function Dashboard() {
         await unloadCard(card.id, amountMinor);
       }
       setAmountDialog(null);
+      invalidateCardTransactions(card.id);
       const [nextWallet, nextCards] = await Promise.all([getWallet(), getCards()]);
       setWallet(nextWallet);
       setCards(nextCards);
@@ -318,7 +344,17 @@ export function Dashboard() {
   );
 
   return (
-    <div className="dashboard-shell">
+    <div className={`dashboard-shell ${splashGone ? "is-ready" : ""}`}>
+      {!splashGone && (
+        <div className={`app-splash ${splashLeaving ? "is-leaving" : ""}`} aria-hidden="true">
+          <div className="app-splash-glow" />
+          <img className="app-splash-logo" src="/logo.svg" alt="" />
+          <strong className="app-splash-word">Flytopay</strong>
+          <span className="app-splash-bar">
+            <i />
+          </span>
+        </div>
+      )}
       <aside className="dashboard-sidebar">
         <a className="dashboard-brand" href="/">
           <img src="/logo.svg" alt="" />
@@ -386,262 +422,272 @@ export function Dashboard() {
             <span className="avatar-mark">{telegramUser.initial}</span>
           </div>
         </header>
-        {view === "home" && (
-          <>
-            <section className="balance-grid">
-              <article className="balance-card balance-primary">
-                <div className="balance-label">
-                  <CircleDollarSign size={18} /> {t.available}
-                  <button className="eye-button">◉</button>
-                </div>
-                <strong>{money(wallet?.available_minor, wallet?.currency, wallet?.scale)}</strong>
-                <div className="balance-footer">
-                  <small>{t.wallet}</small>
-                  <button onClick={() => setTopUpOpen(true)}>＋ {t.topup}</button>
-                </div>
-              </article>
-              <article className="balance-card balance-secondary">
-                <div className="balance-label">
-                  <CreditCard size={18} /> {t.cardsBalance}
-                </div>
-                <strong>
-                  {money(
-                    cardsTotalMinor,
-                    activeCard?.currency ?? wallet?.currency,
-                    activeCard?.scale ?? wallet?.scale ?? 2,
-                  )}
-                </strong>
-                <div className="balance-footer">
-                  <small>{activeCard ? `${t.activeCard} · •••• ${activeCard.last_four ?? "—"}` : t.coming}</small>
+        <div className="view-stage" key={view}>
+          {view === "home" && (
+            <>
+              <section className="balance-grid">
+                <article className="balance-card balance-primary">
+                  <div className="balance-label">
+                    <CircleDollarSign size={18} /> {t.available}
+                    <button className="eye-button">◉</button>
+                  </div>
+                  <strong>{money(wallet?.available_minor, wallet?.currency, wallet?.scale)}</strong>
+                  <div className="balance-footer">
+                    <small>{t.wallet}</small>
+                    <button onClick={() => setTopUpOpen(true)}>＋ {t.topup}</button>
+                  </div>
+                </article>
+                <article className="balance-card balance-secondary">
+                  <div className="balance-label">
+                    <CreditCard size={18} /> {t.cardsBalance}
+                  </div>
+                  <strong>
+                    {money(
+                      cardsTotalMinor,
+                      activeCard?.currency ?? wallet?.currency,
+                      activeCard?.scale ?? wallet?.scale ?? 2,
+                    )}
+                  </strong>
+                  <div className="balance-footer">
+                    <small>{activeCard ? `${t.activeCard} · •••• ${activeCard.last_four ?? "—"}` : t.coming}</small>
+                    <button onClick={() => navigate("issue")}>{t.issue} ↗</button>
+                  </div>
+                </article>
+              </section>
+              {isAdmin && (
+                <section className="admin-entry-card">
+                  <div>
+                    <span className="dashboard-eyebrow">ADMIN ACCESS</span>
+                    <strong>{language === "ru" ? "Админ-панель" : "Admin panel"}</strong>
+                    <small>
+                      {language === "ru"
+                        ? "Пользователи, карты, платежи и выпуск"
+                        : "Users, cards, payments and issuance"}
+                    </small>
+                  </div>
+                  <a href="/admin">{language === "ru" ? "Открыть" : "Open"} ↗</a>
+                </section>
+              )}
+              {dataError && <div className="data-warning">{t.coming}</div>}
+              <section className="dashboard-section">
+                <div className="section-heading">
+                  <h2>{t.myCards}</h2>
                   <button onClick={() => navigate("issue")}>{t.issue} ↗</button>
                 </div>
-              </article>
-            </section>
-            {isAdmin && (
-              <section className="admin-entry-card">
-                <div>
-                  <span className="dashboard-eyebrow">ADMIN ACCESS</span>
-                  <strong>{language === "ru" ? "Админ-панель" : "Admin panel"}</strong>
-                  <small>
-                    {language === "ru"
-                      ? "Пользователи, карты, платежи и выпуск"
-                      : "Users, cards, payments and issuance"}
-                  </small>
-                </div>
-                <a href="/admin">{language === "ru" ? "Открыть" : "Open"} ↗</a>
-              </section>
-            )}
-            {dataError && <div className="data-warning">{t.coming}</div>}
-            <section className="dashboard-section">
-              <div className="section-heading">
-                <h2>{t.myCards}</h2>
-                <button onClick={() => navigate("issue")}>{t.issue} ↗</button>
-              </div>
-              <div className="cards-scrollwrap">
-                {cards.length ? (
-                  <>
-                    <div ref={cardsScroller} onScroll={syncActiveCard} className="cards-row cards-snap">
-                      {cards.map((card, index) => (
+                <div className="cards-scrollwrap">
+                  {cards.length ? (
+                    <>
+                      <div ref={cardsScroller} onScroll={syncActiveCard} className="cards-row cards-snap">
+                        {cards.map((card, index) => (
+                          <button
+                            className="home-card-slide"
+                            key={card.id}
+                            onClick={() => setSelectedCard(card)}
+                            data-active={index === activeIndex ? "true" : "false"}
+                          >
+                            {renderCard(card)}
+                          </button>
+                        ))}
                         <button
-                          className="home-card-slide"
-                          key={card.id}
-                          onClick={() => setSelectedCard(card)}
-                          data-active={index === activeIndex ? "true" : "false"}
+                          className="new-card-tile new-card-size"
+                          data-active={activeIndex === cards.length ? "true" : "false"}
+                          onClick={() => {
+                            setActiveIndex(cards.length);
+                            navigate("issue");
+                          }}
                         >
-                          {renderCard(card)}
+                          <span>＋</span>
+                          <b>{t.newCard}</b>
+                          <small>{t.newCardHint}</small>
+                          <em>{t.start} ↗</em>
                         </button>
-                      ))}
-                      <button
-                        className="new-card-tile new-card-size"
-                        data-active={activeIndex === cards.length ? "true" : "false"}
-                        onClick={() => {
-                          setActiveIndex(cards.length);
-                          navigate("issue");
-                        }}
-                      >
-                        <span>＋</span>
-                        <b>{t.newCard}</b>
-                        <small>{t.newCardHint}</small>
-                        <em>{t.start} ↗</em>
-                      </button>
+                      </div>
+                      <div className="card-scroll-hint">
+                        {language === "ru" ? "Листайте карты" : "Swipe cards"}
+                        <span>← →</span>
+                      </div>
+                      <div className="card-dots">
+                        {cards.map((card, index) => (
+                          <i key={card.id} className={index === activeIndex ? "on" : ""} />
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="empty-panel">
+                      <span>▣</span>
+                      <div>
+                        <b>{t.coming}</b>
+                        <p>{t.cardHint}</p>
+                      </div>
                     </div>
-                    <div className="card-scroll-hint">
-                      {language === "ru" ? "Листайте карты" : "Swipe cards"}
-                      <span>← →</span>
-                    </div>
-                    <div className="card-dots">
-                      {cards.map((card, index) => (
-                        <i key={card.id} className={index === activeIndex ? "on" : ""} />
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="empty-panel">
-                    <span>▣</span>
-                    <div>
-                      <b>{t.coming}</b>
-                      <p>{t.cardHint}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-            {activeCard ? (
-              <section className="card-action-grid" aria-label={language === "ru" ? "Действия карты" : "Card actions"}>
-                <button onClick={() => cardAction("topup", activeCard)}>
-                  <WalletCards size={21} />
-                  <span>{t.topup}</span>
-                </button>
-                <button onClick={() => cardAction("transfer", activeCard)}>
-                  <Send size={21} />
-                  <span>{language === "ru" ? "Перевести" : "Transfer"}</span>
-                </button>
-                <button
-                  disabled={actionPending === `freeze:${activeCard.id}`}
-                  onClick={() => cardAction("freeze", activeCard)}
-                >
-                  <Snowflake size={21} />
-                  <span>
-                    {activeCard.status === "frozen"
-                      ? language === "ru"
-                        ? "Разморозить"
-                        : "Unfreeze"
-                      : language === "ru"
-                        ? "Заморозить"
-                        : "Freeze"}
-                  </span>
-                </button>
-                <button
-                  className="danger"
-                  disabled={actionPending === `close:${activeCard.id}`}
-                  onClick={() => cardAction("close", activeCard)}
-                >
-                  <XCircle size={21} />
-                  <span>{language === "ru" ? "Закрыть" : "Close"}</span>
-                </button>
-              </section>
-            ) : (
-              <section className="card-actions-banner" onClick={() => navigate("issue")}>
-                <div className="card-actions-banner-copy">
-                  <span className="dashboard-eyebrow">FLYTOPAY</span>
-                  <strong>{language === "ru" ? "Оплачивайте зарубежные сервисы" : "Pay for global services"}</strong>
-                  <small>{language === "ru" ? "Просто. Быстро. Без границ." : "Simple. Fast. Borderless."}</small>
+                  )}
                 </div>
-                <span className="card-actions-banner-orbit" aria-hidden="true">
-                  ✈
-                </span>
               </section>
-            )}
-            {actionError && <div className="data-warning">{actionError}</div>}
-            <section className="dashboard-section selected-card-summary">
-              <div className="section-heading">
-                <h2>{t.recent}</h2>
-                <span className="selected-card-label">
-                  {summaryCard ? `•••• ${summaryCard.last_four ?? "—"}` : "—"}
-                </span>
-              </div>
-              {summaryCard ? (
-                <RecentTransactions cardId={summaryCard.id} emptyLabel={t.noTransactions} errorLabel={t.coming} />
+              {activeCard ? (
+                <section
+                  className="card-action-grid"
+                  aria-label={language === "ru" ? "Действия карты" : "Card actions"}
+                >
+                  <button onClick={() => cardAction("topup", activeCard)}>
+                    <WalletCards size={21} />
+                    <span>{t.topup}</span>
+                  </button>
+                  <button onClick={() => cardAction("transfer", activeCard)}>
+                    <Send size={21} />
+                    <span>{language === "ru" ? "Перевести" : "Transfer"}</span>
+                  </button>
+                  <button
+                    disabled={actionPending === `freeze:${activeCard.id}`}
+                    onClick={() => cardAction("freeze", activeCard)}
+                  >
+                    <Snowflake size={21} />
+                    <span>
+                      {activeCard.status === "frozen"
+                        ? language === "ru"
+                          ? "Разморозить"
+                          : "Unfreeze"
+                        : language === "ru"
+                          ? "Заморозить"
+                          : "Freeze"}
+                    </span>
+                  </button>
+                  <button
+                    className="danger"
+                    disabled={actionPending === `close:${activeCard.id}`}
+                    onClick={() => cardAction("close", activeCard)}
+                  >
+                    <XCircle size={21} />
+                    <span>{language === "ru" ? "Закрыть" : "Close"}</span>
+                  </button>
+                </section>
               ) : (
-                <div className="history-empty-row">{t.coming}</div>
+                <section className="card-actions-banner" onClick={() => navigate("issue")}>
+                  <div className="card-actions-banner-copy">
+                    <span className="dashboard-eyebrow">FLYTOPAY</span>
+                    <strong>{language === "ru" ? "Оплачивайте зарубежные сервисы" : "Pay for global services"}</strong>
+                    <small>{language === "ru" ? "Просто. Быстро. Без границ." : "Simple. Fast. Borderless."}</small>
+                  </div>
+                  <span className="card-actions-banner-orbit" aria-hidden="true">
+                    ✈
+                  </span>
+                </section>
               )}
+              {actionError && <div className="data-warning">{actionError}</div>}
+              <section className="dashboard-section selected-card-summary">
+                <div className="section-heading">
+                  <h2>{t.recent}</h2>
+                  <span className="selected-card-label">
+                    {summaryCard ? `•••• ${summaryCard.last_four ?? "—"}` : "—"}
+                  </span>
+                </div>
+                {summaryCard ? (
+                  <RecentTransactions
+                    key={summaryCard.id}
+                    cardId={summaryCard.id}
+                    emptyLabel={t.noTransactions}
+                    errorLabel={t.coming}
+                  />
+                ) : (
+                  <div className="history-empty-row">{t.coming}</div>
+                )}
+              </section>
+            </>
+          )}
+          {view === "issue" && <IssueCardPanel />}
+          {view === "services" && (
+            <section className="services-panel">
+              <p className="services-intro">
+                {language === "ru"
+                  ? "Всё для работы с картами Flytopay в одном месте."
+                  : "Everything you need to manage Flytopay cards in one place."}
+              </p>
+              <div className="services-grid">
+                <button className="service-tile" onClick={() => navigate("issue")}>
+                  <span className="service-icon">
+                    <CreditCard size={22} />
+                  </span>
+                  <b>{language === "ru" ? "Выпуск карты" : "Issue a card"}</b>
+                  <small>
+                    {language === "ru" ? "Премиум, путешествия и подписки" : "Premium, travel and subscriptions"}
+                  </small>
+                </button>
+                <button className="service-tile" onClick={() => navigate("history")}>
+                  <span className="service-icon">
+                    <History size={22} />
+                  </span>
+                  <b>{language === "ru" ? "История операций" : "Transactions"}</b>
+                  <small>{language === "ru" ? "Фильтры по картам и типам" : "Filter by card and type"}</small>
+                </button>
+                <div className="service-tile disabled" aria-disabled="true">
+                  <span className="service-icon">
+                    <WalletCards size={22} />
+                  </span>
+                  <b>{language === "ru" ? "Пополнение баланса" : "Wallet top-up"}</b>
+                  <small>{language === "ru" ? "Скоро: СБП, карта, крипта" : "Soon: SBP, card, crypto"}</small>
+                </div>
+                <div className="service-tile disabled" aria-disabled="true">
+                  <span className="service-icon">
+                    <CircleDollarSign size={22} />
+                  </span>
+                  <b>{language === "ru" ? "Обмен валюты" : "Currency exchange"}</b>
+                  <small>{language === "ru" ? "Скоро: выгодные курсы" : "Soon: favourable rates"}</small>
+                </div>
+              </div>
             </section>
-          </>
-        )}
-        {view === "issue" && <IssueCardPanel />}
-        {view === "services" && (
-          <section className="services-panel">
-            <p className="services-intro">
-              {language === "ru"
-                ? "Всё для работы с картами Flytopay в одном месте."
-                : "Everything you need to manage Flytopay cards in one place."}
-            </p>
-            <div className="services-grid">
-              <button className="service-tile" onClick={() => navigate("issue")}>
-                <span className="service-icon">
-                  <CreditCard size={22} />
-                </span>
-                <b>{language === "ru" ? "Выпуск карты" : "Issue a card"}</b>
-                <small>
-                  {language === "ru" ? "Премиум, путешествия и подписки" : "Premium, travel and subscriptions"}
-                </small>
-              </button>
-              <button className="service-tile" onClick={() => navigate("history")}>
-                <span className="service-icon">
-                  <History size={22} />
-                </span>
-                <b>{language === "ru" ? "История операций" : "Transactions"}</b>
-                <small>{language === "ru" ? "Фильтры по картам и типам" : "Filter by card and type"}</small>
-              </button>
-              <div className="service-tile disabled" aria-disabled="true">
-                <span className="service-icon">
-                  <WalletCards size={22} />
-                </span>
-                <b>{language === "ru" ? "Пополнение баланса" : "Wallet top-up"}</b>
-                <small>{language === "ru" ? "Скоро: СБП, карта, крипта" : "Soon: SBP, card, crypto"}</small>
+          )}
+          {view === "history" && (
+            <section className="history-panel">
+              <TransactionsHistory cards={cards} />
+            </section>
+          )}
+          {view === "profile" && (
+            <section className="profile-stack">
+              <div className="profile-hero">
+                <div className="profile-avatar">{telegramUser.initial}</div>
+                <div>
+                  <span className="dashboard-eyebrow">FLYTOPAY · {telegramUser.id}</span>
+                  <h2>{telegramUser.name}</h2>
+                  <p>
+                    {language === "ru"
+                      ? "Настройки кабинета, уведомления и безопасность"
+                      : "Cabinet settings, notifications and security"}
+                  </p>
+                </div>
               </div>
-              <div className="service-tile disabled" aria-disabled="true">
-                <span className="service-icon">
-                  <CircleDollarSign size={22} />
-                </span>
-                <b>{language === "ru" ? "Обмен валюты" : "Currency exchange"}</b>
-                <small>{language === "ru" ? "Скоро: выгодные курсы" : "Soon: favourable rates"}</small>
+              <PreferencesPanel />
+              <div className="profile-menu">
+                <button>
+                  <ShieldIcon />
+                  <span>
+                    <b>{language === "ru" ? "Безопасность" : "Security"}</b>
+                    <small>
+                      {language === "ru" ? "Telegram-сессия и доступ к картам" : "Telegram session and card access"}
+                    </small>
+                  </span>
+                  <ArrowUpRight size={17} />
+                </button>
+                <button>
+                  <SupportIcon />
+                  <span>
+                    <b>{t.support}</b>
+                    <small>
+                      {language === "ru" ? "Помощь по платежам и выпуску карт" : "Help with payments and card issuance"}
+                    </small>
+                  </span>
+                  <ArrowUpRight size={17} />
+                </button>
+                <button>
+                  <DocumentIcon />
+                  <span>
+                    <b>{language === "ru" ? "Документы" : "Documents"}</b>
+                    <small>{language === "ru" ? "Условия использования и приватность" : "Terms and privacy"}</small>
+                  </span>
+                  <ArrowUpRight size={17} />
+                </button>
               </div>
-            </div>
-          </section>
-        )}
-        {view === "history" && (
-          <section className="history-panel">
-            <TransactionsHistory cards={cards} />
-          </section>
-        )}
-        {view === "profile" && (
-          <section className="profile-stack">
-            <div className="profile-hero">
-              <div className="profile-avatar">{telegramUser.initial}</div>
-              <div>
-                <span className="dashboard-eyebrow">FLYTOPAY · {telegramUser.id}</span>
-                <h2>{telegramUser.name}</h2>
-                <p>
-                  {language === "ru"
-                    ? "Настройки кабинета, уведомления и безопасность"
-                    : "Cabinet settings, notifications and security"}
-                </p>
-              </div>
-            </div>
-            <PreferencesPanel />
-            <div className="profile-menu">
-              <button>
-                <ShieldIcon />
-                <span>
-                  <b>{language === "ru" ? "Безопасность" : "Security"}</b>
-                  <small>
-                    {language === "ru" ? "Telegram-сессия и доступ к картам" : "Telegram session and card access"}
-                  </small>
-                </span>
-                <ArrowUpRight size={17} />
-              </button>
-              <button>
-                <SupportIcon />
-                <span>
-                  <b>{t.support}</b>
-                  <small>
-                    {language === "ru" ? "Помощь по платежам и выпуску карт" : "Help with payments and card issuance"}
-                  </small>
-                </span>
-                <ArrowUpRight size={17} />
-              </button>
-              <button>
-                <DocumentIcon />
-                <span>
-                  <b>{language === "ru" ? "Документы" : "Documents"}</b>
-                  <small>{language === "ru" ? "Условия использования и приватность" : "Terms and privacy"}</small>
-                </span>
-                <ArrowUpRight size={17} />
-              </button>
-            </div>
-          </section>
-        )}
+            </section>
+          )}
+        </div>
         <footer>Flytopay · {t.cardHint}</footer>
       </main>
       <nav className="mobile-dashboard-nav">
@@ -782,15 +828,16 @@ function RecentTransactions({
     }>
   >([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setState("loading");
-    getCardTransactions(cardId, 5)
+    getCardTransactions(cardId, 10)
       .then((transactions) => {
         if (cancelled) return;
         setItems(
-          transactions.slice(0, 5).map((tx) => {
+          transactions.slice(0, 10).map((tx) => {
             const positive = tx.type === "refund" || tx.type === "topup" || tx.type === "fund";
             const declined = tx.status === "declined" || tx.status === "canceled";
             const value = new Intl.NumberFormat("ru-RU", { style: "currency", currency: tx.currency }).format(
@@ -829,7 +876,7 @@ function RecentTransactions({
   if (!items.length) return <div className="history-empty-row">{emptyLabel}</div>;
   return (
     <div className="tx-list recent-tx-list">
-      {items.map((item) => (
+      {items.slice(0, expanded ? items.length : 3).map((item) => (
         <div className={`tx-row ${item.declined ? "declined" : ""}`} key={item.id}>
           <span className={`tx-icon ${item.isPositiveType && !item.declined ? "positive" : ""}`}>
             {item.isPositiveType ? <ArrowDownLeft size={16} /> : <CreditCard size={16} />}
@@ -850,6 +897,11 @@ function RecentTransactions({
           </span>
         </div>
       ))}
+      {items.length > 3 && (
+        <button className="tx-expand" onClick={() => setExpanded((value) => !value)}>
+          {expanded ? "Свернуть" : `Показать ещё ${items.length - 3}`}
+        </button>
+      )}
     </div>
   );
 }

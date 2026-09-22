@@ -28,6 +28,8 @@ export function CardVisual({
   expiry = "MM/YY",
   variant = "default",
   cvv,
+  lastFour,
+  revealed = false,
   flippable = false,
 }: {
   maskedPan?: string | null;
@@ -38,6 +40,8 @@ export function CardVisual({
   expiry?: string;
   variant?: string;
   cvv?: string;
+  lastFour?: string | null;
+  revealed?: boolean;
   flippable?: boolean;
 }) {
   const { preferences } = usePreferences();
@@ -128,8 +132,11 @@ export function CardVisual({
               <span className="card-back-signature-line" />
               <span className="card-back-cvv">
                 <small>CVV</small>
-                <b>{cvv ?? "•••"}</b>
+                <b>{revealed && cvv ? cvv : "•••"}</b>
               </span>
+            </div>
+            <div className="card-back-pan">
+              {revealed && maskedPan ? maskedPan : `••••  ••••  ••••  ${lastFour ?? "••••"}`}
             </div>
             <div className="card-back-note">
               {ru

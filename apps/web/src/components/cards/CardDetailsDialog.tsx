@@ -77,9 +77,11 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
                   maskedPan={card.masked_pan ?? (card.last_four ? `•••• •••• •••• ${card.last_four}` : null)}
                   status={card.status}
                   scheme={schemeForCard(card.scheme)}
-                  holder={holder}
-                  expiry={expiry}
+                  holder={revealed ? holder : "•••• ••••"}
+                  expiry={revealed ? expiry : "••/••"}
                   cvv={details?.cvv ?? undefined}
+                  lastFour={card.last_four}
+                  revealed={revealed}
                   variant={cardVariant(card)}
                   flippable
                 />
@@ -105,8 +107,10 @@ export function CardDetailsDialog({ card, open, onClose }: { card: Card | null; 
                           value={details.masked_pan ?? "—"}
                           ru={ru}
                         />
-                        <CopyField label={ru ? "Срок действия" : "Expiry"} value={expiry} ru={ru} />
-                        <CopyField label="CVV" value={details.cvv ?? "—"} ru={ru} />
+                        <div className="copy-grid-row">
+                          <CopyField label={ru ? "Срок действия" : "Expiry"} value={expiry} ru={ru} />
+                          <CopyField label="CVV" value={details.cvv ?? "—"} ru={ru} />
+                        </div>
                         <CopyField label={ru ? "Держатель" : "Cardholder"} value={holder} ru={ru} />
                         {address && addressLine.length > 0 && (
                           <CopyField

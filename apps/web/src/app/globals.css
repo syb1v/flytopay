@@ -3230,3 +3230,191 @@ button.tx-row:hover {
   width: 100%;
   margin-top: 14px;
 }
+/* Card back: masked PAN line */
+.card-back-pan {
+  position: absolute;
+  top: 48%;
+  left: 6%;
+  color: #ffffffd9;
+  font-family: ui-monospace, monospace;
+  font-size: clamp(10px, 2.6vw, 15px);
+  letter-spacing: 0.12em;
+}
+.card-back-note {
+  bottom: 22%;
+}
+/* Expiry + CVV on one line */
+.copy-grid-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+/* History pager + recent expander */
+.tx-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.tx-expand {
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed #3d4a35;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--lime);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* App opening splash */
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(ellipse at 50% 40%, #1c2d18 0, var(--graphite) 60%);
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
+}
+.app-splash.is-leaving {
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+.app-splash-glow {
+  position: absolute;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #a2ff3233, transparent 70%);
+  animation: splash-glow 2s ease-in-out infinite;
+}
+.app-splash-logo {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  animation: splash-logo-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  filter: drop-shadow(0 0 24px #a2ff3266);
+}
+.app-splash-word {
+  position: relative;
+  color: var(--white);
+  font-size: 26px;
+  letter-spacing: -0.5px;
+  animation: splash-rise 0.6s 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.app-splash-bar {
+  position: relative;
+  width: 120px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #ffffff14;
+  animation: splash-rise 0.6s 0.3s both;
+}
+.app-splash-bar i {
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: 3px;
+  background: var(--lime);
+  animation: splash-bar 1s ease-in-out infinite;
+}
+@keyframes splash-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes splash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes splash-glow {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+@keyframes splash-bar {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+/* Page + element entrance */
+.view-stage {
+  animation: view-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.view-stage > * {
+  animation: view-in 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.view-stage > *:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.view-stage > *:nth-child(3) {
+  animation-delay: 0.08s;
+}
+.view-stage > *:nth-child(4) {
+  animation-delay: 0.12s;
+}
+.view-stage > *:nth-child(5) {
+  animation-delay: 0.16s;
+}
+.view-stage > *:nth-child(n + 6) {
+  animation-delay: 0.2s;
+}
+.tx-row,
+.service-tile,
+.issue-tier-card {
+  animation: view-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-stage,
+  .view-stage > *,
+  .tx-row,
+  .service-tile,
+  .issue-tier-card,
+  .app-splash,
+  .app-splash * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
