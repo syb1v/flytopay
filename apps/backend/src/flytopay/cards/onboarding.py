@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Annotated
 from uuid import UUID, uuid5
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ from flytopay.cards.models import CardProduct
 from flytopay.db.session import get_db
 from flytopay.integrations.caas2328.client import CaaSClient
 from flytopay.issuance.models import IssuanceRequest
+from flytopay.ratelimit import rate_limit
 from flytopay.security.sealed import seal_json
 
 QUOTE_NAMESPACE = uuid5(UUID(int=0), "flytopay.quote")
@@ -25,12 +26,17 @@ def _quote_uuid(idempotency_key: str) -> UUID:
 router = APIRouter(prefix="/api/v1/issuance", tags=["Issuance"], dependencies=[Depends(verify_csrf)])
 
 
+SUPPORTED_COUNTRIES = frozenset({"US", "GB", "DE", "AE", "TR"})
+MIN_CARDHOLDER_AGE = 18
+MAX_CARDHOLDER_AGE = 120
+
+
 class CardholderPayload(BaseModel):
     product_code: str = Field(min_length=1, max_length=64)
     amount_minor: int = Field(gt=0)
     first_name: str = Field(min_length=1, max_length=80)
     last_name: str = Field(min_length=1, max_length=80)
-    email: str
+    email: EmailStr
     phone: str = Field(pattern=r"^\+[1-9]\d{7,14}$")
     date_of_birth: date
     country: str = Field(min_length=2, max_length=2)
@@ -42,7 +48,21 @@ class CardholderPayload(BaseModel):
     @field_validator("country")
     @classmethod
     def uppercase_country(cls, value: str) -> str:
-        return value.upper()
+        upper = value.upper()
+        if upper not in SUPPORTED_COUNTRIES:
+            raise ValueError(f"Unsupported cardholder country: {upper}")
+        return upper
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_age(cls, value: date) -> date:
+        today = datetime.now(UTC).date()
+        age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+        if not MIN_CARDHOLDER_AGE <= age <= MAX_CARDHOLDER_AGE:
+            raise ValueError(f"Cardholder must be between {MIN_CARDHOLDER_AGE} and {MAX_CARDHOLDER_AGE} years old")
+        if value > today:
+            raise ValueError("Date of birth cannot be in the future")
+        return value
 
 
 class ProductPrice(BaseModel):
@@ -84,6 +104,8 @@ async def quote(
     db: Annotated[AsyncSession, Depends(get_db)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> dict[str, object]:
+    if not await rate_limit("issuance:quote", str(user_id), limit=15):
+        raise HTTPException(status_code=429, detail="Too many quote requests")
     existing = None
     if idempotency_key:
         result = await db.execute(select(IssuanceRequest).where(IssuanceRequest.user_id == user_id, IssuanceRequest.id == _quote_uuid(idempotency_key)))

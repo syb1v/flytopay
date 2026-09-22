@@ -1,7 +1,7 @@
 import json
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from flytopay.auth.telegram import TelegramInitDataError, validate_init_data
 from flytopay.config import get_settings
 from flytopay.db.models import TelegramAccount, User
 from flytopay.db.session import get_db
+from flytopay.ratelimit import rate_limit
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
@@ -21,7 +22,10 @@ class TelegramLoginRequest(BaseModel):
 
 
 @router.post("/telegram")
-async def telegram_login(payload: TelegramLoginRequest, response: Response, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+async def telegram_login(payload: TelegramLoginRequest, response: Response, request: Request, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown").split(",")[0].strip()
+    if not await rate_limit("auth:telegram", client_ip, limit=30):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many login attempts")
     try:
         values = validate_init_data(payload.init_data, get_settings().telegram_bot_token or "")
     except TelegramInitDataError as exc:

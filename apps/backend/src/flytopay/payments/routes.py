@@ -10,6 +10,7 @@ from flytopay.auth.session import current_user_id
 from flytopay.config import get_settings
 from flytopay.db.session import get_db
 from flytopay.payments.service import IdempotencyConflictError, PaymentService
+from flytopay.ratelimit import rate_limit
 
 router = APIRouter(prefix="/api/v1/payments", tags=["Payments"], dependencies=[Depends(verify_csrf)])
 service = PaymentService()
@@ -44,6 +45,8 @@ async def create_checkout(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Idempotency-Key is required")
     if not _return_url_allowed(payload.return_url):
         raise HTTPException(status_code=422, detail="return_url must point to a Flytopay origin")
+    if not await rate_limit("payments:checkout", str(user_id), limit=20):
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many checkout requests")
     try:
         attempt = await service.create_checkout(db, user_id, **payload.model_dump(), idempotency_key=idempotency_key)
     except IdempotencyConflictError as exc:

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from flytopay.admin.routes import router as admin_router
+from flytopay.api.correlation import CorrelationIdMiddleware
 from flytopay.api.health import router as health_router
 from flytopay.auth.routes import router as auth_router
 from flytopay.cards.lifecycle_routes import router as card_lifecycle_router
@@ -29,8 +30,9 @@ def create_app() -> FastAPI:
         allow_origins=[settings.web_origin],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "Idempotency-Key", "X-Request-ID"],
+        allow_headers=["Content-Type", "Authorization", "Idempotency-Key", "X-Request-ID", "X-CSRF-Token", "X-Caas-Signature", "X-Caas-Event-Id", "X-Caas-Event", "X-Secret", "X-Event-Id", "X-Telegram-Bot-Api-Secret-Token"],
     )
+    app.add_middleware(CorrelationIdMiddleware)
     app.include_router(health_router)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(preferences_router)
