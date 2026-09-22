@@ -5,19 +5,33 @@ services:
     command: uvicorn flytopay.main:app --host 0.0.0.0 --port 8000 --proxy-headers
     expose: ["8000"]
     restart: unless-stopped
-    depends_on: [postgres, redis]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
   worker:
     image: ${IMAGE_PREFIX:-ghcr.io/syb1v/flytopay}-api:${IMAGE_TAG:-latest}
     env_file: .env
     command: celery -A flytopay.worker.celery_app worker --loglevel=INFO
     restart: unless-stopped
-    depends_on: [postgres, redis]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      api: {condition: service_healthy}
   scheduler:
     image: ${IMAGE_PREFIX:-ghcr.io/syb1v/flytopay}-api:${IMAGE_TAG:-latest}
     env_file: .env
     command: celery -A flytopay.worker.celery_app beat --loglevel=INFO
     restart: unless-stopped
-    depends_on: [postgres, redis]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      api: {condition: service_healthy}
   web:
     image: ${IMAGE_PREFIX:-ghcr.io/syb1v/flytopay}-web:${IMAGE_TAG:-latest}
     environment: {NEXT_PUBLIC_API_ORIGIN: "${NEXT_PUBLIC_API_ORIGIN:-https://api.flytopay.net}"}
@@ -29,11 +43,21 @@ services:
     environment: {POSTGRES_DB: "${POSTGRES_DB:-flytopay}", POSTGRES_USER: "${POSTGRES_USER:-flytopay}", POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"}
     volumes: ["postgres_data:/var/lib/postgresql/data"]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-flytopay}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes: ["redis_data:/data"]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
   proxy:
     image: caddy:2-alpine
     ports: ["80:80", "443:443"]

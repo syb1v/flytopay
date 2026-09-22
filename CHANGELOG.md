@@ -9,29 +9,31 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
-## [0.1.0] - 2026-09-22
+## [0.2.0] - 2026-09-22
 
 ### Added
 
-- Card carousel with active-card indicators and synchronized dashboard data.
-- Per-card actions for funding, transfers, freezing, unfreezing, and closing.
-- Card detail dialog opened only from the card surface.
-- Product picker entry points from the Cards and History views.
-- History view with operation filters and card grouping.
-- Responsive bottom navigation for the mobile cabinet.
-- Prettier configuration and formatting scripts for the web application.
+- Card lifecycle API: freeze, unfreeze, and close endpoints with CaaS idempotency records.
+- Card transactions API proxying provider history per card.
+- Issuance prices endpoint exposing live quotes per product.
+- Product tier catalog on the issuance screen with live pricing.
+- Fullscreen product details view with features, conditions, and purchase confirmation.
+- Transactions history screen with date grouping, card/type filters, and decline reasons.
+- Recent transactions preview on the home screen for the active card.
+- Real API wiring for freeze/unfreeze/close buttons with pending and error states.
+- Docker Compose health checks for postgres, redis, and api with ordered startup.
+- Deploy script logs API output when the health check fails.
+- CI now enforces Prettier formatting for the web app.
 
 ### Changed
 
-- Removed the standalone issuance destination from mobile navigation.
-- Removed wallet balance top-up from the profile page.
-- Updated the card visual and new-card tile proportions.
-- Added SemVer release documentation and a versioned changelog.
+- Card status changes now persist through the backend instead of local-only state.
+- Removed the dead ProductPickerDialog component.
 
 ### Fixed
 
-- Made mobile navigation items use equal-sized cells.
-- Replaced the non-standard CSS `end` alignment value with `flex-end`.
+- Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/syb1v/flytopay/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/syb1v/flytopay/releases/tag/v0.1.0
