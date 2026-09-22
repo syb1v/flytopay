@@ -26,7 +26,7 @@ def create_app() -> FastAPI:
     validate_runtime_environment()
     configure_logging()
     settings = get_settings()
-    app = FastAPI(title="Flytopay API", version="0.12.1")
+    app = FastAPI(title="Flytopay API", version="0.13.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin],

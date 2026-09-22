@@ -18,6 +18,7 @@ import {
   getCardProducts,
   getProductPrices,
   getIssueQuote,
+  issueCardFromWallet,
   type CardProduct,
   type CardholderInput,
   type ProductPrice,
@@ -58,7 +59,15 @@ export function IssueCardPanel() {
     state: "",
     zip_code: "",
   });
-  const [quote, setQuote] = useState<{ totalChargeMinor: number; feeMinor: number; currency: string } | null>(null);
+  const [quote, setQuote] = useState<{
+    issuanceId: string;
+    totalChargeMinor: number;
+    feeMinor: number;
+    currency: string;
+  } | null>(null);
+  const [issuing, setIssuing] = useState(false);
+  const [initialAmount, setInitialAmount] = useState("50");
+  const [issued, setIssued] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,7 +76,10 @@ export function IssueCardPanel() {
       .then(([items, priceList]) => {
         // The issuance showcase presents typed tiers only; raw provider
         // products without a recognized type stay off the storefront.
-        setProducts(items.filter((product) => tierForProduct(product.code) !== "default"));
+        // Real provider products take precedence; demo products only back an empty catalog.
+        const real = items.filter((product) => !product.code.startsWith("demo-"));
+        const showcase = real.length ? real : items;
+        setProducts(showcase.filter((product) => tierForProduct(product.code) !== "default"));
         setSelected(null);
         setPrices(Object.fromEntries(priceList.map((price) => [price.product_code, price])));
       })
@@ -89,15 +101,40 @@ export function IssueCardPanel() {
     setQuoteError(null);
     setQuote(null);
     try {
-      const input: CardholderInput = { ...form, product_code: selected.code, amount_minor: 5000, country };
+      const amountMinor = Math.round(Number.parseFloat(initialAmount.replace(",", ".")) * 100);
+      if (!Number.isFinite(amountMinor) || amountMinor <= 0)
+        throw new Error(ru ? "Укажите сумму пополнения" : "Enter an amount");
+      const input: CardholderInput = { ...form, product_code: selected.code, amount_minor: amountMinor, country };
       const result = await getIssueQuote(input);
       setQuote({
+        issuanceId: result.data.issuanceId,
         totalChargeMinor: result.data.totalChargeMinor,
         feeMinor: result.data.feeMinor,
         currency: result.data.currency,
       });
     } catch (error) {
       setQuoteError(error instanceof Error ? error.message : "quote_failed");
+    }
+  };
+
+  const issueCard = async () => {
+    if (!quote) return;
+    setIssuing(true);
+    setQuoteError(null);
+    try {
+      await issueCardFromWallet(quote.issuanceId);
+      setIssued(true);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "issue_failed";
+      setQuoteError(
+        code === "wallet.insufficient_balance"
+          ? ru
+            ? "Недостаточно средств на балансе — пополните баланс и повторите."
+            : "Insufficient wallet balance — top up and retry."
+          : code,
+      );
+    } finally {
+      setIssuing(false);
     }
   };
 
@@ -247,10 +284,37 @@ export function IssueCardPanel() {
               </strong>
             </p>
           )}
+          <label className="field-label">
+            {ru ? "Стартовый баланс карты, USD" : "Initial card balance, USD"}
+            <input
+              inputMode="decimal"
+              value={initialAmount}
+              onChange={(event) => {
+                setInitialAmount(event.target.value.replace(/[^\d.,]/g, ""));
+                setQuote(null);
+              }}
+            />
+          </label>
           {quoteError && <p className="error-text">{quoteError}</p>}
-          <button className="lime-action" onClick={askQuote}>
-            {ru ? "Рассчитать стоимость" : "Calculate price"}
-          </button>
+          {issued ? (
+            <p className="quote-result">
+              {ru
+                ? "Карта выпускается. Она появится на главной через несколько секунд."
+                : "Your card is being issued. It will appear on the home screen in a few seconds."}
+            </p>
+          ) : quote ? (
+            <button className="lime-action" disabled={issuing} onClick={issueCard}>
+              {issuing
+                ? "…"
+                : ru
+                  ? `Выпустить за ${(quote.totalChargeMinor / 100).toFixed(2)} ${quote.currency} с баланса`
+                  : `Issue for ${(quote.totalChargeMinor / 100).toFixed(2)} ${quote.currency} from balance`}
+            </button>
+          ) : (
+            <button className="lime-action" onClick={askQuote}>
+              {ru ? "Рассчитать стоимость" : "Calculate price"}
+            </button>
+          )}
         </div>
       )}
 

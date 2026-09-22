@@ -303,6 +303,7 @@ export async function getIssueQuote(input: CardholderInput) {
   if (!response.ok) throw new Error(data.detail ?? "quote_failed");
   return data as {
     data: {
+      issuanceId: string;
       amountMinor: number;
       feeMinor: number;
       totalChargeMinor: number;
@@ -311,6 +312,20 @@ export async function getIssueQuote(input: CardholderInput) {
       planVersion: number;
     };
   };
+}
+
+export async function issueCardFromWallet(
+  issuanceId: string,
+): Promise<{ cardId: string; status: string; orderId: string | null }> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/issuance/${issuanceId}/issue`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrfHeaders() },
+    body: "{}",
+  });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.detail ?? "issue_failed");
+  return data.data;
 }
 
 export async function getCards(): Promise<Card[]> {

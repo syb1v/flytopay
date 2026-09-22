@@ -189,6 +189,25 @@ export function Dashboard() {
     };
   }, [authReady]);
 
+  // While a real card is being issued, refresh the card list until it settles.
+  const hasIssuing = cards.some((card) => card.status === "issuing");
+  useEffect(() => {
+    if (!hasIssuing) return;
+    const timer = window.setInterval(() => {
+      void getCards()
+        .then(setCards)
+        .catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [hasIssuing]);
+
+  useEffect(() => {
+    if (view !== "home" || !authReady) return;
+    void getCards()
+      .then(setCards)
+      .catch(() => undefined);
+  }, [view, authReady]);
+
   // Splash: stays until the first data load finishes (min 700ms, max 4s), then fades out.
   useEffect(() => {
     const safety = window.setTimeout(() => setBooting(false), 4000);

@@ -118,6 +118,11 @@ async def quote(
     caas = CaaSClient()
     if not caas.is_configured:
         raise HTTPException(status_code=503, detail="CaaS API is not configured")
+    from flytopay.integrations.caas2328.limits import get_limits
+
+    limits = await get_limits(caas)
+    if payload.amount_minor < limits.min_issue_minor:
+        raise HTTPException(status_code=422, detail=f"funding.below_minimum:{limits.min_issue_minor}")
     try:
         result = await caas.quote(operation="issue", amount_minor=payload.amount_minor, product_code=product.code)
     except Exception as exc:
@@ -136,3 +141,21 @@ async def quote(
             return {"success": True, "status": 200, "data": {"issuanceId": str(winner.id), "productCode": winner.product_code, "currency": winner.currency, "amountMinor": winner.amount_minor, "feeMinor": winner.fee_minor, "totalChargeMinor": winner.total_charge_minor, "planCode": None, "planVersion": None, "duplicate": True}}
         raise
     return {"success": True, "status": 200, "data": {"issuanceId": str(request.id), "productCode": product.code, "currency": product.currency, "amountMinor": payload.amount_minor, "feeMinor": result.get("feeMinor"), "totalChargeMinor": result.get("totalChargeMinor"), "planCode": result.get("planCode"), "planVersion": result.get("planVersion")}}
+
+
+@router.post("/{issuance_id}/issue")
+async def issue_from_wallet(
+    issuance_id: UUID,
+    user_id: Annotated[UUID, Depends(current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, object]:
+    """Issue a real card, paying the quoted total from the Flytopay wallet."""
+    from flytopay.cards.issuance import IssuanceError, start_issuance
+
+    if not await rate_limit("issuance:issue", str(user_id), limit=5):
+        raise HTTPException(status_code=429, detail="Too many issuance requests")
+    try:
+        card = await start_issuance(db, user_id, issuance_id)
+    except IssuanceError as exc:
+        raise HTTPException(status_code=exc.status, detail=exc.code) from exc
+    return {"success": True, "status": 202, "data": {"cardId": str(card.id), "status": card.status, "orderId": card.issue_order_id}}

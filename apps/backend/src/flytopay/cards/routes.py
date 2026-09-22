@@ -27,7 +27,7 @@ async def cards(user_id: Annotated[UUID, Depends(current_user_id)], db: Annotate
     result = await db.execute(
         select(UserCard, CardProduct.code, CardProduct.scheme, CardProduct.name)
         .join(CardProduct, CardProduct.id == UserCard.product_id)
-        .where(UserCard.user_id == user_id)
+        .where(UserCard.user_id == user_id, UserCard.status.not_in(["failed"]))
         .order_by(UserCard.created_at.desc())
     )
     return [

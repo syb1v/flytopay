@@ -9,6 +9,22 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.13.0] - 2026-09-22
+
+### Added
+
+- Real card issuance through 2328 CaaS: the quoted total is reserved in the Flytopay wallet, a cardholder is created (idempotent by `externalRef`), `POST /cards` is submitted, and the card appears as "issuing" until the order settles.
+- Issue order settlement via both the `card.created`/`card.failed` webhooks and a 30-second Celery poller of `GET /orders/{orderId}`; success captures the reservation and hydrates last4/masked number/balance, failure releases it.
+- `POST /api/v1/issuance/{id}/issue` endpoint and an "Issue from balance" button with a configurable initial card balance.
+- 2328 account limits (min issue/fund/unload, max fund) enforced before calling the provider.
+- Storefront shows the real 2328 products (Visa, Mastercard, USD Virtual) mapped to fixed tiers; demo products only back an empty catalog.
+
+### Changed
+
+- Real-card freeze/unfreeze/close run synchronously against 2328 (their contract is synchronous) and surface provider error codes.
+- Real-card fund reserves the wallet amount up front and captures/releases it when the order settles; unload credits the wallet with the provider-reported amount; card balance is refreshed from `GET /cards/{id}/balance`.
+- Product sync stores the provider's `providerCode` (core-1/core-2) required for issuance.
+
 ## [0.12.1] - 2026-09-22
 
 ### Fixed
@@ -244,7 +260,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/syb1v/flytopay/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/syb1v/flytopay/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/syb1v/flytopay/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/syb1v/flytopay/compare/v0.11.2...v0.11.3

@@ -72,6 +72,12 @@ async def apply_caas_event(db, event: str, data: dict[str, Any]) -> bool:
     """Project a CaaS event onto the local card row. Returns True when a card changed."""
     from flytopay.cards.models import UserCard
 
+    if event in {"card.created", "card.failed"} and isinstance(data.get("orderId"), str):
+        from flytopay.cards.issuance import apply_issue_order
+
+        order = {"orderId": data["orderId"], "status": "completed" if event == "card.created" else "failed", "cardId": data.get("cardId")}
+        return await apply_issue_order(db, order) not in {"unknown", "processing"}
+
     card_id = data.get("cardId")
     if not isinstance(card_id, str) or not card_id:
         return False

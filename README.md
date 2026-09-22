@@ -1,6 +1,6 @@
 # Flytopay
 
-**Current version:** `0.12.1`
+**Current version:** `0.13.0`
 
 Production-ready platform for virtual foreign cards with a public website,
 authenticated cabinet, Telegram Mini App, payment integrations, and 2328 CaaS

@@ -25,6 +25,9 @@ async def sync_provider_catalog(db: AsyncSession) -> None:
             product = result.scalar_one_or_none()
             if product is None:
                 product = CardProduct(code=code, provider_code=code, name=code, scheme="unknown", currency="USD")
+            provider_code = item.get("providerCode")
+            if isinstance(provider_code, str) and provider_code.startswith("core-"):
+                product.provider_code = provider_code
             product.name = str(item.get("name") or product.name)
             product.scheme = str(item.get("scheme") or product.scheme).lower()
             product.currency = str(item.get("currency") or product.currency).upper()

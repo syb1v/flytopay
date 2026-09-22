@@ -44,8 +44,16 @@ export const tierMeta: Record<CardTier, TierMeta> = {
  * The same product code MUST resolve to the same tier on every screen:
  * home carousel, card details dialog, catalog, and transaction modals.
  */
+/** Real 2328 products carry no tier semantics — bind them explicitly and consistently. */
+const PROVIDER_PRODUCT_TIERS: Record<string, CardTier> = {
+  visa: "premium",
+  mastercard: "travel",
+  "usd-virtual": "subs",
+};
+
 export function tierForProduct(productCode: string | null | undefined): CardTier {
   const value = (productCode ?? "").toLowerCase();
+  if (PROVIDER_PRODUCT_TIERS[value]) return PROVIDER_PRODUCT_TIERS[value];
   if (value.includes("premium") || value.includes("black") || value.includes("metal")) return "premium";
   if (value.includes("travel") || value.includes("trip") || value.includes("journey")) return "travel";
   if (value.includes("sub") || value.includes("subscription")) return "subs";

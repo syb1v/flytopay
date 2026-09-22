@@ -5,6 +5,7 @@ request path; the API only creates the idempotent operation record and enqueues
 the external call.
 """
 
+import contextlib
 from datetime import datetime
 from typing import Annotated, Any
 from uuid import UUID, uuid4
@@ -121,9 +122,91 @@ async def _enqueue_lifecycle(
     if card.is_demo:
         operation_status = await _execute_demo_lifecycle(db, card, record, kind, key)
         return LifecycleResponse(card_id=card.id, status=card.status, operation_status=operation_status, order_id=None)
+    if kind in {"freeze", "unfreeze", "close"}:
+        # 2328 answers these synchronously (200 with the card) — no worker hop needed.
+        operation_status = await _execute_real_lifecycle(db, card, record, kind, key)
+        return LifecycleResponse(card_id=card.id, status=card.status, operation_status=operation_status, order_id=record.provider_order_id)
+    if kind == "fund":
+        from flytopay.ledger.service import LedgerError, reserve_wallet
+
+        amount = payload.get("amountMinor")
+        try:
+            await reserve_wallet(db, card.user_id, int(amount), external_key=f"fund:{key}")
+        except (LedgerError, TypeError, ValueError) as exc:
+            await save_operation_response(db, record, status="failed", response={"error": "wallet_insufficient_balance"})
+            await db.commit()
+            raise HTTPException(status_code=402, detail="wallet.insufficient_balance") from exc
     await db.commit()
     _enqueue_task(key, str(card.id), kind)
     return LifecycleResponse(card_id=card.id, status=card.status, operation_status="processing", order_id=None)
+
+
+async def _execute_real_lifecycle(db: AsyncSession, card: UserCard, record, kind: str, key: str) -> str:
+    from flytopay.integrations.caas2328.client import CaaSError
+
+    caas = CaaSClient()
+    if not caas.is_configured:
+        raise HTTPException(status_code=503, detail="caas.not_configured")
+    try:
+        if kind == "freeze":
+            response = await caas.freeze_card(card.provider_card_id, idempotency_key=key)
+        elif kind == "unfreeze":
+            response = await caas.unfreeze_card(card.provider_card_id, idempotency_key=key)
+        else:
+            response = await caas.close_card(card.provider_card_id, idempotency_key=key)
+    except CaaSError as exc:
+        await save_operation_response(db, record, status="failed", response={"error": exc.code, "status": exc.status})
+        await db.commit()
+        # card.frozen on freeze / card.invalid_state etc. are business errors, not outages.
+        raise HTTPException(status_code=409 if exc.status in {409, 422} else 502, detail=exc.code or "provider.error") from exc
+    data = response.data
+    remote_status = data.get("status")
+    if response.status_code == 202 or remote_status in {"pending", "closing"}:
+        record.provider_order_id = data.get("orderId") if isinstance(data.get("orderId"), str) else None
+        await save_operation_response(db, record, status="processing", response=dict(data))
+        await db.commit()
+        return "processing"
+    if remote_status in {"active", "frozen", "suspended", "closed", "expired"}:
+        card.status = remote_status
+    else:
+        await _apply_terminal_status(db, card, kind)
+    await save_operation_response(db, record, status="completed", response=dict(data))
+    await db.commit()
+    return "completed"
+
+
+async def _finalize_money_order(db: AsyncSession, card: UserCard, record, kind: str, key: str, order: dict[str, Any]) -> str:
+    """Apply a terminal fund/unload order to the wallet and card balance. Idempotent via ledger keys."""
+    from flytopay.ledger.service import LedgerError, capture_reservation, credit_wallet, release_reservation
+
+    status = str(order.get("status") or "processing")
+    if status == "processing":
+        return "processing"
+    if kind == "fund":
+        try:
+            if status == "completed":
+                await capture_reservation(db, f"fund:{key}", kind="card_fund")
+            else:
+                await release_reservation(db, f"fund:{key}")
+        except LedgerError:
+            pass
+    elif kind == "unload" and status == "completed":
+        credited = order.get("unloadedMinor") or order.get("amountMinor")
+        if isinstance(credited, int) and credited > 0:
+            try:
+                await credit_wallet(db, card.user_id, credited, external_key=f"unload:{key}", kind="card_unload")
+            except LedgerError:
+                pass
+    caas = CaaSClient()
+    if caas.is_configured and card.provider_card_id:
+        with contextlib.suppress(RuntimeError, ValueError, OSError):  # balance refresh is best effort
+            balance = await caas.card_balance(card.provider_card_id)
+            if isinstance(balance.get("availableMinor"), int):
+                card.balance_minor = balance["availableMinor"]
+    terminal = "completed" if status == "completed" else "failed"
+    await save_operation_response(db, record, status=terminal, response=dict(order))
+    await db.commit()
+    return terminal
 
 
 async def _apply_terminal_status(db: AsyncSession, card: UserCard, kind: str) -> None:
@@ -232,7 +315,6 @@ async def execute_lifecycle(operation_key: str, card_id: str, kind: str) -> str:
         if not caas.is_configured:
             return "unconfigured"
         request_payload = record.request_payload or {}
-        reason = request_payload.get("reason")
         payload: dict[str, Any] = {}
         if kind in {"fund", "unload"}:
             # FundRequest/UnloadRequest are additionalProperties:false — only documented fields.
@@ -241,35 +323,38 @@ async def execute_lifecycle(operation_key: str, card_id: str, kind: str) -> str:
                 "currency": "USD",
                 "externalReference": operation_key[:64],
             }
+        from flytopay.integrations.caas2328.client import CaaSError
+
+        if kind in {"freeze", "unfreeze", "close"}:
+            try:
+                return await _execute_real_lifecycle(db, card, record, kind, operation_key)
+            except HTTPException:
+                return "failed"
         try:
-            if kind == "freeze":
-                response = await caas.freeze_card(card.provider_card_id, idempotency_key=operation_key)
-            elif kind == "unfreeze":
-                response = await caas.unfreeze_card(card.provider_card_id, idempotency_key=operation_key)
-            elif kind == "close":
-                response = await caas.close_card(card.provider_card_id, idempotency_key=operation_key, reason=reason)
-            elif kind == "fund":
-                response = await caas.fund_card(card.provider_card_id, payload, idempotency_key=operation_key)
+            if record.provider_order_id:
+                order = await caas.order(record.provider_order_id)
+                order.setdefault("orderId", record.provider_order_id)
             else:
-                response = await caas.unload_card(card.provider_card_id, payload, idempotency_key=operation_key)
-        except (RuntimeError, ValueError, TimeoutError, OSError):
-            await save_operation_response(db, record, status="failed", response={"error": kind})
+                submit = caas.fund_card if kind == "fund" else caas.unload_card
+                response = await submit(card.provider_card_id, payload, idempotency_key=operation_key)
+                order = dict(response.data)
+                if isinstance(order.get("orderId"), str):
+                    record.provider_order_id = order["orderId"]
+                    await db.commit()
+        except CaaSError as exc:
+            if exc.retryable:
+                return "processing"
+            if kind == "fund":
+                from flytopay.ledger.service import LedgerError, release_reservation
+
+                try:
+                    await release_reservation(db, f"fund:{operation_key}")
+                except LedgerError:
+                    pass
+            await save_operation_response(db, record, status="failed", response={"error": exc.code})
             await db.commit()
             return "failed"
-        from flytopay.integrations.caas2328.lifecycle import OperationStatus, normalize_operation
-
-        operation = normalize_operation(response.data, http_status=response.status_code)
-        terminal = "completed" if operation.status is OperationStatus.COMPLETED else ("failed" if operation.status is OperationStatus.FAILED else "processing")
-        await save_operation_response(db, record, status=terminal, response=dict(operation.data))
-        if operation.status is OperationStatus.COMPLETED:
-            await _apply_terminal_status(db, card, kind)
-            if kind in {"fund", "unload"} and isinstance(operation.data.get("amountMinor"), int):
-                delta = operation.data["amountMinor"]
-                if card.balance_minor is None:
-                    card.balance_minor = 0
-                card.balance_minor += delta if kind == "fund" else -delta
-        await db.commit()
-        return terminal
+        return await _finalize_money_order(db, card, record, kind, operation_key, order)
 
 
 @router.post("/{card_id}/freeze", response_model=LifecycleResponse)
@@ -322,6 +407,14 @@ async def fund_card(
     card = await _owned_card(db, user_id, card_id)
     if card.status != "active":
         raise HTTPException(status_code=409, detail="Card must be active to fund")
+    if not card.is_demo:
+        from flytopay.integrations.caas2328.limits import get_limits
+
+        limits = await get_limits()
+        if payload.amount_minor < limits.min_fund_minor:
+            raise HTTPException(status_code=422, detail=f"funding.below_minimum:{limits.min_fund_minor}")
+        if payload.amount_minor > limits.max_fund_minor:
+            raise HTTPException(status_code=422, detail=f"amount.exceeds_maximum:{limits.max_fund_minor}")
     return await _enqueue_lifecycle(db, card, "fund", idempotency_key, {"amountMinor": payload.amount_minor})
 
 
@@ -342,6 +435,12 @@ async def unload_card(
         raise HTTPException(status_code=409, detail="Card must be active to transfer")
     if card.balance_minor is None or card.balance_minor < payload.amount_minor:
         raise HTTPException(status_code=422, detail="Insufficient card balance")
+    if not card.is_demo:
+        from flytopay.integrations.caas2328.limits import get_limits
+
+        limits = await get_limits()
+        if payload.amount_minor < limits.min_unload_minor:
+            raise HTTPException(status_code=422, detail=f"funding.below_minimum:{limits.min_unload_minor}")
     return await _enqueue_lifecycle(db, card, "unload", idempotency_key, {"amountMinor": payload.amount_minor})
 
 

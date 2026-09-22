@@ -18,6 +18,10 @@ celery_app.conf.update(
             "task": "flytopay.payments.reconcile",
             "schedule": 300.0,
         },
+        "caas-poll-issues-every-30-seconds": {
+            "task": "flytopay.caas.poll_issues",
+            "schedule": 30.0,
+        },
     },
 )
 register_caas_task(celery_app)
@@ -31,3 +35,17 @@ def caas_lifecycle_task(operation_key: str, card_id: str, kind: str) -> str:
     from flytopay.cards.lifecycle_routes import execute_lifecycle
 
     return asyncio.run(execute_lifecycle(operation_key, card_id, kind))
+
+
+@celery_app.task(name="flytopay.caas.poll_issues")
+def caas_poll_issues_task() -> int:
+    import asyncio
+
+    from flytopay.cards.issuance import poll_pending_issues
+    from flytopay.db.session import session_factory
+
+    async def run() -> int:
+        async with session_factory() as db:
+            return await poll_pending_issues(db)
+
+    return asyncio.run(run())
