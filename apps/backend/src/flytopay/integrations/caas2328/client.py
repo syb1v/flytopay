@@ -6,6 +6,36 @@ import httpx
 from flytopay.config import get_settings
 
 
+class CaaSError(RuntimeError):
+    """Provider error carrying the stable 2328 `error.code` (branch only on this)."""
+
+    def __init__(self, status: int, code: str | None, message: str | None, retry_after: str | None = None) -> None:
+        super().__init__(f"CaaS {status} {code or 'unknown'}: {message or ''}".strip())
+        self.status = status
+        self.code = code
+        self.retry_after = retry_after
+
+    @property
+    def retryable(self) -> bool:
+        return self.status in {408, 429} or self.status >= 500 or self.code == "idempotency.in_progress"
+
+
+def _raise_for_envelope(response: httpx.Response) -> dict:
+    try:
+        envelope = response.json()
+    except ValueError:
+        envelope = None
+    if response.status_code >= 400 or not isinstance(envelope, dict) or envelope.get("success") is not True:
+        error = (envelope or {}).get("error") if isinstance(envelope, dict) else None
+        raise CaaSError(
+            response.status_code,
+            (error or {}).get("code") if isinstance(error, dict) else None,
+            (envelope or {}).get("message") if isinstance(envelope, dict) else None,
+            response.headers.get("Retry-After"),
+        )
+    return envelope
+
+
 class CaaSClient:
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         settings = get_settings()
@@ -24,12 +54,9 @@ class CaaSClient:
         owned = self.client is None
         client = self.client or httpx.AsyncClient(timeout=30)
         try:
-            response = await client.get(f"{self.base_url}{path}", headers=headers, params=params or None)
-            response.raise_for_status()
-            payload = response.json()
-            if not isinstance(payload, dict) or payload.get("success") is not True:
-                raise RuntimeError("CaaS returned an unsuccessful response")
-            return payload.get("data") or {}
+            clean = {key: value for key, value in params.items() if value is not None}
+            response = await client.get(f"{self.base_url}{path}", headers=headers, params=clean or None)
+            return _raise_for_envelope(response).get("data") or {}
         finally:
             if owned:
                 await client.aclose()
@@ -105,10 +132,7 @@ class CaaSClient:
         client = self.client or httpx.AsyncClient(timeout=30)
         try:
             response = await client.request(method, f"{self.base_url}{path}", headers=headers, json=payload)
-            response.raise_for_status()
-            envelope = response.json()
-            if not isinstance(envelope, dict) or envelope.get("success") is not True:
-                raise RuntimeError("CaaS returned an unsuccessful response")
+            envelope = _raise_for_envelope(response)
             return CaaSResponse(status_code=response.status_code, data=envelope.get("data") or {}, envelope=envelope)
         finally:
             if owned:
@@ -122,10 +146,7 @@ class CaaSClient:
         client = self.client or httpx.AsyncClient(timeout=30)
         try:
             response = await client.get(f"{self.base_url}{path}", headers=headers)
-            response.raise_for_status()
-            envelope = response.json()
-            if not isinstance(envelope, dict) or envelope.get("success") is not True:
-                raise RuntimeError("CaaS returned an unsuccessful response")
+            envelope = _raise_for_envelope(response)
             return CaaSResponse(response.status_code, envelope.get("data") or {}, envelope)
         finally:
             if owned:

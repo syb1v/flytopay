@@ -55,7 +55,7 @@ async def test_caas_webhook_rejects_missing_secret(monkeypatch) -> None:
 
     monkeypatch.setattr("flytopay.cards.webhooks.get_settings", lambda: Settings())
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/v1/webhooks/caas/", json={"event": "card.frozen"})
+        response = await client.post("/api/v1/webhooks/caas", json={"event": "card.frozen"})
     assert response.status_code == 503
 
 
@@ -203,3 +203,43 @@ def test_structlog_logger_accepts_event_kwargs() -> None:
     logger = get_logger(__name__)
     # Must not raise: PrintLogger lacked `.name`; kwargs (not `extra=`) are the structlog API.
     logger.info("probe_event", caas_event="card.frozen", event_id="probe-1")
+
+
+def test_caas_v1_signature_matches_documented_algorithm() -> None:
+    import hashlib
+    import hmac as _hmac
+
+    from flytopay.cards.webhooks import compute_signature, signature_valid
+
+    secret = "whsec_" + "0" * 64
+    body = b'{"event":"card.frozen","version":"1.0","eventId":"e1","data":{"cardId":"c1"}}'
+    t = 1719830400
+    signing_key = hashlib.sha256(secret.encode()).hexdigest()
+    expected = _hmac.new(signing_key.encode(), f"{t}.".encode() + body, hashlib.sha256).hexdigest()
+    assert compute_signature(secret, t, body) == expected
+    header = f"t={t},v1={expected}"
+    assert signature_valid(header, body, secret, now=t + 10)
+    assert not signature_valid(header, body, secret, now=t + 301)
+    assert not signature_valid(f"t={t},v1={'0' * 64}", body, secret, now=t)
+    assert not signature_valid(header, body + b" ", secret, now=t)
+    assert not signature_valid("garbage", body, secret, now=t)
+
+
+def test_caas_error_exposes_stable_code() -> None:
+    import httpx
+
+    from flytopay.integrations.caas2328.client import CaaSError, _raise_for_envelope
+
+    response = httpx.Response(
+        409,
+        json={"success": False, "status": 409, "message": "busy", "error": {"code": "idempotency.in_progress"}},
+        headers={"Retry-After": "3"},
+    )
+    try:
+        _raise_for_envelope(response)
+    except CaaSError as exc:
+        assert exc.code == "idempotency.in_progress"
+        assert exc.retryable
+        assert exc.retry_after == "3"
+    else:
+        raise AssertionError("expected CaaSError")

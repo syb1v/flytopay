@@ -26,7 +26,7 @@ def create_app() -> FastAPI:
     validate_runtime_environment()
     configure_logging()
     settings = get_settings()
-    app = FastAPI(title="Flytopay API", version="0.12.0")
+    app = FastAPI(title="Flytopay API", version="0.12.1")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin],
@@ -40,8 +40,9 @@ def create_app() -> FastAPI:
     app.include_router(preferences_router)
     app.include_router(auth_router)
     app.include_router(payments_router)
-    app.include_router(webhooks_router)
+    # CaaS must be registered before the generic /webhooks/{provider} route.
     app.include_router(caas_webhooks_router)
+    app.include_router(webhooks_router)
     app.include_router(wallet_router)
     app.include_router(telegram_router)
     app.include_router(cards_router)

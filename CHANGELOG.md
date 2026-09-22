@@ -9,6 +9,21 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 Changes for the next release will be collected here.
 
+## [0.12.1] - 2026-09-22
+
+### Fixed
+
+- CaaS webhook signature now follows the 2328 `caas_v1` contract: `X-Caas-Signature: t=<unix>,v1=<hex>`, key = hex(SHA256(secret)), message = `t.rawBody`, 300s replay window. The previous raw-body HMAC rejected every real delivery.
+- The configured webhook URL `/api/v1/webhooks/caas` (no trailing slash) was captured by the generic provider route and returned 404; the CaaS router is now registered first and both forms are accepted.
+- CaaS webhooks now update local card state (created/frozen/unfrozen/suspended/closed/expired) and refresh balances after funded/unloaded/closed; test deliveries are acknowledged without side effects.
+- Fund/unload requests send only documented fields (`amountMinor`, `currency`, `externalReference`) — the stray `orderId` violated `additionalProperties: false`.
+- Quote no longer sends `productCode=None` as a literal string.
+- CaaS errors surface the stable `error.code`, HTTP status and `Retry-After` via `CaaSError`.
+
+### Operations
+
+- Daily PostgreSQL backups are now scheduled on the server (14-day retention).
+
 ## [0.12.0] - 2026-09-22
 
 ### Added
@@ -229,7 +244,8 @@ Changes for the next release will be collected here.
 
 - Issuance screen no longer auto-selects the first product before user choice.
 
-[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/syb1v/flytopay/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/syb1v/flytopay/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/syb1v/flytopay/compare/v0.11.3...v0.12.0
 [0.11.3]: https://github.com/syb1v/flytopay/compare/v0.11.2...v0.11.3
 [0.11.2]: https://github.com/syb1v/flytopay/compare/v0.11.1...v0.11.2

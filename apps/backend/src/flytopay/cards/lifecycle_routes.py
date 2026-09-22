@@ -235,7 +235,12 @@ async def execute_lifecycle(operation_key: str, card_id: str, kind: str) -> str:
         reason = request_payload.get("reason")
         payload: dict[str, Any] = {}
         if kind in {"fund", "unload"}:
-            payload = {"amountMinor": request_payload.get("amountMinor"), "orderId": operation_key}
+            # FundRequest/UnloadRequest are additionalProperties:false — only documented fields.
+            payload = {
+                "amountMinor": request_payload.get("amountMinor"),
+                "currency": "USD",
+                "externalReference": operation_key[:64],
+            }
         try:
             if kind == "freeze":
                 response = await caas.freeze_card(card.provider_card_id, idempotency_key=operation_key)
