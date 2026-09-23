@@ -18,6 +18,9 @@ class CardProduct(Timestamped, Base):
     enabled: Mapped[bool] = mapped_column(default=False)
     max_cards_per_cardholder: Mapped[int | None] = mapped_column(Integer)
     provider_settings: Mapped[list | None] = mapped_column(JSON)
+    card_type: Mapped[str | None] = mapped_column(String(24))
+    features: Mapped[dict | None] = mapped_column(JSON)
+    controls: Mapped[dict | None] = mapped_column(JSON)
 
 
 class UserCard(Timestamped, Base):

@@ -97,6 +97,9 @@ export type CardProduct = {
   enabled: boolean;
   max_cards_per_cardholder: number | null;
   provider_settings: Array<{ key: string; type: string; value: boolean | number | string | null }> | null;
+  card_type: "CONSUMER" | "CORPORATE" | null;
+  features: Record<string, boolean> | null;
+  controls: Record<string, boolean | number | string | null> | null;
 };
 
 export async function getCardProducts(): Promise<CardProduct[]> {
@@ -292,6 +295,43 @@ export type CardholderInput = {
   zip_code: string;
 };
 
+export class IssuanceApiError extends Error {
+  constructor(
+    message: string,
+    public fields?: Record<string, string>,
+  ) {
+    super(message);
+    this.name = "IssuanceApiError";
+  }
+}
+
+function issuanceError(detail: unknown, fallback: string): IssuanceApiError {
+  if (Array.isArray(detail)) {
+    const fields: Record<string, string> = {};
+    for (const item of detail) {
+      if (!item || typeof item !== "object") continue;
+      const entry = item as { loc?: unknown; msg?: unknown };
+      const field = Array.isArray(entry.loc) ? entry.loc.at(-1) : null;
+      if (typeof field === "string" && typeof entry.msg === "string") fields[field] = entry.msg;
+    }
+    return new IssuanceApiError("validation_failed", fields);
+  }
+  if (detail && typeof detail === "object") {
+    const data = detail as { message?: unknown; code?: unknown; fields?: unknown };
+    const fields: Record<string, string> = {};
+    if (data.fields && typeof data.fields === "object") {
+      for (const [key, value] of Object.entries(data.fields)) {
+        if (typeof value === "string") fields[key] = value;
+      }
+    }
+    return new IssuanceApiError(
+      typeof data.code === "string" ? data.code : typeof data.message === "string" ? data.message : fallback,
+      fields,
+    );
+  }
+  return new IssuanceApiError(typeof detail === "string" ? detail : fallback);
+}
+
 export async function getIssueQuote(input: CardholderInput) {
   const response = await fetch(`${API_ORIGIN}/api/v1/issuance/quote`, {
     method: "POST",
@@ -299,8 +339,8 @@ export async function getIssueQuote(input: CardholderInput) {
     headers: { "Content-Type": "application/json", ...csrfHeaders() },
     body: JSON.stringify(input),
   });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail ?? "quote_failed");
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw issuanceError(data?.detail, "quote_failed");
   return data as {
     data: {
       issuanceId: string;
@@ -324,7 +364,7 @@ export async function issueCardFromWallet(
     body: "{}",
   });
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(data?.detail ?? "issue_failed");
+  if (!response.ok) throw issuanceError(data?.detail, "issue_failed");
   return data.data;
 }
 

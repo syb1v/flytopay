@@ -22,6 +22,10 @@ celery_app.conf.update(
             "task": "flytopay.caas.poll_issues",
             "schedule": 30.0,
         },
+        "caas-poll-closes-every-30-seconds": {
+            "task": "flytopay.caas.poll_closes",
+            "schedule": 30.0,
+        },
     },
 )
 register_caas_task(celery_app)
@@ -47,5 +51,19 @@ def caas_poll_issues_task() -> int:
     async def run() -> int:
         async with session_factory() as db:
             return await poll_pending_issues(db)
+
+    return asyncio.run(run())
+
+
+@celery_app.task(name="flytopay.caas.poll_closes")
+def caas_poll_closes_task() -> int:
+    import asyncio
+
+    from flytopay.cards.lifecycle_routes import poll_pending_closes
+    from flytopay.db.session import session_factory
+
+    async def run() -> int:
+        async with session_factory() as db:
+            return await poll_pending_closes(db)
 
     return asyncio.run(run())

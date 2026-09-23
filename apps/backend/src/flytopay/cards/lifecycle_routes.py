@@ -111,6 +111,12 @@ async def _enqueue_lifecycle(
     """Create (or return) the idempotent operation record and queue the CaaS call."""
     if not card.provider_card_id:
         raise HTTPException(status_code=503, detail="CaaS API is not configured for this card")
+    if card.status == "closed":
+        raise HTTPException(status_code=409, detail="card.closed")
+    if card.status == "closing" and kind == "close":
+        return LifecycleResponse(card_id=card.id, status="closing", operation_status="processing")
+    if card.status == "closing":
+        raise HTTPException(status_code=409, detail="card.closing")
     key = idempotency_key or f"{kind}-{card.id}-{uuid4()}"
     try:
         record = await get_or_create_operation(db, operation_key=key, operation_kind=kind, path=f"/cards/{card.id}/{kind}", payload=payload)
@@ -163,9 +169,16 @@ async def _execute_real_lifecycle(db: AsyncSession, card: UserCard, record, kind
     remote_status = data.get("status")
     if response.status_code == 202 or remote_status in {"pending", "closing"}:
         record.provider_order_id = data.get("orderId") if isinstance(data.get("orderId"), str) else None
+        if kind == "close":
+            card.status = "closing"
         await save_operation_response(db, record, status="processing", response=dict(data))
         await db.commit()
         return "processing"
+    if kind == "close" and remote_status == "closed":
+        credited = data.get("residualCreditedMinor")
+        if card.balance_minor and card.balance_minor > 0 and (not isinstance(credited, int) or isinstance(credited, bool)):
+            raise HTTPException(status_code=502, detail="close.residual_unconfirmed")
+        await _credit_close_residual(db, card, record, data)
     if remote_status in {"active", "frozen", "suspended", "closed", "expired"}:
         card.status = remote_status
     else:
@@ -173,6 +186,100 @@ async def _execute_real_lifecycle(db: AsyncSession, card: UserCard, record, kind
     await save_operation_response(db, record, status="completed", response=dict(data))
     await db.commit()
     return "completed"
+
+
+async def _credit_close_residual(db: AsyncSession, card: UserCard, record, data: dict[str, Any]) -> None:
+    """Credit only the provider-confirmed residual once; never infer it from cached card balance."""
+    from flytopay.ledger.service import LedgerError, credit_wallet
+
+    credited = data.get("residualCreditedMinor")
+    if isinstance(credited, int) and not isinstance(credited, bool) and credited > 0:
+        try:
+            await credit_wallet(db, card.user_id, credited, external_key=f"close:{record.operation_key}", kind="card_unload")
+        except LedgerError as exc:
+            if str(exc) != "Ledger entry already exists":
+                raise
+    card.balance_minor = 0
+
+
+async def finalize_close_order(db: AsyncSession, card: UserCard, record, order: dict[str, Any]) -> str:
+    """A close with funds is a provider unload order; its final status is distinct from card.closed."""
+    status = order.get("status")
+    if status == "processing":
+        return "processing"
+    if status not in {"completed", "failed", "refunded"}:
+        return "processing"
+    if status == "completed":
+        credited = order.get("creditedMinor")
+        if (record.request_payload or {}).get("closeHadBalance", card.balance_minor or 0) > 0 and (not isinstance(credited, int) or isinstance(credited, bool)):
+            return "processing"
+        if isinstance(credited, int) and not isinstance(credited, bool) and credited > 0:
+            from flytopay.ledger.service import LedgerError, credit_wallet
+
+            try:
+                await credit_wallet(db, card.user_id, credited, external_key=f"close:{record.operation_key}", kind="card_unload")
+            except LedgerError as exc:
+                if str(exc) != "Ledger entry already exists":
+                    raise
+        card.balance_minor = 0
+        # Do not declare the card closed until the provider confirms its status.
+        confirmed = (record.response or {}).get("closedConfirmed") is True or card.status == "closed"
+        card.status = "closed" if confirmed else "closing"
+        await save_operation_response(db, record, status="processing", response={**order, "closedConfirmed": confirmed})
+        await db.commit()
+        return "processing"
+    if card.status != "closed":
+        card.status = "active"
+    await save_operation_response(db, record, status="failed", response=dict(order))
+    await db.commit()
+    return "failed"
+
+
+async def poll_pending_closes(db: AsyncSession, *, caas: CaaSClient | None = None) -> int:
+    from flytopay.integrations.caas2328.persistence import CaaSOperationRecord
+
+    caas = caas or CaaSClient()
+    if not caas.is_configured:
+        return 0
+    records = list((await db.execute(select(CaaSOperationRecord).where(CaaSOperationRecord.operation_kind == "close", CaaSOperationRecord.status == "processing").limit(50))).scalars())
+    done = 0
+    for record in records:
+        card_id = (record.request_payload or {}).get("cardId")
+        if not card_id:
+            continue
+        card = (await db.execute(select(UserCard).where(UserCard.id == UUID(card_id)))).scalar_one_or_none()
+        if card is None:
+            continue
+        try:
+            if record.provider_order_id and (record.response or {}).get("status") != "completed":
+                order = await caas.order(record.provider_order_id)
+                order.setdefault("orderId", record.provider_order_id)
+                await finalize_close_order(db, card, record, order)
+                if order.get("status") != "completed" or (record.response or {}).get("status") != "completed":
+                    continue
+            if record.provider_order_id and (record.response or {}).get("status") == "completed" and card.balance_minor and card.balance_minor > 0:
+                continue
+            if not record.provider_order_id and (record.request_payload or {}).get("closeHadBalance", 0) > 0 and card.status != "closed":
+                # Without an unload order, only a card.closed webhook can confirm
+                # the credited residual; card details alone cannot prove it.
+                continue
+            if card.status == "closed" or (record.response or {}).get("closedConfirmed") is True:
+                details = {"status": "closed"}
+            else:
+                details = await caas.card_details(card.provider_card_id)
+            if details.get("status") == "closed":
+                # A zero-balance close may not have an order; a residual close must first
+                # confirm and credit the unload order (or its webhook) before finalizing.
+                if record.provider_order_id and (record.response or {}).get("status") != "completed":
+                    continue
+                card.status = "closed"
+                card.balance_minor = 0
+                await save_operation_response(db, record, status="completed", response={**details, "orderId": record.provider_order_id})
+                await db.commit()
+                done += 1
+        except (RuntimeError, ValueError, OSError):
+            continue
+    return done
 
 
 async def _finalize_money_order(db: AsyncSession, card: UserCard, record, kind: str, key: str, order: dict[str, Any]) -> str:
@@ -246,6 +353,9 @@ async def _execute_demo_lifecycle(db: AsyncSession, card: UserCard, record, kind
     elif kind == "unfreeze":
         card.status = "active"
     elif kind == "close":
+        if card.balance_minor and card.balance_minor > 0:
+            await credit_wallet(db, card.user_id, card.balance_minor, external_key=f"close:{operation_key}", kind="card_unload")
+            card.balance_minor = 0
         card.status = "closed"
     elif kind == "fund":
         if not isinstance(amount_minor, int) or amount_minor <= 0:
@@ -389,7 +499,7 @@ async def close_card(
 ) -> LifecycleResponse:
     card = await _owned_card(db, user_id, card_id)
     extra = {"reason": payload.reason} if payload and payload.reason else {}
-    return await _enqueue_lifecycle(db, card, "close", idempotency_key, extra)
+    return await _enqueue_lifecycle(db, card, "close", idempotency_key, {**extra, "cardId": str(card.id), "closeHadBalance": max(0, card.balance_minor or 0)})
 
 
 @router.post("/{card_id}/fund", response_model=LifecycleResponse)

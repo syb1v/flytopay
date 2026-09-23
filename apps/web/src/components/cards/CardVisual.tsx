@@ -48,6 +48,7 @@ export function CardVisual({
   const ru = preferences.language === "ru";
   const frozen = status === "frozen";
   const issuing = status === "issuing";
+  const closing = status === "closing";
   const [flipped, setFlipped] = useState(false);
   const normalizedScheme = SCHEMES.has(scheme.toUpperCase()) ? scheme.toUpperCase() : "VISA";
   const safeVariant = ["default", "travel", "subs", "premium"].includes(variant) ? variant : "default";
@@ -108,6 +109,7 @@ export function CardVisual({
             <img className="bank-chip" src="/chip.svg" alt="" aria-hidden="true" />
             {frozen && <span className="frozen-pill">{ru ? "Заморожена" : "Frozen"}</span>}
             {issuing && <span className="frozen-pill">{ru ? "Выпускается…" : "Issuing…"}</span>}
+            {closing && <span className="frozen-pill">{ru ? "Закрывается…" : "Closing…"}</span>}
           </div>
           <div className="bank-card-number">{maskedPan ?? "••••  ••••  ••••  ••••"}</div>
           <div className="bank-card-bottom">

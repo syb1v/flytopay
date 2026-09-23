@@ -12,7 +12,7 @@ from flytopay.auth.csrf import verify_csrf
 from flytopay.auth.session import current_user_id
 from flytopay.cards.models import CardProduct
 from flytopay.db.session import get_db
-from flytopay.integrations.caas2328.client import CaaSClient
+from flytopay.integrations.caas2328.client import CaaSClient, CaaSError
 from flytopay.issuance.models import IssuanceRequest
 from flytopay.ratelimit import rate_limit
 from flytopay.security.sealed import seal_json
@@ -77,7 +77,7 @@ class ProductPrice(BaseModel):
 
 @router.get("/prices", response_model=list[ProductPrice])
 async def prices(user_id: Annotated[UUID, Depends(current_user_id)], db: Annotated[AsyncSession, Depends(get_db)]) -> list[ProductPrice]:
-    result = await db.execute(select(CardProduct).where(CardProduct.enabled.is_(True)).order_by(CardProduct.created_at))
+    result = await db.execute(select(CardProduct).where(CardProduct.enabled.is_(True), CardProduct.provider_code.like("core-%")).order_by(CardProduct.created_at))
     products = list(result.scalars())
     caas = CaaSClient()
     prices: list[ProductPrice] = []
@@ -115,6 +115,8 @@ async def quote(
     product = (await db.execute(select(CardProduct).where(CardProduct.code == payload.product_code, CardProduct.enabled.is_(True)))).scalar_one_or_none()
     if product is None:
         raise HTTPException(status_code=404, detail="Product unavailable")
+    if not product.provider_code.startswith("core-"):
+        raise HTTPException(status_code=422, detail="card.product_not_issuable")
     caas = CaaSClient()
     if not caas.is_configured:
         raise HTTPException(status_code=503, detail="CaaS API is not configured")
@@ -125,6 +127,10 @@ async def quote(
         raise HTTPException(status_code=422, detail=f"funding.below_minimum:{limits.min_issue_minor}")
     try:
         result = await caas.quote(operation="issue", amount_minor=payload.amount_minor, product_code=product.code)
+    except CaaSError as exc:
+        if exc.code in {"product.not_configured", "product_not_configured"}:
+            raise HTTPException(status_code=422, detail="card.product_not_issuable") from exc
+        raise HTTPException(status_code=502, detail="Quote service unavailable") from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail="Quote service unavailable") from exc
     request = IssuanceRequest(user_id=user_id, product_code=product.code, provider_code=product.provider_code, country=payload.country, term_days=30, amount_minor=payload.amount_minor, fee_minor=result.get("feeMinor"), total_charge_minor=result.get("totalChargeMinor"), currency=product.currency, protected_cardholder=seal_json(payload.model_dump(mode="json")))

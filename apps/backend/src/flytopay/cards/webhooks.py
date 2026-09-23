@@ -86,7 +86,7 @@ async def apply_caas_event(db, event: str, data: dict[str, Any]) -> bool:
         return False
     changed = False
     new_status = _STATUS_EVENTS.get(event)
-    if new_status and card.status != new_status:
+    if new_status and card.status != new_status and not (event == "card.closed" and card.status == "closing"):
         card.status = new_status
         changed = True
     if event == "card.created":
@@ -108,6 +108,25 @@ async def apply_caas_event(db, event: str, data: dict[str, Any]) -> bool:
                     changed = True
             except (RuntimeError, ValueError, OSError):
                 logger.warning("caas_balance_refresh_failed", card_id=card_id)
+    if event == "card.closed":
+        from flytopay.integrations.caas2328.persistence import CaaSOperationRecord
+        from flytopay.ledger.service import LedgerError, credit_wallet
+
+        record = (await db.execute(select(CaaSOperationRecord).where(CaaSOperationRecord.operation_kind == "close", CaaSOperationRecord.request_payload["cardId"].as_string() == str(card.id)).order_by(CaaSOperationRecord.created_at.desc()).limit(1))).scalar_one_or_none()
+        credited = data.get("residualCreditedMinor")
+        if record and (not record.provider_order_id or (record.response or {}).get("status") == "completed") and isinstance(credited, int) and not isinstance(credited, bool) and credited > 0:
+            try:
+                await credit_wallet(db, card.user_id, credited, external_key=f"close:{record.operation_key}", kind="card_unload")
+            except LedgerError as exc:
+                if str(exc) != "Ledger entry already exists":
+                    raise
+        if record and record.provider_order_id and (record.response or {}).get("status") != "completed":
+            record.response = {**(record.response or {}), "closedConfirmed": True}
+            changed = True
+        else:
+            card.status = "closed"
+            card.balance_minor = 0
+            changed = True
     return changed
 
 

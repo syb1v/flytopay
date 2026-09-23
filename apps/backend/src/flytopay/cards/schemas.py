@@ -17,6 +17,9 @@ class ProductResponse(ReadModel):
     enabled: bool
     max_cards_per_cardholder: int | None = None
     provider_settings: list | None = None
+    card_type: str | None = None
+    features: dict | None = None
+    controls: dict | None = None
 
 
 class CardResponse(ReadModel):

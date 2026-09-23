@@ -3,19 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownLeft,
-  ArrowUpRight,
   CircleDollarSign,
   CreditCard,
   History,
   Home,
+  CircleHelp,
+  LayoutGrid,
   Send,
   Snowflake,
   WalletCards,
   XCircle,
   UserRound,
-  Wrench,
 } from "lucide-react";
-import { PreferencesPanel } from "../settings/PreferencesPanel";
+import { HelpPanel } from "./HelpPanel";
+import { ProfilePanel } from "./ProfilePanel";
 import {
   getCards,
   getCardTransactions,
@@ -40,32 +41,11 @@ import { CardVisual } from "../cards/CardVisual";
 import { IssueCardPanel } from "../cards/IssueCardPanel";
 import { TransactionsHistory } from "../cards/TransactionsHistory";
 import { Modal } from "../ui/modal";
+import { ServicesPanel } from "../services/ServicesPanel";
 import { Loader } from "../ui/loader";
 import { schemeForCard, tierForProduct } from "../../lib/cardTheme";
 
-type View = "home" | "issue" | "services" | "history" | "profile";
-
-function ShieldIcon() {
-  return (
-    <span className="profile-menu-icon">
-      <CreditCard size={19} />
-    </span>
-  );
-}
-function SupportIcon() {
-  return (
-    <span className="profile-menu-icon">
-      <CircleDollarSign size={19} />
-    </span>
-  );
-}
-function DocumentIcon() {
-  return (
-    <span className="profile-menu-icon">
-      <History size={19} />
-    </span>
-  );
-}
+type View = "home" | "issue" | "services" | "history" | "profile" | "help";
 
 const copy = {
   ru: {
@@ -80,6 +60,7 @@ const copy = {
     allCards: "Все карты",
     history: "История",
     profile: "Профиль",
+    help: "Помощь",
     issue: "Выпустить карту",
     newCard: "Новая карта",
     newCardHint: "Отдельная карта для подписок, покупок и путешествий",
@@ -103,6 +84,7 @@ const copy = {
     allCards: "All cards",
     history: "History",
     profile: "Profile",
+    help: "Help",
     issue: "Issue a card",
     newCard: "New card",
     newCardHint: "A separate card for subscriptions, purchases and travel",
@@ -121,6 +103,7 @@ export function Dashboard() {
   const language = preferences.language;
   const t = copy[language];
   const [view, setView] = useState<View>("home");
+  const previousView = useRef<View>("home");
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -133,7 +116,7 @@ export function Dashboard() {
   const activeIndexRef = useRef(activeIndex);
   const lastCardIndexRef = useRef(0);
   activeIndexRef.current = activeIndex;
-  const [telegramUser, setTelegramUser] = useState<{ name: string; id: string; initial: string }>({
+  const [telegramUser, setTelegramUser] = useState<{ name: string; id: string; initial: string; username?: string }>({
     name: "Flytopay",
     id: "—",
     initial: "F",
@@ -148,6 +131,7 @@ export function Dashboard() {
           name,
           id: String(user.id),
           initial: (user.first_name || user.username || "F").charAt(0).toUpperCase(),
+          username: user.username,
         });
       }
     };
@@ -208,6 +192,20 @@ export function Dashboard() {
       .catch(() => undefined);
   }, [view, authReady]);
 
+  const hasClosing = cards.some((card) => card.status === "closing");
+  useEffect(() => {
+    if (!hasClosing) return;
+    const timer = window.setInterval(() => {
+      void Promise.all([getCards(), getWallet()])
+        .then(([nextCards, nextWallet]) => {
+          setCards(nextCards);
+          setWallet(nextWallet);
+        })
+        .catch(() => undefined);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [hasClosing]);
+
   // Splash: stays until the first data load finishes (min 700ms, max 4s), then fades out.
   useEffect(() => {
     const safety = window.setTimeout(() => setBooting(false), 4000);
@@ -243,6 +241,7 @@ export function Dashboard() {
   }, [view, cards.length]);
 
   function navigate(next: View) {
+    if (next === "help" && view !== "help") previousView.current = view;
     setView(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -262,7 +261,6 @@ export function Dashboard() {
     return tierForProduct(card.product_code);
   }
   const [actionError, setActionError] = useState<string | null>(null);
-  const [infoModal, setInfoModal] = useState<string | null>(null);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [actionPending, setActionPending] = useState<string | null>(null);
@@ -298,6 +296,7 @@ export function Dashboard() {
 
   async function cardAction(action: "topup" | "transfer" | "freeze" | "close", card: Card) {
     if (action === "topup" || action === "transfer") {
+      if (card.status !== "active") return;
       setAmountDialog({ action, card });
       return;
     }
@@ -317,9 +316,16 @@ export function Dashboard() {
         const result = frozen ? await unfreezeCard(card.id) : await freezeCard(card.id);
         setCards((current) => current.map((item) => (item.id === card.id ? { ...item, status: result.status } : item)));
       } else {
-        await closeCard(card.id);
-        setCards((current) => current.filter((item) => item.id !== card.id));
-        setActiveIndex((current) => Math.max(0, Math.min(current, cards.length - 2)));
+        const result = await closeCard(card.id);
+        if (result.operation_status === "completed" && result.status === "closed") {
+          setCards((current) => current.filter((item) => item.id !== card.id));
+          setActiveIndex((current) => Math.max(0, Math.min(current, cards.length - 2)));
+          setWallet(await getWallet());
+        } else if (result.operation_status === "processing") {
+          setCards((current) => current.map((item) => (item.id === card.id ? { ...item, status: "closing" } : item)));
+        } else {
+          throw new Error("close_failed");
+        }
       }
     } catch {
       setActionError(
@@ -385,12 +391,16 @@ export function Dashboard() {
             <span>{t.title}</span>
           </button>
           <button className={view === "services" ? "active" : ""} onClick={() => navigate("services")}>
-            <Wrench size={18} />
-            <span>Сервисы</span>
+            <LayoutGrid size={18} />
+            <span>{language === "ru" ? "Сервисы" : "Services"}</span>
           </button>
           <button className={view === "history" ? "active" : ""} onClick={() => navigate("history")}>
             <History size={18} />
             <span>{t.history}</span>
+          </button>
+          <button className={view === "help" ? "active" : ""} onClick={() => navigate("help")}>
+            <CircleHelp size={18} />
+            <span>{t.help}</span>
           </button>
         </nav>
         <div className="dashboard-side-bottom">
@@ -427,7 +437,9 @@ export function Dashboard() {
                       : "Services"
                     : view === "history"
                       ? t.history
-                      : t.profile}
+                      : view === "help"
+                        ? t.help
+                        : t.profile}
             </h1>
           </div>
           <div className="dashboard-header-actions">
@@ -435,7 +447,7 @@ export function Dashboard() {
               {language.toUpperCase()}
             </button>
             <span className="demo-badge">{t.demo}</span>
-            <button className="support-button" onClick={() => setInfoModal(t.coming)} aria-label={t.support}>
+            <button className="support-button" onClick={() => navigate("help")} aria-label={t.help}>
               ?
             </button>
             <span className="avatar-mark">{telegramUser.initial}</span>
@@ -547,16 +559,16 @@ export function Dashboard() {
                   className="card-action-grid"
                   aria-label={language === "ru" ? "Действия карты" : "Card actions"}
                 >
-                  <button onClick={() => cardAction("topup", activeCard)}>
+                  <button disabled={activeCard.status !== "active"} onClick={() => cardAction("topup", activeCard)}>
                     <WalletCards size={21} />
                     <span>{t.topup}</span>
                   </button>
-                  <button onClick={() => cardAction("transfer", activeCard)}>
+                  <button disabled={activeCard.status !== "active"} onClick={() => cardAction("transfer", activeCard)}>
                     <Send size={21} />
                     <span>{language === "ru" ? "Перевести" : "Transfer"}</span>
                   </button>
                   <button
-                    disabled={actionPending === `freeze:${activeCard.id}`}
+                    disabled={activeCard.status === "closing" || actionPending === `freeze:${activeCard.id}`}
                     onClick={() => cardAction("freeze", activeCard)}
                   >
                     <Snowflake size={21} />
@@ -572,11 +584,19 @@ export function Dashboard() {
                   </button>
                   <button
                     className="danger"
-                    disabled={actionPending === `close:${activeCard.id}`}
+                    disabled={activeCard.status === "closing" || actionPending === `close:${activeCard.id}`}
                     onClick={() => cardAction("close", activeCard)}
                   >
                     <XCircle size={21} />
-                    <span>{language === "ru" ? "Закрыть" : "Close"}</span>
+                    <span>
+                      {activeCard.status === "closing"
+                        ? language === "ru"
+                          ? "Закрывается"
+                          : "Closing"
+                        : language === "ru"
+                          ? "Закрыть"
+                          : "Close"}
+                    </span>
                   </button>
                 </section>
               ) : (
@@ -613,99 +633,23 @@ export function Dashboard() {
             </>
           )}
           {view === "issue" && <IssueCardPanel />}
-          {view === "services" && (
-            <section className="services-panel">
-              <p className="services-intro">
-                {language === "ru"
-                  ? "Всё для работы с картами Flytopay в одном месте."
-                  : "Everything you need to manage Flytopay cards in one place."}
-              </p>
-              <div className="services-grid">
-                <button className="service-tile" onClick={() => navigate("issue")}>
-                  <span className="service-icon">
-                    <CreditCard size={22} />
-                  </span>
-                  <b>{language === "ru" ? "Выпуск карты" : "Issue a card"}</b>
-                  <small>
-                    {language === "ru" ? "Премиум, путешествия и подписки" : "Premium, travel and subscriptions"}
-                  </small>
-                </button>
-                <button className="service-tile" onClick={() => navigate("history")}>
-                  <span className="service-icon">
-                    <History size={22} />
-                  </span>
-                  <b>{language === "ru" ? "История операций" : "Transactions"}</b>
-                  <small>{language === "ru" ? "Фильтры по картам и типам" : "Filter by card and type"}</small>
-                </button>
-                <div className="service-tile disabled" aria-disabled="true">
-                  <span className="service-icon">
-                    <WalletCards size={22} />
-                  </span>
-                  <b>{language === "ru" ? "Пополнение баланса" : "Wallet top-up"}</b>
-                  <small>{language === "ru" ? "Скоро: СБП, карта, крипта" : "Soon: SBP, card, crypto"}</small>
-                </div>
-                <div className="service-tile disabled" aria-disabled="true">
-                  <span className="service-icon">
-                    <CircleDollarSign size={22} />
-                  </span>
-                  <b>{language === "ru" ? "Обмен валюты" : "Currency exchange"}</b>
-                  <small>{language === "ru" ? "Скоро: выгодные курсы" : "Soon: favourable rates"}</small>
-                </div>
-              </div>
-            </section>
-          )}
+          {view === "services" && <ServicesPanel language={language} />}
           {view === "history" && (
             <section className="history-panel">
               <TransactionsHistory cards={cards} />
             </section>
           )}
           {view === "profile" && (
-            <section className="profile-stack">
-              <div className="profile-hero">
-                <div className="profile-avatar">{telegramUser.initial}</div>
-                <div>
-                  <span className="dashboard-eyebrow">FLYTOPAY · {telegramUser.id}</span>
-                  <h2>{telegramUser.name}</h2>
-                  <p>
-                    {language === "ru"
-                      ? "Настройки кабинета, уведомления и безопасность"
-                      : "Cabinet settings, notifications and security"}
-                  </p>
-                </div>
-              </div>
-              <PreferencesPanel />
-              <div className="profile-menu">
-                <button>
-                  <ShieldIcon />
-                  <span>
-                    <b>{language === "ru" ? "Безопасность" : "Security"}</b>
-                    <small>
-                      {language === "ru" ? "Telegram-сессия и доступ к картам" : "Telegram session and card access"}
-                    </small>
-                  </span>
-                  <ArrowUpRight size={17} />
-                </button>
-                <button>
-                  <SupportIcon />
-                  <span>
-                    <b>{t.support}</b>
-                    <small>
-                      {language === "ru" ? "Помощь по платежам и выпуску карт" : "Help with payments and card issuance"}
-                    </small>
-                  </span>
-                  <ArrowUpRight size={17} />
-                </button>
-                <button>
-                  <DocumentIcon />
-                  <span>
-                    <b>{language === "ru" ? "Документы" : "Documents"}</b>
-                    <small>{language === "ru" ? "Условия использования и приватность" : "Terms and privacy"}</small>
-                  </span>
-                  <ArrowUpRight size={17} />
-                </button>
-              </div>
-            </section>
+            <ProfilePanel
+              language={language}
+              user={telegramUser}
+              balance={money(wallet?.available_minor, wallet?.currency, wallet?.scale)}
+              cardCount={cards.length}
+              onCards={() => navigate("home")}
+              onHelp={() => navigate("help")}
+            />
           )}
+          {view === "help" && <HelpPanel language={language} onBack={() => navigate(previousView.current)} />}
         </div>
         <footer>Flytopay · {t.cardHint}</footer>
       </main>
@@ -719,24 +663,19 @@ export function Dashboard() {
           <span>{t.history}</span>
         </button>
         <button className={view === "services" ? "active" : ""} onClick={() => navigate("services")}>
-          <Wrench size={18} />
-          <span>Сервисы</span>
+          <LayoutGrid size={18} />
+          <span>{language === "ru" ? "Сервисы" : "Services"}</span>
         </button>
         <button className={view === "profile" ? "active" : ""} onClick={() => navigate("profile")}>
           <UserRound size={18} />
           <span>{t.profile}</span>
         </button>
+        <button className={view === "help" ? "active" : ""} onClick={() => navigate("help")}>
+          <CircleHelp size={18} />
+          <span>{t.help}</span>
+        </button>
       </nav>
       <CardDetailsDialog card={selectedCard} open={Boolean(selectedCard)} onClose={() => setSelectedCard(null)} />
-      <Modal
-        open={infoModal !== null}
-        onClose={() => setInfoModal(null)}
-        eyebrow="FLYTOPAY"
-        title={t.support}
-        closeLabel={language === "ru" ? "Закрыть" : "Close"}
-      >
-        <p className="settings-muted">{infoModal}</p>
-      </Modal>
       <TopUpModal
         open={topUpOpen}
         ru={language === "ru"}
@@ -798,8 +737,8 @@ export function Dashboard() {
           <p className="settings-muted">
             {confirmAction.action === "close"
               ? language === "ru"
-                ? "Карту нельзя будет использовать после закрытия."
-                : "The card cannot be used after closing."
+                ? "Закрытие может занять время. Остаток на карте будет переведён на баланс аккаунта после подтверждения провайдером."
+                : "Closing may take time. The remaining card balance will be credited to your account once confirmed by the provider."
               : language === "ru"
                 ? "Операцию можно будет отменить позже."
                 : "You can reverse this operation later."}

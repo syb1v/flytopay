@@ -34,6 +34,9 @@ async def sync_provider_catalog(db: AsyncSession) -> None:
             product.max_cards_per_cardholder = item.get("maxCardsPerCardholder")
             settings: Any = item.get("providerSettings")
             product.provider_settings = settings if isinstance(settings, list) else None
+            product.card_type = item.get("cardType") if item.get("cardType") in {"CONSUMER", "CORPORATE"} else None
+            product.features = item.get("features") if isinstance(item.get("features"), dict) else None
+            product.controls = item.get("controls") if isinstance(item.get("controls"), dict) else None
             product.enabled = True
             db.add(product)
         await db.commit()
