@@ -1558,6 +1558,97 @@ h1 {
   max-width: 320px;
   margin: 0 auto 18px;
 }
+.modal-content.issue-modal {
+  width: min(540px, calc(100% - 24px));
+  max-width: calc(100vw - 24px);
+  overflow-x: hidden;
+}
+.issue-modal .modal-body,
+.issue-dialog,
+.issue-form-step,
+.issue-dialog-form {
+  min-width: 0;
+  max-width: 100%;
+}
+.issue-benefits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 18px 0;
+}
+.issue-benefit {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-content: start;
+  column-gap: 10px;
+  row-gap: 4px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #354449;
+  border-radius: 15px;
+  background: linear-gradient(140deg, #243129, #1b2528);
+}
+.issue-benefit > span {
+  grid-row: span 2;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  background: #b8f13d16;
+  color: var(--lime);
+}
+.issue-benefit strong {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.issue-benefit small {
+  color: #aabbb6;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.issue-overview-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #b8f13d38;
+  border-radius: 15px;
+  background: #b8f13d0c;
+}
+.issue-overview-footer > span {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.issue-overview-footer > span strong {
+  color: var(--white);
+  font-size: 19px;
+}
+.issue-overview-footer .lime-action.issue-buy {
+  width: auto;
+  min-height: 46px;
+  margin: 0;
+  white-space: nowrap;
+}
+.issue-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 17px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--lime);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
 .issue-dialog-note {
   display: flex;
   gap: 10px;
@@ -1582,6 +1673,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 12px;
+  min-width: 0;
 }
 .issue-dialog .field-label {
   min-width: 0;
@@ -1592,8 +1684,11 @@ h1 {
 .issue-dialog .issue-field-country {
   grid-column: 1 / -1;
 }
-.issue-dialog .field-label input,
-.issue-dialog .field-label select {
+.issue-modal .issue-dialog .field-label input,
+.issue-modal .issue-dialog .field-label select {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
   min-height: 44px;
   margin-top: 7px;
@@ -1700,6 +1795,26 @@ h1 {
 @media (max-width: 400px) {
   .issue-dialog-grid {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .modal-content.issue-modal {
+    width: 100%;
+    max-width: 100vw;
+    padding: 20px max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+  }
+  .issue-dialog-grid {
+    grid-template-columns: 1fr;
+  }
+  .issue-benefits {
+    grid-template-columns: 1fr;
+  }
+  .issue-overview-footer .lime-action.issue-buy {
+    width: 100%;
+  }
+  .issue-quote-summary {
+    flex-wrap: wrap;
   }
 }
 .quote-result {
@@ -2447,7 +2562,7 @@ h1 {
 }
 .services-mosaic {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: 185px;
   gap: 12px;
 }
@@ -2475,8 +2590,9 @@ h1 {
   border-color: #b8f13d9c;
 }
 .services-card-vpn {
-  grid-column: span 2;
-  grid-row: span 2;
+  grid-column: 1 / -1;
+  grid-row: span 1;
+  min-height: 185px;
   padding: 25px;
   border-color: #769b3a;
   background:
@@ -2487,8 +2603,10 @@ h1 {
   background: linear-gradient(125deg, #2a3838, #1c2929);
 }
 .services-card-steam {
-  grid-column: span 2;
   background: radial-gradient(circle at 85% 5%, #36454f, transparent 55%), #1c252b;
+}
+.services-card-mobile {
+  grid-column: span 1;
 }
 .services-card-top,
 .services-card-bottom {
@@ -2514,11 +2632,32 @@ h1 {
   background: #b8f13d12;
   color: var(--lime);
 }
-.services-card-vpn .services-card-icon {
-  width: 52px;
-  height: 52px;
-  border-color: #c8f88876;
-  background: #b8f13d20;
+.services-card-live {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 9px;
+  color: var(--lime);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.services-live-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow:
+    0 0 0 4px #b8f13d22,
+    0 0 13px #b8f13d88;
+  animation: services-live-pulse 1.8s ease-in-out infinite;
+}
+@keyframes services-live-pulse {
+  50% {
+    opacity: 0.45;
+    box-shadow: 0 0 0 7px #b8f13d0c;
+  }
 }
 .services-card-number {
   color: #8d9fa4;
@@ -2527,13 +2666,6 @@ h1 {
 }
 .services-card-vpn .services-card-number {
   color: #d3e3be;
-}
-.services-card-decor {
-  position: absolute;
-  top: 30%;
-  right: 7%;
-  color: #d5f6ab3d;
-  transform: rotate(-18deg);
 }
 .services-card-status {
   margin-bottom: 7px;
@@ -2660,7 +2792,11 @@ h1 {
   }
   .services-card-vpn {
     grid-column: span 2;
-    grid-row: span 1;
+    min-height: 180px;
+  }
+  .services-card-steam,
+  .services-card-mobile {
+    grid-column: span 1;
   }
 }
 @media (max-width: 460px) {
@@ -4191,6 +4327,7 @@ button.tx-row:hover {
   .view-stage > *,
   .tx-row,
   .services-card,
+  .services-live-dot,
   .issue-tier-card,
   .app-splash,
   .app-splash * {

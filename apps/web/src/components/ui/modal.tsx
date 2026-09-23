@@ -12,6 +12,7 @@ export function Modal({
   description,
   children,
   closeLabel = "Close",
+  className,
 }: {
   open: boolean;
   onClose: () => void;
@@ -20,12 +21,16 @@ export function Modal({
   description?: ReactNode;
   children: ReactNode;
   closeLabel?: string;
+  className?: string;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
-        <Dialog.Content className="modal-content" onOpenAutoFocus={(event) => event.preventDefault()}>
+        <Dialog.Content
+          className={`modal-content ${className ?? ""}`}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <header className="modal-header">
             <div>
               {eyebrow && <span className="dashboard-eyebrow">{eyebrow}</span>}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, CreditCard, Globe2, LockKeyhole, ShieldCheck } from "lucide-react";
 import {
   getCardProducts,
   getProductPrices,
@@ -125,6 +125,7 @@ export function IssueCardPanel() {
   const [prices, setPrices] = useState<Record<string, ProductPrice>>({});
   const [pricesLoaded, setPricesLoaded] = useState(false);
   const [selected, setSelected] = useState<CardProduct | null>(null);
+  const [step, setStep] = useState<"overview" | "form">("overview");
   const [form, setForm] = useState<Record<Field, string>>({ ...emptyForm });
   const [amount, setAmount] = useState("50");
   const [errors, setErrors] = useState<Partial<Record<Field | "amount", string>>>({});
@@ -161,6 +162,7 @@ export function IssueCardPanel() {
   const close = () => {
     if (busy) return;
     setSelected(null);
+    setStep("overview");
     setQuote(null);
     setError(null);
     setErrors({});
@@ -222,6 +224,7 @@ export function IssueCardPanel() {
 
   const tier = selected ? tierForProduct(selected.code) : "default";
   const meta = selected ? productPresentation(selected, ru) : null;
+  const selectedPrice = selected ? prices[selected.code] : undefined;
   return (
     <section className="issue-page">
       <p>
@@ -247,6 +250,7 @@ export function IssueCardPanel() {
               className={`issue-tier-card tier-${productTier}`}
               onClick={() => {
                 setSelected(product);
+                setStep("overview");
                 setForm({ ...emptyForm });
                 setAmount("50");
                 setIssued(false);
@@ -303,170 +307,215 @@ export function IssueCardPanel() {
         title={meta?.name ?? ""}
         description={meta?.description}
         closeLabel={ru ? "Закрыть" : "Close"}
+        className="issue-modal"
       >
         {selected && (
           <div className="issue-dialog">
-            <div className="issue-dialog-preview">
-              <CardVisual
-                variant={tier}
-                scheme={schemeForCard(selected.scheme)}
-                holder="FLYTOPAY USER"
-                expiry="12/30"
-              />
-            </div>
-            <div className="issue-dialog-note">
-              <ShieldCheck size={17} />
-              <span>
-                {ru
-                  ? "Отдельная загрузка документов здесь не требуется. Для выпуска нужны данные держателя карты."
-                  : "No separate document upload is needed here. Cardholder details are required to issue the card."}
-              </span>
-            </div>
-            {meta && (
-              <div className="issue-product-facts">
-                <span>{meta.format}</span>
-                <span>{meta.type}</span>
-                <span>
-                  {meta.scheme} · {selected.currency}
-                </span>
-              </div>
-            )}
-            <div className="issue-product-conditions">
-              <details>
-                <summary>
-                  {ru ? "Возможности карты" : "Card features"}
-                  <ChevronDown size={17} />
-                </summary>
-                <div>
-                  {meta?.features.length ? (
-                    <ul>
-                      {meta.features.map((feature) => (
-                        <li key={feature}>{feature}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>
-                      {ru
-                        ? "Дополнительные возможности для этого продукта не указаны провайдером."
-                        : "No additional features are listed for this product by the provider."}
-                    </p>
-                  )}
+            {step === "overview" && meta ? (
+              <div className="issue-overview">
+                <div className="issue-dialog-preview">
+                  <CardVisual
+                    variant={tier}
+                    scheme={schemeForCard(selected.scheme)}
+                    holder="FLYTOPAY USER"
+                    expiry="12/30"
+                  />
                 </div>
-              </details>
-              <details>
-                <summary>
-                  {ru ? "Условия выпуска" : "Issuance terms"}
-                  <ChevronDown size={17} />
-                </summary>
-                <div>
-                  <p>
-                    {ru
-                      ? "Цена зависит от стартового баланса и комиссии. Итоговую сумму покажем до подтверждения. Выпуск обрабатывается провайдером, статус появится на главной."
-                      : "The price depends on the initial balance and fee. The final amount is shown before confirmation. Issuance is processed by the provider; status appears on the home screen."}
-                  </p>
+                <div className="issue-product-facts">
+                  <span>{meta.format}</span>
+                  <span>{meta.type}</span>
+                  <span>
+                    {meta.scheme} · {selected.currency}
+                  </span>
                 </div>
-              </details>
-            </div>
-            {issued ? (
-              <p className="quote-result" role="status">
-                {ru
-                  ? "Заявка на выпуск отправлена. Статус карты появится на главной странице."
-                  : "Your issuance request has been sent. Check the card status on the home screen."}
-              </p>
-            ) : (
-              <>
-                <form
-                  className="issue-dialog-form"
-                  noValidate
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void askQuote();
-                  }}
-                >
-                  <h3>{ru ? "Данные держателя" : "Cardholder details"}</h3>
-                  <div className="issue-dialog-grid">
-                    {(Object.keys(emptyForm) as Field[]).map((field) => (
-                      <label key={field} className={`field-label issue-field issue-field-${field}`}>
-                        {labels[field][ru ? 0 : 1]}
-                        {field === "country" ? (
-                          <select value={form.country} onChange={(event) => update(field, event.target.value)}>
-                            <option value="US">United States</option>
-                            <option value="GB">United Kingdom</option>
-                            <option value="DE">Germany</option>
-                            <option value="AE">United Arab Emirates</option>
-                            <option value="TR">Türkiye</option>
-                          </select>
-                        ) : (
-                          <input
-                            value={form[field]}
-                            type={
-                              field === "date_of_birth"
-                                ? "date"
-                                : field === "email"
-                                  ? "email"
-                                  : field === "phone"
-                                    ? "tel"
-                                    : "text"
-                            }
-                            autoComplete={
-                              {
-                                first_name: "given-name",
-                                last_name: "family-name",
-                                email: "email",
-                                phone: "tel",
-                                date_of_birth: "bday",
-                                address: "street-address",
-                                city: "address-level2",
-                                state: "address-level1",
-                                zip_code: "postal-code",
-                              }[field]
-                            }
-                            placeholder={field === "phone" ? "+15551234567" : undefined}
-                            onChange={(event) => update(field, event.target.value)}
-                            aria-invalid={Boolean(errors[field])}
-                          />
-                        )}
-                        {errors[field] && <small className="issue-field-error">{errors[field]}</small>}
-                      </label>
-                    ))}
+                <div className="issue-benefits">
+                  <div className="issue-benefit">
+                    <span>
+                      <CreditCard size={20} />
+                    </span>
+                    <strong>{meta.format}</strong>
+                    <small>{meta.description}</small>
                   </div>
-                  <label className="field-label issue-amount">
-                    {ru ? "Стартовый баланс карты, USD" : "Initial card balance, USD"}
-                    <input
-                      inputMode="decimal"
-                      value={amount}
-                      onChange={(event) => {
-                        setAmount(event.target.value);
-                        setErrors((current) => ({ ...current, amount: undefined }));
-                        clearQuote();
-                      }}
-                      aria-invalid={Boolean(errors.amount)}
-                    />
-                    {errors.amount && <small className="issue-field-error">{errors.amount}</small>}
-                  </label>
-                  {error && (
-                    <p className="error-text" role="alert">
-                      {error}
-                    </p>
-                  )}
-                  {quote && (
-                    <div className="issue-quote-summary">
-                      <span>{ru ? "К списанию с баланса" : "Total from wallet"}</span>
-                      <strong>{money(quote.totalChargeMinor, quote.currency)}</strong>
+                  <div className="issue-benefit">
+                    <span>
+                      <Globe2 size={20} />
+                    </span>
+                    <strong>
+                      {meta.scheme} · {selected.currency}
+                    </strong>
+                    <small>{ru ? "Платёжная система и валюта карты" : "Card scheme and currency"}</small>
+                  </div>
+                  {meta.features.map((feature) => (
+                    <div className="issue-benefit" key={feature}>
+                      <span>
+                        <Check size={20} />
+                      </span>
+                      <strong>{feature}</strong>
+                      <small>{ru ? "Доступно для этого продукта" : "Available for this product"}</small>
                     </div>
-                  )}
-                  {!quote && (
-                    <button type="submit" className="lime-action" disabled={busy}>
-                      {busy ? "…" : ru ? "Рассчитать стоимость" : "Calculate price"}
-                    </button>
-                  )}
-                </form>
-                {quote && (
-                  <button type="button" className="lime-action issue-confirm" disabled={busy} onClick={issue}>
-                    {busy ? "…" : ru ? "Подтвердить выпуск карты" : "Confirm card issuance"}
+                  ))}
+                </div>
+                <div className="issue-product-conditions">
+                  <details>
+                    <summary>
+                      {ru ? "Условия выпуска" : "Issuance terms"}
+                      <ChevronDown size={17} />
+                    </summary>
+                    <div>
+                      <p>
+                        {ru
+                          ? "Стоимость зависит от стартового баланса и комиссии. Итоговую сумму покажем перед подтверждением. Выпуск обрабатывается провайдером, статус появится на главной."
+                          : "The price depends on the initial balance and fee. The final amount is shown before confirmation. Issuance is processed by the provider; status appears on the home screen."}
+                      </p>
+                    </div>
+                  </details>
+                  <details>
+                    <summary>
+                      {ru ? "Данные держателя" : "Cardholder details"}
+                      <ChevronDown size={17} />
+                    </summary>
+                    <div>
+                      <p>
+                        {ru
+                          ? "Для выпуска понадобятся имя, контакты, дата рождения и адрес держателя. Отдельная загрузка документов здесь не требуется."
+                          : "Issuance requires the cardholder’s name, contact details, date of birth and address. No separate document upload is needed here."}
+                      </p>
+                    </div>
+                  </details>
+                </div>
+                <div className="issue-overview-footer">
+                  <span>
+                    {ru ? "Ориентировочно при балансе $50" : "Estimate with a $50 balance"}
+                    <strong>
+                      {selectedPrice?.total_charge_minor != null
+                        ? money(selectedPrice.total_charge_minor, selectedPrice.currency, selectedPrice.scale)
+                        : "—"}
+                    </strong>
+                  </span>
+                  <button type="button" className="lime-action issue-buy" onClick={() => setStep("form")}>
+                    {ru ? "Купить карту" : "Get this card"}
+                    <ArrowRight size={18} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="issue-form-step">
+                {!issued && (
+                  <button type="button" className="issue-back" onClick={() => setStep("overview")} disabled={busy}>
+                    <ArrowLeft size={16} />
+                    {ru ? "К описанию карты" : "Back to card details"}
                   </button>
                 )}
-              </>
+                <div className="issue-dialog-note">
+                  <ShieldCheck size={17} />
+                  <span>
+                    {ru
+                      ? "Для выпуска нужны данные держателя карты. Отдельная загрузка документов здесь не требуется."
+                      : "Cardholder details are required. No separate document upload is needed here."}
+                  </span>
+                </div>
+                {issued ? (
+                  <p className="quote-result" role="status">
+                    {ru
+                      ? "Заявка на выпуск отправлена. Статус карты появится на главной странице."
+                      : "Your issuance request has been sent. Check the card status on the home screen."}
+                  </p>
+                ) : (
+                  <>
+                    <form
+                      className="issue-dialog-form"
+                      noValidate
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void askQuote();
+                      }}
+                    >
+                      <h3>{ru ? "Данные держателя" : "Cardholder details"}</h3>
+                      <div className="issue-dialog-grid">
+                        {(Object.keys(emptyForm) as Field[]).map((field) => (
+                          <label key={field} className={`field-label issue-field issue-field-${field}`}>
+                            {labels[field][ru ? 0 : 1]}
+                            {field === "country" ? (
+                              <select value={form.country} onChange={(event) => update(field, event.target.value)}>
+                                <option value="US">United States</option>
+                                <option value="GB">United Kingdom</option>
+                                <option value="DE">Germany</option>
+                                <option value="AE">United Arab Emirates</option>
+                                <option value="TR">Türkiye</option>
+                              </select>
+                            ) : (
+                              <input
+                                value={form[field]}
+                                type={
+                                  field === "date_of_birth"
+                                    ? "date"
+                                    : field === "email"
+                                      ? "email"
+                                      : field === "phone"
+                                        ? "tel"
+                                        : "text"
+                                }
+                                autoComplete={
+                                  {
+                                    first_name: "given-name",
+                                    last_name: "family-name",
+                                    email: "email",
+                                    phone: "tel",
+                                    date_of_birth: "bday",
+                                    address: "street-address",
+                                    city: "address-level2",
+                                    state: "address-level1",
+                                    zip_code: "postal-code",
+                                  }[field]
+                                }
+                                placeholder={field === "phone" ? "+15551234567" : undefined}
+                                onChange={(event) => update(field, event.target.value)}
+                                aria-invalid={Boolean(errors[field])}
+                              />
+                            )}
+                            {errors[field] && <small className="issue-field-error">{errors[field]}</small>}
+                          </label>
+                        ))}
+                      </div>
+                      <label className="field-label issue-amount">
+                        {ru ? "Стартовый баланс карты, USD" : "Initial card balance, USD"}
+                        <input
+                          inputMode="decimal"
+                          value={amount}
+                          onChange={(event) => {
+                            setAmount(event.target.value);
+                            setErrors((current) => ({ ...current, amount: undefined }));
+                            clearQuote();
+                          }}
+                          aria-invalid={Boolean(errors.amount)}
+                        />
+                        {errors.amount && <small className="issue-field-error">{errors.amount}</small>}
+                      </label>
+                      {error && (
+                        <p className="error-text" role="alert">
+                          {error}
+                        </p>
+                      )}
+                      {quote && (
+                        <div className="issue-quote-summary">
+                          <span>{ru ? "К списанию с баланса" : "Total from wallet"}</span>
+                          <strong>{money(quote.totalChargeMinor, quote.currency)}</strong>
+                        </div>
+                      )}
+                      {!quote && (
+                        <button type="submit" className="lime-action" disabled={busy}>
+                          {busy ? "…" : ru ? "Рассчитать стоимость" : "Calculate price"}
+                        </button>
+                      )}
+                    </form>
+                    {quote && (
+                      <button type="button" className="lime-action issue-confirm" disabled={busy} onClick={issue}>
+                        {busy ? "…" : ru ? "Подтвердить выпуск карты" : "Confirm card issuance"}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
         )}

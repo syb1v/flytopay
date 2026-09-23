@@ -1,19 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, Building2, Gamepad2, QrCode, ShieldCheck, Smartphone, TrafficCone } from "lucide-react";
+import { ArrowUpRight, Building2, Gamepad2, QrCode, Smartphone, TrafficCone } from "lucide-react";
 import { Modal } from "../ui/modal";
 
 type ServiceId = "vpn" | "qr" | "utilities" | "fines" | "steam" | "mobile";
 type Language = "ru" | "en";
 
 const services = [
-  { id: "vpn", icon: ShieldCheck, number: "01" },
-  { id: "qr", icon: QrCode, number: "02" },
-  { id: "utilities", icon: Building2, number: "03" },
-  { id: "fines", icon: TrafficCone, number: "04" },
-  { id: "steam", icon: Gamepad2, number: "05" },
-  { id: "mobile", icon: Smartphone, number: "06" },
+  { id: "qr", icon: QrCode, number: "01" },
+  { id: "utilities", icon: Building2, number: "02" },
+  { id: "fines", icon: TrafficCone, number: "03" },
+  { id: "steam", icon: Gamepad2, number: "04" },
+  { id: "mobile", icon: Smartphone, number: "05" },
+  { id: "vpn", icon: null, number: "06" },
 ] as const;
 
 const content = {
@@ -167,18 +167,19 @@ export function ServicesPanel({ language }: { language: Language }) {
               aria-label={`${item.title} — ${t.details}`}
             >
               <span className="services-card-top">
-                <span className="services-card-icon">
-                  <Icon size={24} strokeWidth={1.7} />
-                </span>
+                {Icon ? (
+                  <span className="services-card-icon">
+                    <Icon size={24} strokeWidth={1.7} />
+                  </span>
+                ) : (
+                  <span className="services-card-live">
+                    <span className="services-live-dot" aria-hidden="true" /> {t.available}
+                  </span>
+                )}
                 <span className="services-card-number">{number} / 06</span>
               </span>
-              {id === "vpn" && (
-                <span className="services-card-decor" aria-hidden="true">
-                  <ShieldCheck size={150} strokeWidth={0.65} />
-                </span>
-              )}
               <span className="services-card-bottom">
-                <span className="services-card-status">{id === "vpn" ? t.available : t.soon}</span>
+                {id !== "vpn" && <span className="services-card-status">{t.soon}</span>}
                 <strong>{item.title}</strong>
                 <span className="services-card-subtitle">{item.subtitle}</span>
               </span>
