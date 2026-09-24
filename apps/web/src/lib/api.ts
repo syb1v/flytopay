@@ -376,6 +376,33 @@ export type AdminTemplate = {
   body: string;
   isActive: boolean;
 };
+export type AdminPayment = {
+  id: string;
+  userId: string;
+  provider: string;
+  purpose: string;
+  status: string;
+  amountMinor: number;
+  currency: string;
+  createdAt: string;
+  errorCode: string | null;
+};
+export type AdminRefund = {
+  id: string;
+  paymentAttemptId: string;
+  amountMinor: number;
+  currency: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+};
+export type AdminReferralOverview = {
+  settings: { commissionBps: number; minimumPayoutMinor: number; currency: string; enabled: boolean } | null;
+  links: number;
+  ledgerEntries: number;
+  accruedMinor: number;
+  pendingPayouts: number;
+};
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_ORIGIN}/api/v1/admin${path}`, { credentials: "include", ...init });
   const payload = await response.json().catch(() => null);
@@ -399,6 +426,9 @@ export const getAdminCampaigns = () => adminFetch<AdminCampaign[]>("/marketing/c
 export const getAdminPromoCodes = () => adminFetch<AdminPromoCode[]>("/marketing/promo-codes");
 export const getAdminDocuments = () => adminFetch<AdminContentDocument[]>("/content/documents");
 export const getAdminTemplates = () => adminFetch<AdminTemplate[]>("/content/templates");
+export const getAdminPayments = () => adminFetch<AdminPayment[]>("/finance/payments");
+export const getAdminRefunds = () => adminFetch<AdminRefund[]>("/finance/refunds");
+export const getAdminReferralOverview = () => adminFetch<AdminReferralOverview>("/referrals/overview");
 export async function adminUserAction(
   id: string,
   action: "block" | "unblock" | "revoke-sessions",

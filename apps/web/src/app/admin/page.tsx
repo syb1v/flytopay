@@ -12,6 +12,7 @@ import {
   ServerCog,
   ShieldCheck,
   Users,
+  WalletCards,
 } from "lucide-react";
 import {
   adminUserAction,
@@ -27,6 +28,9 @@ import {
   getAdminPromoCodes,
   getAdminDocuments,
   getAdminTemplates,
+  getAdminPayments,
+  getAdminRefunds,
+  getAdminReferralOverview,
   type AdminActivity,
   type AdminDashboard,
   type AdminUser,
@@ -39,14 +43,19 @@ import {
   type AdminPromoCode,
   type AdminContentDocument,
   type AdminTemplate,
+  type AdminPayment,
+  type AdminRefund,
+  type AdminReferralOverview,
 } from "../../lib/api";
 
 const sections = [
   ["Обзор", LayoutDashboard],
   ["Пользователи", Users],
   ["Продажи", BarChart3],
+  ["Платежи и возвраты", WalletCards],
   ["Цены и продукты", Package],
   ["Маркетинг", Megaphone],
+  ["Рефералы", Users],
   ["Контент и рассылки", FileText],
   ["Журнал действий", Activity],
   ["Система", ServerCog],
@@ -72,6 +81,9 @@ export default function AdminPage() {
   const [promos, setPromos] = useState<AdminPromoCode[]>([]);
   const [documents, setDocuments] = useState<AdminContentDocument[]>([]);
   const [templates, setTemplates] = useState<AdminTemplate[]>([]);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
+  const [refunds, setRefunds] = useState<AdminRefund[]>([]);
+  const [referrals, setReferrals] = useState<AdminReferralOverview | null>(null);
   const [selected, setSelected] = useState<AdminUserDetails | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
@@ -130,6 +142,18 @@ export default function AdminPage() {
         .then(setTemplates)
         .catch(() => setTemplates([]));
     }
+    if (active === "Платежи и возвраты") {
+      getAdminPayments()
+        .then(setPayments)
+        .catch(() => setPayments([]));
+      getAdminRefunds()
+        .then(setRefunds)
+        .catch(() => setRefunds([]));
+    }
+    if (active === "Рефералы")
+      getAdminReferralOverview()
+        .then(setReferrals)
+        .catch(() => setReferrals(null));
   }, [active, page]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -206,6 +230,8 @@ export default function AdminPage() {
         {active === "Система" && <SystemView system={system} />}
         {active === "Маркетинг" && <MarketingView campaigns={campaigns} promos={promos} />}
         {active === "Контент и рассылки" && <ContentView documents={documents} templates={templates} />}
+        {active === "Платежи и возвраты" && <FinanceView payments={payments} refunds={refunds} />}
+        {active === "Рефералы" && <ReferralView referrals={referrals} />}
       </section>
       {selected && (
         <UserDialog
@@ -475,6 +501,101 @@ function ContentView({ documents, templates }: { documents: AdminContentDocument
         </div>
       </section>
     </>
+  );
+}
+
+function FinanceView({ payments, refunds }: { payments: AdminPayment[]; refunds: AdminRefund[] }) {
+  return (
+    <>
+      <section className="admin-panel">
+        <div className="section-heading">
+          <h2>Платежи</h2>
+          <span className="status-dot">
+            <i />
+            Реальные операции
+          </span>
+        </div>
+        <div className="admin-table">
+          <div className="admin-table-head">
+            <span>Провайдер</span>
+            <span>Назначение</span>
+            <span>Статус</span>
+            <span>Сумма</span>
+            <span>Дата</span>
+          </div>
+          {payments.map((payment) => (
+            <div className="admin-table-row" key={payment.id}>
+              <span>
+                <b>{payment.provider}</b>
+                <small>{payment.id}</small>
+              </span>
+              <span>{payment.purpose}</span>
+              <span>
+                <em className={`admin-badge ${payment.status === "succeeded" ? "active" : "blocked"}`}>
+                  {payment.status}
+                </em>
+              </span>
+              <span>
+                {(payment.amountMinor / 100).toLocaleString("ru-RU")} {payment.currency}
+              </span>
+              <span>{new Date(payment.createdAt).toLocaleDateString("ru-RU")}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="admin-panel">
+        <h2>Запросы на возврат</h2>
+        <div className="admin-table">
+          <div className="admin-table-head">
+            <span>Платёж</span>
+            <span>Сумма</span>
+            <span>Причина</span>
+            <span>Статус</span>
+          </div>
+          {refunds.map((refund) => (
+            <div className="admin-table-row content-row" key={refund.id}>
+              <span>{refund.paymentAttemptId}</span>
+              <span>
+                {refund.amountMinor / 100} {refund.currency}
+              </span>
+              <span>{refund.reason}</span>
+              <span>{refund.status}</span>
+            </div>
+          ))}
+          {refunds.length === 0 && <p className="settings-muted">Возвратов пока нет.</p>}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function ReferralView({ referrals }: { referrals: AdminReferralOverview | null }) {
+  return (
+    <section className="admin-panel">
+      <div className="admin-stat-grid admin-stat-grid-small">
+        <article>
+          <span>Реферальные ссылки</span>
+          <strong>{referrals?.links ?? "—"}</strong>
+        </article>
+        <article>
+          <span>Начислено</span>
+          <strong>
+            {referrals
+              ? `${(referrals.accruedMinor / 100).toLocaleString("ru-RU")} ${referrals.settings?.currency ?? "USD"}`
+              : "—"}
+          </strong>
+        </article>
+        <article>
+          <span>Ожидают выплаты</span>
+          <strong>{referrals?.pendingPayouts ?? "—"}</strong>
+        </article>
+      </div>
+      <div className="admin-status-row">
+        <span>Реферальная программа</span>
+        <b>{referrals?.settings?.enabled ? "Включена" : "Выключена"}</b>
+        <small>Комиссия: {referrals?.settings ? `${referrals.settings.commissionBps / 100}%` : "—"}</small>
+      </div>
+    </section>
   );
 }
 
