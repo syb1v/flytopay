@@ -267,6 +267,68 @@ export type AdminOverview = {
   payments: number;
   wallets: number;
 };
+export type AdminDashboard = {
+  totals: Record<string, number>;
+  paymentAmounts: Record<string, number>;
+  walletBalances: Record<string, number>;
+  days: Array<{ date: string; users: number; payments: number; rentals: number }>;
+};
+export type AdminUser = {
+  userId: string;
+  telegramId: number | null;
+  username: string | null;
+  status: string;
+  createdAt: string;
+};
+export type AdminUserPage = { items: AdminUser[]; total: number; page: number; limit: number };
+export type AdminUserDetails = {
+  userId: string;
+  status: string;
+  createdAt: string;
+  accounts: Array<{ telegramId: number; username: string | null }>;
+  cards: Array<{ cardId: string; status: string; lastFour: string | null; isDemo: boolean }>;
+  payments: Array<{ paymentId: string; status: string; amountMinor: number; currency: string; createdAt: string }>;
+  rentalCount: number;
+  wallets: Array<{ currency: string; availableMinor: number }>;
+};
+export type AdminActivity = {
+  items: Array<{
+    actorUserId: string | null;
+    action: string;
+    resourceId: string | null;
+    reason: string;
+    createdAt: string;
+  }>;
+  total: number;
+  page: number;
+  limit: number;
+};
+async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/admin${path}`, { credentials: "include", ...init });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok)
+    throw new Error(response.status === 403 ? "admin_forbidden" : (payload?.detail ?? "admin_load_failed"));
+  return payload.data as T;
+}
+export const getAdminDashboard = () => adminFetch<AdminDashboard>("/dashboard");
+export async function getAdminUsers(params: { q?: string; status?: string; page?: number }): Promise<AdminUserPage> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => value && query.set(key, String(value)));
+  return adminFetch<AdminUserPage>(`/users?${query}`);
+}
+export const getAdminUser = (id: string) => adminFetch<AdminUserDetails>(`/users/${id}`);
+export const getAdminActivity = (page = 1) => adminFetch<AdminActivity>(`/activity?page=${page}`);
+export async function adminUserAction(
+  id: string,
+  action: "block" | "unblock" | "revoke-sessions",
+  reason: string,
+): Promise<void> {
+  await adminFetch(`/users/${id}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+}
 export async function getAdminOverview(): Promise<AdminOverview> {
   const response = await fetch(`${API_ORIGIN}/api/v1/admin/overview`, { credentials: "include" });
   if (!response.ok) throw new Error(response.status === 403 ? "admin_forbidden" : "admin_load_failed");

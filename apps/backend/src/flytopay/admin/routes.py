@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from flytopay.admin.management import search_users
+from flytopay.admin_security import AdminPrincipal, require_admin_permission
 from flytopay.auth.session import current_user_id
 from flytopay.cards.models import Rental, UserCard
 from flytopay.config import telegram_admin_ids
@@ -38,9 +40,13 @@ async def overview(_: Annotated[UUID, Depends(admin_user_id)], db: Annotated[Asy
 
 
 @router.get("/users")
-async def users(_: Annotated[UUID, Depends(admin_user_id)], db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
-    result = await db.execute(select(TelegramAccount.telegram_id, User.id, User.status, User.created_at).join(User, User.id == TelegramAccount.user_id).order_by(User.created_at.desc()).limit(100))
-    return {"success": True, "data": [{"userId": str(user_id), "telegramId": telegram_id, "status": status, "createdAt": created_at.isoformat()} for telegram_id, user_id, status, created_at in result.all()]}
+async def users(
+    principal: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.read"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    q: str = "", status: str | None = None, activity: str | None = None,
+    page: int = 1, limit: int = 20, sort: str = "createdAt", order: str = "desc",
+) -> dict[str, object]:
+    return await search_users(principal, db, q, status, activity, page, limit, sort, order)
 
 
 @router.get("/cards")

@@ -7,10 +7,10 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Cookie, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flytopay.db.models import Session
+from flytopay.db.models import Session, User
 from flytopay.db.session import get_db
 
 SESSION_COOKIE = "flytopay_session"
@@ -39,4 +39,16 @@ async def current_user_id(
     session = result.scalar_one_or_none()
     if session is None or session.revoked_at is not None or session.expires_at <= datetime.now(UTC):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
+    user_status = await db.scalar(select(User.status).where(User.id == session.user_id))
+    if user_status != "active":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account unavailable")
     return session.user_id
+
+
+async def revoke_user_sessions(db: AsyncSession, user_id: UUID) -> int:
+    result = await db.execute(
+        update(Session)
+        .where(Session.user_id == user_id, Session.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(UTC))
+    )
+    return result.rowcount or 0

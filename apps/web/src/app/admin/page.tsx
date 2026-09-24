@@ -1,51 +1,90 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Activity, LayoutDashboard, Search, ShieldCheck, Users } from "lucide-react";
 import {
-  Activity,
-  CreditCard,
-  FileClock,
-  LayoutDashboard,
-  LogOut,
-  Search,
-  Settings2,
-  Users,
-  WalletCards,
-} from "lucide-react";
-import { getAdminCollection, getAdminOverview, type AdminOverview } from "../../lib/api";
+  adminUserAction,
+  getAdminActivity,
+  getAdminDashboard,
+  getAdminUser,
+  getAdminUsers,
+  type AdminActivity,
+  type AdminDashboard,
+  type AdminUser,
+  type AdminUserDetails,
+} from "../../lib/api";
 
 const sections = [
-  { label: "Overview", icon: LayoutDashboard },
-  { label: "Users", icon: Users },
-  { label: "Cards", icon: CreditCard },
-  { label: "Issuance", icon: FileClock },
-  { label: "Payments", icon: WalletCards },
-  { label: "Reconciliation", icon: Activity },
-  { label: "Settings", icon: Settings2 },
-];
+  ["Обзор", LayoutDashboard],
+  ["Пользователи", Users],
+  ["Журнал действий", Activity],
+] as const;
+const labels: Record<string, string> = {
+  "user.block": "Блокировка пользователя",
+  "user.unblock": "Разблокировка пользователя",
+  "user.revoke_sessions": "Отзыв сессий",
+};
+const date = (value: string) => new Date(value).toLocaleString("ru-RU", { dateStyle: "medium", timeStyle: "short" });
 
 export default function AdminPage() {
-  const [overview, setOverview] = useState<AdminOverview | null>(null);
-  const [active, setActive] = useState("Overview");
-  const [rows, setRows] = useState<Array<Record<string, string | number | boolean | null>>>([]);
+  const [active, setActive] = useState("Обзор");
+  const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [activity, setActivity] = useState<AdminActivity | null>(null);
+  const [selected, setSelected] = useState<AdminUserDetails | null>(null);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const result = await getAdminUsers({ q: query, status, page });
+      setUsers(result.items);
+      setUsersTotal(result.total);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Не удалось загрузить пользователей");
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
-    getAdminOverview()
-      .then(setOverview)
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "admin_load_failed"));
+    getAdminDashboard()
+      .then(setDashboard)
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "Не удалось загрузить статистику"));
   }, []);
   useEffect(() => {
-    const map: Record<string, "users" | "cards" | "payments" | "issuances"> = {
-      Users: "users",
-      Cards: "cards",
-      Payments: "payments",
-      Issuance: "issuances",
-    };
-    if (map[active])
-      getAdminCollection(map[active])
-        .then(setRows)
-        .catch(() => setRows([]));
-  }, [active]);
+    if (active === "Пользователи") void loadUsers();
+    if (active === "Журнал действий")
+      getAdminActivity()
+        .then(setActivity)
+        .catch(() => setActivity(null));
+  }, [active, page]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (active === "Пользователи") {
+        setPage(1);
+        void loadUsers();
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [query, status]);
+
+  if (error)
+    return (
+      <main className="admin-standalone-error">
+        <ShieldCheck size={42} />
+        <h1>{error === "admin_forbidden" ? "Доступ запрещён" : "Не удалось загрузить панель"}</h1>
+        <p>
+          {error === "admin_forbidden"
+            ? "Для просмотра панели необходимы права администратора."
+            : "Попробуйте обновить страницу или обратитесь к владельцу системы."}
+        </p>
+      </main>
+    );
   return (
     <main className="admin-shell">
       <aside className="admin-sidebar">
@@ -53,102 +92,305 @@ export default function AdminPage() {
           <img src="/logo.svg" alt="" />
           Flytopay
         </a>
-        <p className="admin-kicker">OPERATIONS</p>
+        <p className="admin-kicker">УПРАВЛЕНИЕ</p>
         <nav>
-          {sections.map(({ label, icon: Icon }) => (
+          {sections.map(([label, Icon]) => (
             <button className={active === label ? "active" : ""} key={label} onClick={() => setActive(label)}>
               <Icon size={17} />
               <span>{label}</span>
             </button>
           ))}
         </nav>
-        <button className="admin-logout">
-          <LogOut size={17} />
-          Sign out
-        </button>
       </aside>
       <section className="admin-content">
         <header className="admin-header">
           <div>
-            <span className="dashboard-eyebrow">FLYTOPAY CONTROL PLANE</span>
+            <span className="dashboard-eyebrow">ЦЕНТР УПРАВЛЕНИЯ FLYTOPAY</span>
             <h1>{active}</h1>
           </div>
-          <div className="admin-search">
-            <Search size={16} />
-            <input placeholder="Search users, cards, orders" />
-          </div>
+          {active === "Пользователи" && (
+            <label className="admin-search">
+              <Search size={16} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Поиск по ID, username или UUID"
+              />
+            </label>
+          )}
         </header>
-        {error ? (
-          <div className="admin-error">
-            {error === "admin_forbidden" ? "Admin access required" : "Failed to load admin data"}
-          </div>
-        ) : active === "Overview" ? (
-          <>
-            <div className="admin-stat-grid">
-              {overview &&
-                Object.entries({
-                  Users: overview.users,
-                  "Telegram accounts": overview.telegramAccounts,
-                  Cards: overview.cards,
-                  "Demo cards": overview.demoCards,
-                  Issuances: overview.rentals,
-                  Payments: overview.payments,
-                  Wallets: overview.wallets,
-                }).map(([label, value]) => (
-                  <article key={label}>
-                    <span>{label}</span>
-                    <strong>{value}</strong>
-                  </article>
-                ))}
-            </div>
-            <section className="admin-panel">
-              <div className="section-heading">
-                <h2>System status</h2>
-                <span className="status-dot">
-                  <i />
-                  Operational
-                </span>
-              </div>
-              <div className="admin-status-row">
-                <span>Application API</span>
-                <b>Healthy</b>
-                <small>Live health endpoint</small>
-              </div>
-              <div className="admin-status-row">
-                <span>2328 CaaS</span>
-                <b>Capability-driven</b>
-                <small>Provider state is read server-side</small>
-              </div>
-              <div className="admin-status-row">
-                <span>Payment processing</span>
-                <b>Idempotent</b>
-                <small>Webhook and reconciliation boundary</small>
-              </div>
-            </section>
-          </>
-        ) : (
-          <section className="admin-panel">
-            <div className="admin-table">
-              {rows.map((row, index) => (
-                <div
-                  className="admin-table-row"
-                  key={String(row.userId ?? row.cardId ?? row.paymentId ?? row.issuanceId ?? index)}
-                >
-                  {Object.entries(row)
-                    .slice(0, 6)
-                    .map(([key, value]) => (
-                      <span key={key}>
-                        <small>{key}</small>
-                        <b>{String(value ?? "—")}</b>
-                      </span>
-                    ))}
-                </div>
-              ))}
-            </div>
-            {rows.length === 0 && <p className="settings-muted">No records.</p>}
-          </section>
+        {active === "Обзор" && dashboard && <Dashboard dashboard={dashboard} />}
+        {active === "Пользователи" && (
+          <UsersView
+            users={users}
+            total={usersTotal}
+            page={page}
+            onPageChange={setPage}
+            status={status}
+            setStatus={setStatus}
+            loading={loading}
+            onOpen={(id) => getAdminUser(id).then(setSelected)}
+          />
         )}
+        {active === "Журнал действий" && <ActivityView activity={activity} />}
       </section>
+      {selected && (
+        <UserDialog
+          user={selected}
+          onClose={() => setSelected(null)}
+          onAction={async (action, reason) => {
+            await adminUserAction(selected.userId, action, reason);
+            setSelected(null);
+            void loadUsers();
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+function Dashboard({ dashboard }: { dashboard: AdminDashboard }) {
+  const t = dashboard.totals;
+  const cards = [
+    ["Пользователи", t.users],
+    ["Активные пользователи", t.activeUsers],
+    ["Новые за 30 дней", t.newMonth],
+    ["Карты", t.cards],
+    ["Активные аренды", t.activeRentals],
+    ["Платежи", t.payments],
+    ["Успешные платежи", t.successfulPayments],
+    ["Кошельки", t.wallets],
+  ];
+  return (
+    <>
+      <div className="admin-stat-grid">
+        {cards.map(([label, value]) => (
+          <article key={label as string}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </div>
+      <section className="admin-panel">
+        <div className="section-heading">
+          <h2>Динамика за 30 дней</h2>
+          <span className="status-dot">
+            <i />
+            Данные из базы
+          </span>
+        </div>
+        <div className="admin-chart">
+          {dashboard.days.map((day) => (
+            <div
+              className="admin-chart-column"
+              key={day.date}
+              title={`${day.date}: ${day.users} пользователей, ${day.payments} платежей`}
+            >
+              <i style={{ height: `${Math.max(4, Math.min(100, day.users * 8 + day.payments * 3))}%` }} />
+            </div>
+          ))}
+        </div>
+        <div className="admin-chart-legend">
+          <span>
+            <i className="users-legend" />
+            Пользователи
+          </span>
+          <span>
+            <i className="payments-legend" />
+            Платежи и выпуск
+          </span>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function UsersView({
+  users,
+  total,
+  page,
+  onPageChange,
+  status,
+  setStatus,
+  loading,
+  onOpen,
+}: {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  onPageChange: (value: number) => void;
+  status: string;
+  setStatus: (value: string) => void;
+  loading: boolean;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <section className="admin-panel">
+      <div className="admin-toolbar">
+        <div>
+          <h2>Пользователи</h2>
+          <p className="settings-muted">Поиск и управление доступом</p>
+        </div>
+        <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <option value="">Все статусы</option>
+          <option value="active">Активные</option>
+          <option value="blocked">Заблокированные</option>
+        </select>
+      </div>
+      <div className="admin-table admin-users-table">
+        <div className="admin-table-head">
+          <span>Пользователь</span>
+          <span>Telegram</span>
+          <span>Статус</span>
+          <span>Регистрация</span>
+          <span />
+        </div>
+        {loading && <p className="settings-muted">Загрузка...</p>}
+        {!loading &&
+          users.map((user) => (
+            <button className="admin-table-row" key={user.userId} onClick={() => onOpen(user.userId)}>
+              <span>
+                <b>{user.username ? `@${user.username}` : "Без username"}</b>
+                <small>{user.userId}</small>
+              </span>
+              <span>{user.telegramId ?? "—"}</span>
+              <span>
+                <em className={`admin-badge ${user.status}`}>
+                  {user.status === "active" ? "Активен" : user.status === "blocked" ? "Заблокирован" : user.status}
+                </em>
+              </span>
+              <span>{date(user.createdAt)}</span>
+              <span>→</span>
+            </button>
+          ))}
+        {!loading && users.length === 0 && <p className="settings-muted">Пользователи не найдены.</p>}
+      </div>
+      {total > 20 && (
+        <div className="admin-pagination">
+          <button disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            ← Назад
+          </button>
+          <span>
+            Страница {page} из {Math.ceil(total / 20)}
+          </span>
+          <button disabled={page >= Math.ceil(total / 20)} onClick={() => onPageChange(page + 1)}>
+            Вперёд →
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ActivityView({ activity }: { activity: AdminActivity | null }) {
+  return (
+    <section className="admin-panel">
+      <h2>Журнал действий</h2>
+      <div className="admin-table admin-users-table">
+        <div className="admin-table-head">
+          <span>Действие</span>
+          <span>Пользователь</span>
+          <span>Причина</span>
+          <span>Дата</span>
+        </div>
+        {activity?.items.map((event, index) => (
+          <div className="admin-table-row" key={`${event.createdAt}-${index}`}>
+            <span>
+              <b>{labels[event.action] ?? event.action}</b>
+              <small>{event.resourceId ?? "—"}</small>
+            </span>
+            <span>{event.actorUserId ?? "—"}</span>
+            <span>{event.reason || "—"}</span>
+            <span>{date(event.createdAt)}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function UserDialog({
+  user,
+  onClose,
+  onAction,
+}: {
+  user: AdminUserDetails;
+  onClose: () => void;
+  onAction: (action: "block" | "unblock" | "revoke-sessions", reason: string) => Promise<void>;
+}) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const action = async (name: "block" | "unblock" | "revoke-sessions") => {
+    if (reason.trim().length < 3) return;
+    setBusy(true);
+    try {
+      await onAction(name, reason);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="admin-dialog-backdrop" onClick={onClose}>
+      <section className="admin-dialog" onClick={(event) => event.stopPropagation()}>
+        <button className="admin-dialog-close" onClick={onClose}>
+          ×
+        </button>
+        <span className={`admin-badge ${user.status}`}>{user.status === "active" ? "Активен" : "Заблокирован"}</span>
+        <h2>Профиль пользователя</h2>
+        <p className="settings-muted">{user.userId}</p>
+        <div className="admin-detail-grid">
+          <div>
+            <small>Telegram</small>
+            <b>{user.accounts.map((account) => `@${account.username ?? account.telegramId}`).join(", ") || "—"}</b>
+          </div>
+          <div>
+            <small>Карты</small>
+            <b>{user.cards.length}</b>
+          </div>
+          <div>
+            <small>Платежи</small>
+            <b>{user.payments.length}</b>
+          </div>
+          <div>
+            <small>Аренды</small>
+            <b>{user.rentalCount}</b>
+          </div>
+        </div>
+        <label className="admin-reason">
+          Причина действия
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Укажите причину (минимум 3 символа)"
+          />
+        </label>
+        <div className="admin-dialog-actions">
+          <button
+            className="ui-button ui-button-secondary"
+            disabled={busy || reason.trim().length < 3}
+            onClick={() => action("revoke-sessions")}
+          >
+            Отозвать сессии
+          </button>
+          {user.status === "blocked" ? (
+            <button
+              className="ui-button ui-button-primary"
+              disabled={busy || reason.trim().length < 3}
+              onClick={() => action("unblock")}
+            >
+              Разблокировать
+            </button>
+          ) : (
+            <button
+              className="ui-button ui-button-danger"
+              disabled={busy || reason.trim().length < 3}
+              onClick={() => action("block")}
+            >
+              Заблокировать
+            </button>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }
