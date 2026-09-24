@@ -336,6 +336,46 @@ export type AdminSystemHealth = {
   featureFlags: Record<string, boolean>;
   settings: Record<string, unknown>;
 };
+export type AdminCampaign = {
+  id: string;
+  name: string;
+  startParameter: string;
+  source: string | null;
+  channel: string | null;
+  isActive: boolean;
+  registrations: number;
+  conversions: number;
+  revenueMinor: number;
+};
+export type AdminPromoCode = {
+  id: string;
+  code: string;
+  discountBps: number;
+  bonusMinor: number;
+  currency: string;
+  redemptions: number;
+  maxRedemptions: number | null;
+  isActive: boolean;
+  expiresAt: string | null;
+};
+export type AdminContentDocument = {
+  id: string;
+  kind: string;
+  slug: string;
+  locale: string;
+  title: string;
+  body: string;
+  isPublished: boolean;
+};
+export type AdminTemplate = {
+  id: string;
+  key: string;
+  channel: string;
+  locale: string;
+  subject: string | null;
+  body: string;
+  isActive: boolean;
+};
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_ORIGIN}/api/v1/admin${path}`, { credentials: "include", ...init });
   const payload = await response.json().catch(() => null);
@@ -355,6 +395,10 @@ export const getAdminSales = (days = 30) => adminFetch<AdminSales>(`/sales?days=
 export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
 export const getAdminProducts = () => adminFetch<AdminProduct[]>("/catalog/products");
 export const getAdminPrices = (productId: string) => adminFetch<AdminPrice[]>(`/catalog/products/${productId}/prices`);
+export const getAdminCampaigns = () => adminFetch<AdminCampaign[]>("/marketing/campaigns");
+export const getAdminPromoCodes = () => adminFetch<AdminPromoCode[]>("/marketing/promo-codes");
+export const getAdminDocuments = () => adminFetch<AdminContentDocument[]>("/content/documents");
+export const getAdminTemplates = () => adminFetch<AdminTemplate[]>("/content/templates");
 export async function adminUserAction(
   id: string,
   action: "block" | "unblock" | "revoke-sessions",

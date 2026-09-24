@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, BarChart3, LayoutDashboard, Package, Search, ServerCog, ShieldCheck, Users } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  FileText,
+  LayoutDashboard,
+  Megaphone,
+  Package,
+  Search,
+  ServerCog,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import {
   adminUserAction,
   getAdminActivity,
@@ -12,6 +23,10 @@ import {
   getAdminProducts,
   getAdminPrices,
   getAdminSystemHealth,
+  getAdminCampaigns,
+  getAdminPromoCodes,
+  getAdminDocuments,
+  getAdminTemplates,
   type AdminActivity,
   type AdminDashboard,
   type AdminUser,
@@ -20,6 +35,10 @@ import {
   type AdminProduct,
   type AdminPrice,
   type AdminSystemHealth,
+  type AdminCampaign,
+  type AdminPromoCode,
+  type AdminContentDocument,
+  type AdminTemplate,
 } from "../../lib/api";
 
 const sections = [
@@ -27,6 +46,8 @@ const sections = [
   ["Пользователи", Users],
   ["Продажи", BarChart3],
   ["Цены и продукты", Package],
+  ["Маркетинг", Megaphone],
+  ["Контент и рассылки", FileText],
   ["Журнал действий", Activity],
   ["Система", ServerCog],
 ] as const;
@@ -47,6 +68,10 @@ export default function AdminPage() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [prices, setPrices] = useState<AdminPrice[]>([]);
   const [system, setSystem] = useState<AdminSystemHealth | null>(null);
+  const [campaigns, setCampaigns] = useState<AdminCampaign[]>([]);
+  const [promos, setPromos] = useState<AdminPromoCode[]>([]);
+  const [documents, setDocuments] = useState<AdminContentDocument[]>([]);
+  const [templates, setTemplates] = useState<AdminTemplate[]>([]);
   const [selected, setSelected] = useState<AdminUserDetails | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
@@ -89,6 +114,22 @@ export default function AdminPage() {
       getAdminSystemHealth()
         .then(setSystem)
         .catch(() => setSystem(null));
+    if (active === "Маркетинг") {
+      getAdminCampaigns()
+        .then(setCampaigns)
+        .catch(() => setCampaigns([]));
+      getAdminPromoCodes()
+        .then(setPromos)
+        .catch(() => setPromos([]));
+    }
+    if (active === "Контент и рассылки") {
+      getAdminDocuments()
+        .then(setDocuments)
+        .catch(() => setDocuments([]));
+      getAdminTemplates()
+        .then(setTemplates)
+        .catch(() => setTemplates([]));
+    }
   }, [active, page]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -163,6 +204,8 @@ export default function AdminPage() {
         {active === "Продажи" && <SalesView sales={sales} />}
         {active === "Цены и продукты" && <CatalogView products={products} prices={prices} setPrices={setPrices} />}
         {active === "Система" && <SystemView system={system} />}
+        {active === "Маркетинг" && <MarketingView campaigns={campaigns} promos={promos} />}
+        {active === "Контент и рассылки" && <ContentView documents={documents} templates={templates} />}
       </section>
       {selected && (
         <UserDialog
@@ -310,6 +353,128 @@ function SystemView({ system }: { system: AdminSystemHealth | null }) {
         <small>Celery/admin jobs</small>
       </div>
     </section>
+  );
+}
+
+function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; promos: AdminPromoCode[] }) {
+  return (
+    <>
+      <section className="admin-panel">
+        <div className="section-heading">
+          <h2>Рекламные кампании</h2>
+          <span className="status-dot">
+            <i />
+            Атрибуция
+          </span>
+        </div>
+        <div className="admin-table">
+          <div className="admin-table-head">
+            <span>Кампания</span>
+            <span>Источник</span>
+            <span>Регистрации</span>
+            <span>Конверсии</span>
+            <span>Выручка</span>
+          </div>
+          {campaigns.map((campaign) => (
+            <div className="admin-table-row" key={campaign.id}>
+              <span>
+                <b>{campaign.name}</b>
+                <small>{campaign.startParameter}</small>
+              </span>
+              <span>{campaign.source ?? "—"}</span>
+              <span>{campaign.registrations}</span>
+              <span>{campaign.conversions}</span>
+              <span>
+                {(campaign.revenueMinor / 100).toLocaleString("ru-RU")} {campaign.source ? "USD" : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+        {campaigns.length === 0 && <p className="settings-muted">Кампании пока не созданы.</p>}
+      </section>
+      <section className="admin-panel">
+        <h2>Промокоды</h2>
+        <div className="admin-table">
+          <div className="admin-table-head">
+            <span>Код</span>
+            <span>Скидка</span>
+            <span>Бонус</span>
+            <span>Использований</span>
+            <span>Статус</span>
+          </div>
+          {promos.map((promo) => (
+            <div className="admin-table-row" key={promo.id}>
+              <span>
+                <b>{promo.code}</b>
+              </span>
+              <span>{promo.discountBps / 100}%</span>
+              <span>
+                {promo.bonusMinor / 100} {promo.currency}
+              </span>
+              <span>
+                {promo.redemptions}
+                {promo.maxRedemptions ? ` / ${promo.maxRedemptions}` : ""}
+              </span>
+              <span>
+                <em className={`admin-badge ${promo.isActive ? "active" : "blocked"}`}>
+                  {promo.isActive ? "Активен" : "Выключен"}
+                </em>
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function ContentView({ documents, templates }: { documents: AdminContentDocument[]; templates: AdminTemplate[] }) {
+  return (
+    <>
+      <section className="admin-panel">
+        <h2>FAQ, новости и документы</h2>
+        <div className="admin-table">
+          <div className="admin-table-head">
+            <span>Тип</span>
+            <span>Название</span>
+            <span>Язык</span>
+            <span>Статус</span>
+          </div>
+          {documents.map((document) => (
+            <div className="admin-table-row content-row" key={document.id}>
+              <span>{document.kind}</span>
+              <span>
+                <b>{document.title}</b>
+                <small>{document.slug}</small>
+              </span>
+              <span>{document.locale.toUpperCase()}</span>
+              <span>{document.isPublished ? "Опубликован" : "Черновик"}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="admin-panel">
+        <h2>Шаблоны сообщений</h2>
+        <div className="admin-table">
+          <div className="admin-table-head">
+            <span>Ключ</span>
+            <span>Канал</span>
+            <span>Язык</span>
+            <span>Статус</span>
+          </div>
+          {templates.map((template) => (
+            <div className="admin-table-row content-row" key={template.id}>
+              <span>
+                <b>{template.key}</b>
+              </span>
+              <span>{template.channel}</span>
+              <span>{template.locale.toUpperCase()}</span>
+              <span>{template.isActive ? "Активен" : "Выключен"}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
   );
 }
 
