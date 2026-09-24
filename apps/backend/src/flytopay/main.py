@@ -13,6 +13,7 @@ from flytopay.cards.lifecycle_routes import router as card_lifecycle_router
 from flytopay.cards.onboarding import router as issuance_router
 from flytopay.cards.routes import router as cards_router
 from flytopay.cards.webhooks import router as caas_webhooks_router
+from flytopay.catalog.routes_admin import router as catalog_admin_router
 from flytopay.config import get_settings
 from flytopay.config_validation import validate_runtime_environment
 from flytopay.issuance.onboarding import router as issuance_checkout_router
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(admin_management_router)
     app.include_router(admin_platform_router)
+    app.include_router(catalog_admin_router)
     app.include_router(issuance_checkout_router)
     return app
 

@@ -12,6 +12,7 @@ from flytopay.db.base import Base
 from flytopay.integrations.caas2328.persistence import CaaSOperationRecord  # noqa: F401
 from flytopay.issuance import models as issuance_models  # noqa: F401
 from flytopay.admin_platform import models as admin_platform_models  # noqa: F401
+from flytopay.catalog import models as catalog_models  # noqa: F401
 from flytopay.ledger import models as ledger_models  # noqa: F401
 from flytopay.payments import models as payment_models  # noqa: F401
 
