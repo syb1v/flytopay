@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from flytopay.admin.management import router as admin_management_router
 from flytopay.admin.routes import router as admin_router
+from flytopay.admin_platform.routes_dashboard import router as admin_platform_router
 from flytopay.api.correlation import CorrelationIdMiddleware
 from flytopay.api.health import router as health_router
 from flytopay.auth.routes import router as auth_router
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(issuance_router)
     app.include_router(admin_router)
     app.include_router(admin_management_router)
+    app.include_router(admin_platform_router)
     app.include_router(issuance_checkout_router)
     return app
 

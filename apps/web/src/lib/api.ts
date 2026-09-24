@@ -310,7 +310,7 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(response.status === 403 ? "admin_forbidden" : (payload?.detail ?? "admin_load_failed"));
   return payload.data as T;
 }
-export const getAdminDashboard = () => adminFetch<AdminDashboard>("/dashboard");
+export const getAdminDashboard = () => adminFetch<AdminDashboard>("/dashboard/overview");
 export async function getAdminUsers(params: { q?: string; status?: string; page?: number }): Promise<AdminUserPage> {
   const query = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => value && query.set(key, String(value)));

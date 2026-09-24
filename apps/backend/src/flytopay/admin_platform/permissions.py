@@ -1,0 +1,28 @@
+"""Canonical permission catalog for all back-office domains."""
+
+ADMIN_PERMISSIONS: tuple[tuple[str, str], ...] = (
+    ("admin.read", "Просмотр админ-панели"),
+    ("admin.users.read", "Просмотр пользователей"),
+    ("admin.users.write", "Управление пользователями"),
+    ("admin.cards.read", "Просмотр карт"),
+    ("admin.cards.write", "Управление картами"),
+    ("admin.products.read", "Просмотр карточных продуктов"),
+    ("admin.products.write", "Управление карточными продуктами"),
+    ("admin.prices.read", "Просмотр цен"),
+    ("admin.prices.write", "Управление ценами"),
+    ("admin.sales.read", "Просмотр статистики продаж"),
+    ("admin.payments.write", "Операции с платежами"),
+    ("admin.refunds.write", "Оформление возвратов"),
+    ("admin.marketing.read", "Просмотр маркетинга"),
+    ("admin.marketing.write", "Управление маркетингом"),
+    ("admin.referrals.read", "Просмотр рефералов"),
+    ("admin.referrals.write", "Управление рефералами"),
+    ("admin.content.read", "Просмотр контента"),
+    ("admin.content.write", "Управление контентом"),
+    ("admin.broadcasts.send", "Отправка рассылок"),
+    ("admin.system.read", "Просмотр состояния системы"),
+    ("admin.system.write", "Управление системой"),
+    ("admin.roles.read", "Просмотр ролей"),
+    ("admin.roles.write", "Управление ролями"),
+    ("admin.audit.read", "Просмотр журнала аудита"),
+)
