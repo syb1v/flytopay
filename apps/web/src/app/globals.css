@@ -1366,6 +1366,27 @@ h1 {
   }
 }
 @media (max-width: 760px) {
+  .dashboard-main::before,
+  .dashboard-main::after {
+    content: "";
+    position: fixed;
+    right: 0;
+    left: 0;
+    z-index: 4;
+    height: 34px;
+    pointer-events: none;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .dashboard-main::before {
+    top: 0;
+    background: linear-gradient(180deg, #101619f2, #10161900);
+  }
+  .dashboard-main::after {
+    bottom: 0;
+    height: 112px;
+    background: linear-gradient(0deg, #101619f2, #10161900);
+  }
   .dashboard-sidebar {
     display: none;
   }
@@ -1486,7 +1507,7 @@ h1 {
     bottom: 14px;
     left: 14px;
     right: 14px;
-    z-index: 10;
+    z-index: 5;
     justify-content: space-around;
     align-items: stretch;
     padding: 9px 4px;
