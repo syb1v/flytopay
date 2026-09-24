@@ -31,6 +31,10 @@ import {
   getAdminPayments,
   getAdminRefunds,
   getAdminReferralOverview,
+  updateAdminProduct,
+  updateAdminFees,
+  updateAdminCampaign,
+  archiveAdminCampaign,
   type AdminActivity,
   type AdminDashboard,
   type AdminUser,
@@ -295,6 +299,33 @@ function CatalogView({
   prices: AdminPrice[];
   setPrices: (prices: AdminPrice[]) => void;
 }) {
+  const [editing, setEditing] = useState<AdminProduct | null>(null);
+  const [name, setName] = useState("");
+  const [enabled, setEnabled] = useState(true);
+  const [fee, setFee] = useState("");
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    if (!editing || !name.trim()) return;
+    setSaving(true);
+    try {
+      await updateAdminProduct(editing.id, {
+        name: name.trim(),
+        enabled,
+        max_cards_per_cardholder: editing.maxCardsPerCardholder,
+      });
+      if (fee.trim())
+        await updateAdminFees(editing.id, {
+          issue_fee_minor: Number(fee),
+          fund_fee_bps: 0,
+          unload_fee_bps: 0,
+          currency: editing.currency,
+          scale: 2,
+        });
+      setEditing(null);
+    } finally {
+      setSaving(false);
+    }
+  };
   return (
     <section className="admin-panel">
       <div className="admin-toolbar">
@@ -315,7 +346,13 @@ function CatalogView({
           <button
             className="admin-table-row"
             key={product.id}
-            onClick={() => getAdminPrices(product.id).then(setPrices)}
+            onClick={() => {
+              getAdminPrices(product.id).then(setPrices);
+              setEditing(product);
+              setName(product.name);
+              setEnabled(product.enabled);
+              setFee("");
+            }}
           >
             <span>
               <b>{product.name}</b>
@@ -344,6 +381,31 @@ function CatalogView({
               <small>{price.isActive ? "Активна" : "Архив"}</small>
             </div>
           ))}
+        </div>
+      )}
+      {editing && (
+        <div className="admin-inline-editor">
+          <h3>Редактировать продукт</h3>
+          <label>
+            Название
+            <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <label className="admin-toggle">
+            <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} /> Продукт
+            доступен пользователям
+          </label>
+          <label>
+            Комиссия выпуска, minor units
+            <input inputMode="numeric" value={fee} onChange={(event) => setFee(event.target.value)} placeholder="0" />
+          </label>
+          <div className="admin-dialog-actions">
+            <button className="ui-button ui-button-secondary" onClick={() => setEditing(null)}>
+              Отмена
+            </button>
+            <button className="ui-button ui-button-primary" disabled={saving} onClick={save}>
+              {saving ? "Сохранение..." : "Сохранить"}
+            </button>
+          </div>
         </div>
       )}
     </section>
@@ -383,6 +445,8 @@ function SystemView({ system }: { system: AdminSystemHealth | null }) {
 }
 
 function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; promos: AdminPromoCode[] }) {
+  const [editing, setEditing] = useState<AdminCampaign | null>(null);
+  const [name, setName] = useState("");
   return (
     <>
       <section className="admin-panel">
@@ -402,7 +466,14 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
             <span>Выручка</span>
           </div>
           {campaigns.map((campaign) => (
-            <div className="admin-table-row" key={campaign.id}>
+            <button
+              className="admin-table-row"
+              key={campaign.id}
+              onClick={() => {
+                setEditing(campaign);
+                setName(campaign.name);
+              }}
+            >
               <span>
                 <b>{campaign.name}</b>
                 <small>{campaign.startParameter}</small>
@@ -413,11 +484,48 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
               <span>
                 {(campaign.revenueMinor / 100).toLocaleString("ru-RU")} {campaign.source ? "USD" : ""}
               </span>
-            </div>
+            </button>
           ))}
         </div>
         {campaigns.length === 0 && <p className="settings-muted">Кампании пока не созданы.</p>}
       </section>
+      {editing && (
+        <div className="admin-inline-editor">
+          <h3>Кампания: {editing.startParameter}</h3>
+          <label>
+            Название
+            <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <div className="admin-dialog-actions">
+            <button className="ui-button ui-button-secondary" onClick={() => setEditing(null)}>
+              Отмена
+            </button>
+            <button
+              className="ui-button ui-button-primary"
+              onClick={async () => {
+                await updateAdminCampaign(editing.id, {
+                  name,
+                  source: editing.source,
+                  channel: editing.channel,
+                  is_active: editing.isActive,
+                });
+                setEditing(null);
+              }}
+            >
+              Сохранить
+            </button>
+            <button
+              className="ui-button ui-button-danger"
+              onClick={async () => {
+                await archiveAdminCampaign(editing.id);
+                setEditing(null);
+              }}
+            >
+              Архивировать
+            </button>
+          </div>
+        </div>
+      )}
       <section className="admin-panel">
         <h2>Промокоды</h2>
         <div className="admin-table">

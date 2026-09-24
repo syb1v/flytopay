@@ -33,6 +33,14 @@ class PriceCreate(BaseModel):
     scale: int = Field(default=2, ge=0, le=4)
 
 
+class FeePolicyInput(BaseModel):
+    issue_fee_minor: int = Field(default=0, ge=0)
+    fund_fee_bps: int = Field(default=0, ge=0, le=10000)
+    unload_fee_bps: int = Field(default=0, ge=0, le=10000)
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    scale: int = Field(default=2, ge=0, le=4)
+
+
 @router.get("/products")
 async def products(_: ReadCatalog, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     rows = (await db.execute(select(CardProduct).order_by(CardProduct.created_at.desc()))).scalars().all()
@@ -100,4 +108,29 @@ async def create_price(
 async def fees(product_id: UUID, _: ReadCatalog, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     policy = await db.scalar(select(FeePolicy).where(FeePolicy.product_id == product_id))
     return {"success": True, "data": None if policy is None else {"id": str(policy.id), "issueFeeMinor": policy.issue_fee_minor,
+        "fundFeeBps": policy.fund_fee_bps, "unloadFeeBps": policy.unload_fee_bps, "currency": policy.currency, "scale": policy.scale}}
+
+
+@router.put("/products/{product_id}/fees", dependencies=[Depends(verify_csrf)])
+async def update_fees(
+    product_id: UUID, body: FeePolicyInput,
+    _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.prices.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    if await db.get(CardProduct, product_id) is None:
+        raise HTTPException(404, "Product not found")
+    policy = await db.scalar(select(FeePolicy).where(FeePolicy.product_id == product_id))
+    values = body.model_dump()
+    values["currency"] = body.currency.upper()
+    if policy is None:
+        policy = FeePolicy(product_id=product_id, **values)
+        db.add(policy)
+    else:
+        for key, value in values.items():
+            setattr(policy, key, value)
+    await db.commit()
+    return {"success": True, "data": {"id": str(policy.id), "issueFeeMinor": policy.issue_fee_minor,
         "fundFeeBps": policy.fund_fee_bps, "unloadFeeBps": policy.unload_fee_bps, "currency": policy.currency, "scale": policy.scale}}

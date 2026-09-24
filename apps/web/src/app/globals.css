@@ -356,6 +356,38 @@ h1 {
 .admin-system-grid b {
   color: var(--lime);
 }
+.admin-inline-editor {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #b8f13d55;
+  border-radius: 16px;
+  background: #101619;
+}
+.admin-inline-editor h3 {
+  margin: 0;
+}
+.admin-inline-editor label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-inline-editor input:not([type="checkbox"]) {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #354147;
+  border-radius: 10px;
+  background: #192126;
+  color: var(--white);
+  font: inherit;
+}
+.admin-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 8px !important;
+}
 .admin-panel {
   margin-top: 24px;
   padding: 24px;

@@ -1,6 +1,7 @@
 """Campaign and promotion administration endpoints."""
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -34,6 +35,13 @@ class PromoCodeCreate(BaseModel):
     expires_at: str | None = None
 
 
+class CampaignPatch(BaseModel):
+    name: str = Field(min_length=1, max_length=160)
+    source: str | None = Field(default=None, max_length=128)
+    channel: str | None = Field(default=None, max_length=128)
+    is_active: bool
+
+
 @router.get("/campaigns")
 async def campaigns(_: ReadMarketing, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     rows = (await db.execute(select(Campaign).order_by(Campaign.created_at.desc()))).scalars().all()
@@ -58,6 +66,30 @@ async def create_campaign(body: CampaignCreate, _: Annotated[AdminPrincipal, Dep
         await db.rollback()
         raise HTTPException(409, "Campaign parameter already exists") from exc
     return {"success": True, "data": {"id": str(campaign.id), "name": campaign.name, "startParameter": campaign.start_parameter}}
+
+
+@router.patch("/campaigns/{campaign_id}", dependencies=[Depends(verify_csrf)])
+async def update_campaign(campaign_id: UUID, body: CampaignPatch, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.marketing.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    campaign = await db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(404, "Campaign not found")
+    campaign.name, campaign.source, campaign.channel, campaign.is_active = body.name.strip(), body.source, body.channel, body.is_active
+    await db.commit()
+    return {"success": True, "data": {"id": str(campaign.id), "name": campaign.name, "isActive": campaign.is_active}}
+
+
+@router.delete("/campaigns/{campaign_id}", dependencies=[Depends(verify_csrf)])
+async def delete_campaign(campaign_id: UUID, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.marketing.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    campaign = await db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(404, "Campaign not found")
+    campaign.is_active = False
+    await db.commit()
+    return {"success": True, "data": {"id": str(campaign.id), "isActive": campaign.is_active}}
 
 
 @router.get("/promo-codes")

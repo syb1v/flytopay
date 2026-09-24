@@ -422,7 +422,39 @@ export const getAdminSales = (days = 30) => adminFetch<AdminSales>(`/sales?days=
 export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
 export const getAdminProducts = () => adminFetch<AdminProduct[]>("/catalog/products");
 export const getAdminPrices = (productId: string) => adminFetch<AdminPrice[]>(`/catalog/products/${productId}/prices`);
+export const updateAdminProduct = (
+  id: string,
+  body: { name: string; enabled: boolean; max_cards_per_cardholder: number | null },
+) =>
+  adminFetch<{ id: string; name: string; enabled: boolean }>(`/catalog/products/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const updateAdminFees = (
+  id: string,
+  body: { issue_fee_minor: number; fund_fee_bps: number; unload_fee_bps: number; currency: string; scale: number },
+) =>
+  adminFetch(`/catalog/products/${id}/fees`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
 export const getAdminCampaigns = () => adminFetch<AdminCampaign[]>("/marketing/campaigns");
+export const updateAdminCampaign = (
+  id: string,
+  body: { name: string; source: string | null; channel: string | null; is_active: boolean },
+) =>
+  adminFetch(`/marketing/campaigns/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const archiveAdminCampaign = (id: string) =>
+  adminFetch(`/marketing/campaigns/${id}`, {
+    method: "DELETE",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
 export const getAdminPromoCodes = () => adminFetch<AdminPromoCode[]>("/marketing/promo-codes");
 export const getAdminDocuments = () => adminFetch<AdminContentDocument[]>("/content/documents");
 export const getAdminTemplates = () => adminFetch<AdminTemplate[]>("/content/templates");
