@@ -31,6 +31,11 @@ import {
   getAdminPayments,
   getAdminRefunds,
   getAdminReferralOverview,
+  updateAdminPromo,
+  archiveAdminPromo,
+  updateAdminDocument,
+  deleteAdminDocument,
+  updateAdminTemplate,
   adminRestoreUser,
   adminDeleteUser,
   getAdminUserStats,
@@ -467,6 +472,7 @@ function SystemView({ system }: { system: AdminSystemHealth | null }) {
 function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; promos: AdminPromoCode[] }) {
   const [editing, setEditing] = useState<AdminCampaign | null>(null);
   const [name, setName] = useState("");
+  const [promoEditing, setPromoEditing] = useState<AdminPromoCode | null>(null);
   return (
     <>
       <section className="admin-panel">
@@ -557,7 +563,7 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
             <span>Статус</span>
           </div>
           {promos.map((promo) => (
-            <div className="admin-table-row" key={promo.id}>
+            <button className="admin-table-row" key={promo.id} onClick={() => setPromoEditing(promo)}>
               <span>
                 <b>{promo.code}</b>
               </span>
@@ -574,15 +580,18 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
                   {promo.isActive ? "Активен" : "Выключен"}
                 </em>
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </section>
+      {promoEditing && <PromoEditor promo={promoEditing} onClose={() => setPromoEditing(null)} />}
     </>
   );
 }
 
 function ContentView({ documents, templates }: { documents: AdminContentDocument[]; templates: AdminTemplate[] }) {
+  const [editing, setEditing] = useState<AdminContentDocument | null>(null);
+  const [templateEditing, setTemplateEditing] = useState<AdminTemplate | null>(null);
   return (
     <>
       <section className="admin-panel">
@@ -595,7 +604,7 @@ function ContentView({ documents, templates }: { documents: AdminContentDocument
             <span>Статус</span>
           </div>
           {documents.map((document) => (
-            <div className="admin-table-row content-row" key={document.id}>
+            <button className="admin-table-row content-row" key={document.id} onClick={() => setEditing(document)}>
               <span>{document.kind}</span>
               <span>
                 <b>{document.title}</b>
@@ -603,7 +612,7 @@ function ContentView({ documents, templates }: { documents: AdminContentDocument
               </span>
               <span>{document.locale.toUpperCase()}</span>
               <span>{document.isPublished ? "Опубликован" : "Черновик"}</span>
-            </div>
+            </button>
           ))}
         </div>
       </section>
@@ -617,17 +626,23 @@ function ContentView({ documents, templates }: { documents: AdminContentDocument
             <span>Статус</span>
           </div>
           {templates.map((template) => (
-            <div className="admin-table-row content-row" key={template.id}>
+            <button
+              className="admin-table-row content-row"
+              key={template.id}
+              onClick={() => setTemplateEditing(template)}
+            >
               <span>
                 <b>{template.key}</b>
               </span>
               <span>{template.channel}</span>
               <span>{template.locale.toUpperCase()}</span>
               <span>{template.isActive ? "Активен" : "Выключен"}</span>
-            </div>
+            </button>
           ))}
         </div>
       </section>
+      {editing && <ContentEditor document={editing} onClose={() => setEditing(null)} />}
+      {templateEditing && <TemplateEditor template={templateEditing} onClose={() => setTemplateEditing(null)} />}
     </>
   );
 }
@@ -724,6 +739,153 @@ function ReferralView({ referrals }: { referrals: AdminReferralOverview | null }
         <small>Комиссия: {referrals?.settings ? `${referrals.settings.commissionBps / 100}%` : "—"}</small>
       </div>
     </section>
+  );
+}
+
+function PromoEditor({ promo, onClose }: { promo: AdminPromoCode; onClose: () => void }) {
+  const [discount, setDiscount] = useState(String(promo.discountBps));
+  const [bonus, setBonus] = useState(String(promo.bonusMinor));
+  const [active, setActive] = useState(promo.isActive);
+  return (
+    <div className="admin-dialog-backdrop" onClick={onClose}>
+      <section className="admin-dialog" onClick={(event) => event.stopPropagation()}>
+        <h2>Промокод {promo.code}</h2>
+        <label className="admin-reason">
+          Скидка, basis points
+          <input value={discount} onChange={(event) => setDiscount(event.target.value)} />
+        </label>
+        <label className="admin-reason">
+          Бонус, minor units
+          <input value={bonus} onChange={(event) => setBonus(event.target.value)} />
+        </label>
+        <label className="admin-toggle">
+          <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} /> Активен
+        </label>
+        <div className="admin-dialog-actions">
+          <button className="ui-button ui-button-secondary" onClick={onClose}>
+            Отмена
+          </button>
+          <button
+            className="ui-button ui-button-primary"
+            onClick={async () => {
+              await updateAdminPromo(promo.id, {
+                discount_bps: Number(discount),
+                bonus_minor: Number(bonus),
+                max_redemptions: promo.maxRedemptions,
+                is_active: active,
+              });
+              onClose();
+            }}
+          >
+            Сохранить
+          </button>
+          <button
+            className="ui-button ui-button-danger"
+            onClick={async () => {
+              await archiveAdminPromo(promo.id);
+              onClose();
+            }}
+          >
+            Архивировать
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ContentEditor({ document, onClose }: { document: AdminContentDocument; onClose: () => void }) {
+  const [title, setTitle] = useState(document.title);
+  const [body, setBody] = useState(document.body);
+  const [published, setPublished] = useState(document.isPublished);
+  return (
+    <div className="admin-dialog-backdrop" onClick={onClose}>
+      <section className="admin-dialog" onClick={(event) => event.stopPropagation()}>
+        <h2>Документ: {document.slug}</h2>
+        <label className="admin-reason">
+          Название
+          <input value={title} onChange={(event) => setTitle(event.target.value)} />
+        </label>
+        <label className="admin-reason">
+          Текст
+          <textarea value={body} onChange={(event) => setBody(event.target.value)} />
+        </label>
+        <label className="admin-toggle">
+          <input type="checkbox" checked={published} onChange={(event) => setPublished(event.target.checked)} />{" "}
+          Опубликован
+        </label>
+        <div className="admin-dialog-actions">
+          <button className="ui-button ui-button-secondary" onClick={onClose}>
+            Отмена
+          </button>
+          <button
+            className="ui-button ui-button-primary"
+            onClick={async () => {
+              await updateAdminDocument(document.id, {
+                kind: document.kind,
+                slug: document.slug,
+                locale: document.locale,
+                title,
+                body,
+                is_published: published,
+              });
+              onClose();
+            }}
+          >
+            Сохранить
+          </button>
+          <button
+            className="ui-button ui-button-danger"
+            onClick={async () => {
+              await deleteAdminDocument(document.id);
+              onClose();
+            }}
+          >
+            Удалить
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TemplateEditor({ template, onClose }: { template: AdminTemplate; onClose: () => void }) {
+  const [body, setBody] = useState(template.body);
+  const [active, setActive] = useState(template.isActive);
+  return (
+    <div className="admin-dialog-backdrop" onClick={onClose}>
+      <section className="admin-dialog" onClick={(event) => event.stopPropagation()}>
+        <h2>Шаблон: {template.key}</h2>
+        <label className="admin-reason">
+          Текст
+          <textarea value={body} onChange={(event) => setBody(event.target.value)} />
+        </label>
+        <label className="admin-toggle">
+          <input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} /> Активен
+        </label>
+        <div className="admin-dialog-actions">
+          <button className="ui-button ui-button-secondary" onClick={onClose}>
+            Отмена
+          </button>
+          <button
+            className="ui-button ui-button-primary"
+            onClick={async () => {
+              await updateAdminTemplate(template.id, {
+                key: template.key,
+                channel: template.channel,
+                locale: template.locale,
+                subject: template.subject,
+                body,
+                is_active: active,
+              });
+              onClose();
+            }}
+          >
+            Сохранить
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

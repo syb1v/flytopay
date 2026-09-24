@@ -42,6 +42,13 @@ class CampaignPatch(BaseModel):
     is_active: bool
 
 
+class PromoCodePatch(BaseModel):
+    discount_bps: int = Field(default=0, ge=0, le=10000)
+    bonus_minor: int = Field(default=0, ge=0)
+    max_redemptions: int | None = Field(default=None, ge=1)
+    is_active: bool
+
+
 @router.get("/campaigns")
 async def campaigns(_: ReadMarketing, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     rows = (await db.execute(select(Campaign).order_by(Campaign.created_at.desc()))).scalars().all()
@@ -110,6 +117,31 @@ async def create_promo_code(body: PromoCodeCreate, _: Annotated[AdminPrincipal, 
         await db.rollback()
         raise HTTPException(409, "Promo code already exists") from exc
     return {"success": True, "data": {"id": str(promo.id), "code": promo.code}}
+
+
+@router.patch("/promo-codes/{promo_id}", dependencies=[Depends(verify_csrf)])
+async def update_promo_code(promo_id: UUID, body: PromoCodePatch, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.marketing.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    promo = await db.get(PromoCode, promo_id)
+    if promo is None:
+        raise HTTPException(404, "Promo code not found")
+    for key, value in body.model_dump().items():
+        setattr(promo, key, value)
+    await db.commit()
+    return {"success": True, "data": {"id": str(promo.id), "code": promo.code, "isActive": promo.is_active}}
+
+
+@router.delete("/promo-codes/{promo_id}", dependencies=[Depends(verify_csrf)])
+async def archive_promo_code(promo_id: UUID, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.marketing.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    promo = await db.get(PromoCode, promo_id)
+    if promo is None:
+        raise HTTPException(404, "Promo code not found")
+    promo.is_active = False
+    await db.commit()
+    return {"success": True, "data": {"id": str(promo.id), "isActive": promo.is_active}}
 
 
 @router.get("/promo-groups")

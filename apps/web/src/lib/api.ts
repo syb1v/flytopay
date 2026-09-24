@@ -481,8 +481,45 @@ export const archiveAdminCampaign = (id: string) =>
     headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
   });
 export const getAdminPromoCodes = () => adminFetch<AdminPromoCode[]>("/marketing/promo-codes");
+export const updateAdminPromo = (
+  id: string,
+  body: { discount_bps: number; bonus_minor: number; max_redemptions: number | null; is_active: boolean },
+) =>
+  adminFetch(`/marketing/promo-codes/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const archiveAdminPromo = (id: string) =>
+  adminFetch(`/marketing/promo-codes/${id}`, {
+    method: "DELETE",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
 export const getAdminDocuments = () => adminFetch<AdminContentDocument[]>("/content/documents");
 export const getAdminTemplates = () => adminFetch<AdminTemplate[]>("/content/templates");
+export const updateAdminDocument = (
+  id: string,
+  body: { kind: string; slug: string; locale: string; title: string; body: string; is_published: boolean },
+) =>
+  adminFetch(`/content/documents/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const deleteAdminDocument = (id: string) =>
+  adminFetch(`/content/documents/${id}`, {
+    method: "DELETE",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
+export const updateAdminTemplate = (
+  id: string,
+  body: { key: string; channel: string; locale: string; subject: string | null; body: string; is_active: boolean },
+) =>
+  adminFetch(`/content/templates/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
 export const getAdminPayments = () => adminFetch<AdminPayment[]>("/finance/payments");
 export const getAdminRefunds = () => adminFetch<AdminRefund[]>("/finance/refunds");
 export const getAdminReferralOverview = () => adminFetch<AdminReferralOverview>("/referrals/overview");

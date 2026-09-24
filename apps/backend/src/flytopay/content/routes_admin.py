@@ -1,6 +1,7 @@
 """Admin CRUD for FAQ/legal/news content and message templates."""
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -33,6 +34,14 @@ class TemplateCreate(BaseModel):
     body: str = Field(min_length=1, max_length=100000)
 
 
+class ContentPatch(ContentCreate):
+    pass
+
+
+class TemplatePatch(TemplateCreate):
+    is_active: bool = True
+
+
 @router.get("/documents")
 async def documents(_: ReadContent, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     rows = (await db.execute(select(ContentDocument).order_by(ContentDocument.updated_at.desc()))).scalars().all()
@@ -53,6 +62,31 @@ async def create_document(body: ContentCreate, _: Annotated[AdminPrincipal, Depe
     return {"success": True, "data": {"id": str(document.id), "slug": document.slug}}
 
 
+@router.patch("/documents/{document_id}", dependencies=[Depends(verify_csrf)])
+async def update_document(document_id: UUID, body: ContentPatch, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.content.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    document = await db.get(ContentDocument, document_id)
+    if document is None:
+        raise HTTPException(404, "Document not found")
+    for key, value in body.model_dump().items():
+        setattr(document, key, value)
+    await db.commit()
+    return {"success": True, "data": {"id": str(document.id), "slug": document.slug, "isPublished": document.is_published}}
+
+
+@router.delete("/documents/{document_id}", dependencies=[Depends(verify_csrf)])
+async def delete_document(document_id: UUID, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.content.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    document = await db.get(ContentDocument, document_id)
+    if document is None:
+        raise HTTPException(404, "Document not found")
+    await db.delete(document)
+    await db.commit()
+    return {"success": True, "data": {"id": str(document_id), "deleted": True}}
+
+
 @router.get("/templates")
 async def templates(_: ReadContent, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     rows = (await db.execute(select(MessageTemplate).order_by(MessageTemplate.key))).scalars().all()
@@ -71,6 +105,19 @@ async def create_template(body: TemplateCreate, _: Annotated[AdminPrincipal, Dep
         await db.rollback()
         raise HTTPException(409, "Template key already exists") from exc
     return {"success": True, "data": {"id": str(template.id), "key": template.key}}
+
+
+@router.patch("/templates/{template_id}", dependencies=[Depends(verify_csrf)])
+async def update_template(template_id: UUID, body: TemplatePatch, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.content.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    template = await db.get(MessageTemplate, template_id)
+    if template is None:
+        raise HTTPException(404, "Template not found")
+    for key, value in body.model_dump().items():
+        setattr(template, key, value)
+    await db.commit()
+    return {"success": True, "data": {"id": str(template.id), "key": template.key, "isActive": template.is_active}}
 
 
 @router.get("/broadcasts")
