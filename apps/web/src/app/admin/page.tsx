@@ -1,23 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, LayoutDashboard, Search, ShieldCheck, Users } from "lucide-react";
+import { Activity, BarChart3, LayoutDashboard, Package, Search, ServerCog, ShieldCheck, Users } from "lucide-react";
 import {
   adminUserAction,
   getAdminActivity,
   getAdminDashboard,
   getAdminUser,
   getAdminUsers,
+  getAdminSales,
+  getAdminProducts,
+  getAdminPrices,
+  getAdminSystemHealth,
   type AdminActivity,
   type AdminDashboard,
   type AdminUser,
   type AdminUserDetails,
+  type AdminSales,
+  type AdminProduct,
+  type AdminPrice,
+  type AdminSystemHealth,
 } from "../../lib/api";
 
 const sections = [
   ["Обзор", LayoutDashboard],
   ["Пользователи", Users],
+  ["Продажи", BarChart3],
+  ["Цены и продукты", Package],
   ["Журнал действий", Activity],
+  ["Система", ServerCog],
 ] as const;
 const labels: Record<string, string> = {
   "user.block": "Блокировка пользователя",
@@ -32,6 +43,10 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersTotal, setUsersTotal] = useState(0);
   const [activity, setActivity] = useState<AdminActivity | null>(null);
+  const [sales, setSales] = useState<AdminSales | null>(null);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [prices, setPrices] = useState<AdminPrice[]>([]);
+  const [system, setSystem] = useState<AdminSystemHealth | null>(null);
   const [selected, setSelected] = useState<AdminUserDetails | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
@@ -62,6 +77,18 @@ export default function AdminPage() {
       getAdminActivity()
         .then(setActivity)
         .catch(() => setActivity(null));
+    if (active === "Продажи")
+      getAdminSales()
+        .then(setSales)
+        .catch(() => setSales(null));
+    if (active === "Цены и продукты")
+      getAdminProducts()
+        .then(setProducts)
+        .catch(() => setProducts([]));
+    if (active === "Система")
+      getAdminSystemHealth()
+        .then(setSystem)
+        .catch(() => setSystem(null));
   }, [active, page]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -133,6 +160,9 @@ export default function AdminPage() {
           />
         )}
         {active === "Журнал действий" && <ActivityView activity={activity} />}
+        {active === "Продажи" && <SalesView sales={sales} />}
+        {active === "Цены и продукты" && <CatalogView products={products} prices={prices} setPrices={setPrices} />}
+        {active === "Система" && <SystemView system={system} />}
       </section>
       {selected && (
         <UserDialog
@@ -146,6 +176,140 @@ export default function AdminPage() {
         />
       )}
     </main>
+  );
+}
+
+function SalesView({ sales }: { sales: AdminSales | null }) {
+  const total = sales?.items.reduce((sum, item) => sum + item.amountMinor, 0) ?? 0;
+  const orders = sales?.items.reduce((sum, item) => sum + item.orders, 0) ?? 0;
+  return (
+    <section className="admin-panel">
+      <div className="admin-stat-grid admin-stat-grid-small">
+        <article>
+          <span>Выручка за 30 дней</span>
+          <strong>{(total / 100).toLocaleString("ru-RU")} USD</strong>
+        </article>
+        <article>
+          <span>Успешные заказы</span>
+          <strong>{orders}</strong>
+        </article>
+        <article>
+          <span>Средний чек</span>
+          <strong>{orders ? Math.round(total / orders / 100).toLocaleString("ru-RU") : 0} USD</strong>
+        </article>
+      </div>
+      <h2>Продажи по дням</h2>
+      <div className="admin-table">
+        <div className="admin-table-head">
+          <span>Период</span>
+          <span>Заказы</span>
+          <span>Сумма</span>
+        </div>
+        {sales?.items.map((item) => (
+          <div className="admin-table-row sales-row" key={item.key}>
+            <span>{item.key}</span>
+            <span>{item.orders}</span>
+            <span>{(item.amountMinor / 100).toLocaleString("ru-RU")} USD</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CatalogView({
+  products,
+  prices,
+  setPrices,
+}: {
+  products: AdminProduct[];
+  prices: AdminPrice[];
+  setPrices: (prices: AdminPrice[]) => void;
+}) {
+  return (
+    <section className="admin-panel">
+      <div className="admin-toolbar">
+        <div>
+          <h2>Карточные продукты и цены</h2>
+          <p className="settings-muted">Реальные продукты из каталога 2328 и активные версии цен</p>
+        </div>
+      </div>
+      <div className="admin-table">
+        <div className="admin-table-head">
+          <span>Продукт</span>
+          <span>Схема</span>
+          <span>Валюта</span>
+          <span>Статус</span>
+          <span>Цены</span>
+        </div>
+        {products.map((product) => (
+          <button
+            className="admin-table-row"
+            key={product.id}
+            onClick={() => getAdminPrices(product.id).then(setPrices)}
+          >
+            <span>
+              <b>{product.name}</b>
+              <small>{product.code}</small>
+            </span>
+            <span>{product.scheme}</span>
+            <span>{product.currency}</span>
+            <span>
+              <em className={`admin-badge ${product.enabled ? "active" : "blocked"}`}>
+                {product.enabled ? "Включён" : "Выключен"}
+              </em>
+            </span>
+            <span>Открыть →</span>
+          </button>
+        ))}
+      </div>
+      {prices.length > 0 && (
+        <div className="admin-price-panel">
+          <h3>История цен</h3>
+          {prices.map((price) => (
+            <div className="admin-price-row" key={price.id}>
+              <span>{price.termDays} дней</span>
+              <b>
+                {(price.amountMinor / 100).toLocaleString("ru-RU")} {price.currency}
+              </b>
+              <small>{price.isActive ? "Активна" : "Архив"}</small>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SystemView({ system }: { system: AdminSystemHealth | null }) {
+  return (
+    <section className="admin-panel">
+      <div className="section-heading">
+        <h2>Контроль API и системы</h2>
+        <span className="status-dot">
+          <i />
+          Без секретов в браузере
+        </span>
+      </div>
+      <div className="admin-system-grid">
+        {system?.services.map((service) => (
+          <article key={service.name}>
+            <span>{service.name}</span>
+            <b>{service.status === "available" ? "Доступен" : "Настроен"}</b>
+          </article>
+        ))}
+      </div>
+      <div className="admin-status-row">
+        <span>Ошибки за 24 часа</span>
+        <b>{system?.errorsLast24h ?? "—"}</b>
+        <small>Из журнала backend</small>
+      </div>
+      <div className="admin-status-row">
+        <span>Неудачные задачи</span>
+        <b>{system?.failedJobs ?? "—"}</b>
+        <small>Celery/admin jobs</small>
+      </div>
+    </section>
   );
 }
 

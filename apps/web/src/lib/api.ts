@@ -303,6 +303,39 @@ export type AdminActivity = {
   page: number;
   limit: number;
 };
+export type AdminSales = {
+  groupBy: string;
+  days: number;
+  items: Array<{ key: string; orders: number; amountMinor: number }>;
+};
+export type AdminProduct = {
+  id: string;
+  code: string;
+  name: string;
+  scheme: string;
+  currency: string;
+  enabled: boolean;
+  cardType: string | null;
+  maxCardsPerCardholder: number | null;
+};
+export type AdminPrice = {
+  id: string;
+  termDays: number;
+  amountMinor: number;
+  feeMinor: number;
+  currency: string;
+  scale: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+};
+export type AdminSystemHealth = {
+  services: Array<{ name: string; status: string }>;
+  failedJobs: number;
+  errorsLast24h: number;
+  featureFlags: Record<string, boolean>;
+  settings: Record<string, unknown>;
+};
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_ORIGIN}/api/v1/admin${path}`, { credentials: "include", ...init });
   const payload = await response.json().catch(() => null);
@@ -318,6 +351,10 @@ export async function getAdminUsers(params: { q?: string; status?: string; page?
 }
 export const getAdminUser = (id: string) => adminFetch<AdminUserDetails>(`/users/${id}`);
 export const getAdminActivity = (page = 1) => adminFetch<AdminActivity>(`/activity?page=${page}`);
+export const getAdminSales = (days = 30) => adminFetch<AdminSales>(`/sales?days=${days}`);
+export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
+export const getAdminProducts = () => adminFetch<AdminProduct[]>("/catalog/products");
+export const getAdminPrices = (productId: string) => adminFetch<AdminPrice[]>(`/catalog/products/${productId}/prices`);
 export async function adminUserAction(
   id: string,
   action: "block" | "unblock" | "revoke-sessions",

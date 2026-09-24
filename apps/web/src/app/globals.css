@@ -301,6 +301,61 @@ h1 {
   margin-top: 12px;
   font-size: 28px;
 }
+.admin-stat-grid-small {
+  margin-bottom: 28px;
+}
+.admin-stat-grid-small article {
+  padding: 16px;
+}
+.admin-stat-grid-small strong {
+  font-size: 22px;
+}
+.sales-row {
+  grid-template-columns: 1.5fr 1fr 1fr;
+}
+.admin-price-panel {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #2c363d;
+}
+.admin-price-panel h3 {
+  margin: 0 0 12px;
+}
+.admin-price-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 11px 0;
+  border-bottom: 1px solid #2c363d;
+  color: var(--muted);
+}
+.admin-price-row b {
+  color: var(--white);
+}
+.admin-price-row small {
+  color: var(--lime);
+  text-align: right;
+}
+.admin-system-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+.admin-system-grid article {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #2c363d;
+  border-radius: 14px;
+  background: #101619;
+}
+.admin-system-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-system-grid b {
+  color: var(--lime);
+}
 .admin-panel {
   margin-top: 24px;
   padding: 24px;
@@ -596,6 +651,9 @@ button.admin-table-row {
   }
   .admin-detail-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .admin-system-grid {
+    grid-template-columns: 1fr;
   }
   .admin-dialog-actions {
     flex-direction: column;
