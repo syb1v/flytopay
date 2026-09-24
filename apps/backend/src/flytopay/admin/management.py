@@ -16,7 +16,7 @@ from flytopay.auth.csrf import verify_csrf
 from flytopay.auth.session import revoke_user_sessions
 from flytopay.cards.models import Rental, UserCard
 from flytopay.config import telegram_admin_ids
-from flytopay.db.models import TelegramAccount, User
+from flytopay.db.models import Session, TelegramAccount, User
 from flytopay.db.session import get_db
 from flytopay.ledger.models import Wallet
 from flytopay.payments.models import PaymentAttempt
@@ -117,6 +117,20 @@ async def search_users(
     ], "total": total, "page": page, "limit": limit}}
 
 
+@router.get("/users/stats")
+async def user_stats(_: ReadAdmin, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    now = datetime.now(UTC)
+    active = await _count(db, User, User.status == "active")
+    blocked = await _count(db, User, User.status == "blocked")
+    deleted = await _count(db, User, User.status == "deleted")
+    return {"success": True, "data": {"totalUsers": await _count(db, User), "activeUsers": active,
+        "blockedUsers": blocked, "deletedUsers": deleted,
+        "newToday": await _count(db, User, User.created_at >= now.replace(hour=0, minute=0, second=0, microsecond=0)),
+        "newWeek": await _count(db, User, User.created_at >= now - timedelta(days=7)),
+        "newMonth": await _count(db, User, User.created_at >= now - timedelta(days=30)),
+        "usersWithCards": await _count(db, UserCard), "usersWithRentals": await _count(db, Rental)}}
+
+
 @router.get("/users/{user_id}")
 async def user_detail(user_id: UUID, _: ReadAdmin, db: Annotated[AsyncSession, Depends(get_db)]) -> dict:
     user = await db.get(User, user_id)
@@ -130,6 +144,7 @@ async def user_detail(user_id: UUID, _: ReadAdmin, db: Annotated[AsyncSession, D
                                         PaymentAttempt.currency, PaymentAttempt.created_at)
                                  .where(PaymentAttempt.user_id == user_id).order_by(PaymentAttempt.created_at.desc()).limit(20))).all()
     wallets = (await db.execute(select(Wallet.currency, Wallet.available_minor).where(Wallet.user_id == user_id))).all()
+    active_sessions = await _count(db, Session, Session.user_id == user_id, Session.revoked_at.is_(None))
     return {"success": True, "data": {"userId": str(user.id), "status": user.status,
         "createdAt": user.created_at.isoformat(),
         "accounts": [{"telegramId": tid, "username": name} for tid, name in accounts],
@@ -139,6 +154,7 @@ async def user_detail(user_id: UUID, _: ReadAdmin, db: Annotated[AsyncSession, D
                       "currency": currency, "createdAt": created.isoformat()}
                      for pid, state, amount, currency, created in payments],
         "rentalCount": await _count(db, Rental, Rental.user_id == user_id),
+        "activeSessions": active_sessions,
         "wallets": [{"currency": currency, "availableMinor": balance} for currency, balance in wallets]}}
 
 
@@ -177,8 +193,12 @@ async def _change_user(user_id: UUID, action: str, body: ActionReason, request: 
         if owner is not None:
             raise HTTPException(403, "Cannot block bootstrap admin")
         user.status = "blocked"
-    elif action == "user.unblock":
+    elif action in {"user.unblock", "user.restore"}:
         user.status = "active"
+    elif action == "user.delete":
+        if principal.user_id == user_id:
+            raise HTTPException(409, "Cannot delete current administrator")
+        user.status = "deleted"
     revoked = await revoke_user_sessions(db, user_id) if action != "user.unblock" else 0
     record_admin_action(db, request, principal.user_id, action, user_id, reason, key_hash, revoked)
     await db.commit()
@@ -208,3 +228,19 @@ async def revoke_sessions(user_id: UUID, body: ActionReason, request: Request,
                           db: Annotated[AsyncSession, Depends(get_db)],
                           idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict:
     return await _change_user(user_id, "user.revoke_sessions", body, request, principal, db, idempotency_key)
+
+
+@router.post("/users/{user_id}/restore", dependencies=[Depends(verify_csrf)])
+async def restore_user(user_id: UUID, body: ActionReason, request: Request,
+                       principal: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.users.write"))],
+                       db: Annotated[AsyncSession, Depends(get_db)],
+                       idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict:
+    return await _change_user(user_id, "user.restore", body, request, principal, db, idempotency_key)
+
+
+@router.delete("/users/{user_id}", dependencies=[Depends(verify_csrf)])
+async def delete_user(user_id: UUID, body: ActionReason, request: Request,
+                      principal: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.users.write"))],
+                      db: Annotated[AsyncSession, Depends(get_db)],
+                      idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict:
+    return await _change_user(user_id, "user.delete", body, request, principal, db, idempotency_key)

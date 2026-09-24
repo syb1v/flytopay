@@ -31,6 +31,9 @@ import {
   getAdminPayments,
   getAdminRefunds,
   getAdminReferralOverview,
+  adminRestoreUser,
+  adminDeleteUser,
+  getAdminUserStats,
   updateAdminProduct,
   updateAdminFees,
   updateAdminCampaign,
@@ -50,6 +53,7 @@ import {
   type AdminPayment,
   type AdminRefund,
   type AdminReferralOverview,
+  type AdminUserStats,
 } from "../../lib/api";
 
 const sections = [
@@ -88,6 +92,7 @@ export default function AdminPage() {
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [refunds, setRefunds] = useState<AdminRefund[]>([]);
   const [referrals, setReferrals] = useState<AdminReferralOverview | null>(null);
+  const [userStats, setUserStats] = useState<AdminUserStats | null>(null);
   const [selected, setSelected] = useState<AdminUserDetails | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
@@ -114,6 +119,10 @@ export default function AdminPage() {
   }, []);
   useEffect(() => {
     if (active === "Пользователи") void loadUsers();
+    if (active === "Пользователи")
+      getAdminUserStats()
+        .then(setUserStats)
+        .catch(() => setUserStats(null));
     if (active === "Журнал действий")
       getAdminActivity()
         .then(setActivity)
@@ -219,6 +228,7 @@ export default function AdminPage() {
         {active === "Пользователи" && (
           <UsersView
             users={users}
+            userStats={userStats}
             total={usersTotal}
             page={page}
             onPageChange={setPage}
@@ -243,6 +253,16 @@ export default function AdminPage() {
           onClose={() => setSelected(null)}
           onAction={async (action, reason) => {
             await adminUserAction(selected.userId, action, reason);
+            setSelected(null);
+            void loadUsers();
+          }}
+          onRestore={async (reason) => {
+            await adminRestoreUser(selected.userId, reason);
+            setSelected(null);
+            void loadUsers();
+          }}
+          onDelete={async (reason) => {
+            await adminDeleteUser(selected.userId, reason);
             setSelected(null);
             void loadUsers();
           }}
@@ -765,6 +785,7 @@ function Dashboard({ dashboard }: { dashboard: AdminDashboard }) {
 
 function UsersView({
   users,
+  userStats,
   total,
   page,
   onPageChange,
@@ -774,6 +795,7 @@ function UsersView({
   onOpen,
 }: {
   users: AdminUser[];
+  userStats: AdminUserStats | null;
   total: number;
   page: number;
   onPageChange: (value: number) => void;
@@ -795,6 +817,26 @@ function UsersView({
           <option value="blocked">Заблокированные</option>
         </select>
       </div>
+      {userStats && (
+        <div className="admin-stat-grid admin-stat-grid-small">
+          <article>
+            <span>Всего</span>
+            <strong>{userStats.totalUsers}</strong>
+          </article>
+          <article>
+            <span>Активные</span>
+            <strong>{userStats.activeUsers}</strong>
+          </article>
+          <article>
+            <span>Новые за месяц</span>
+            <strong>{userStats.newMonth}</strong>
+          </article>
+          <article>
+            <span>С картами</span>
+            <strong>{userStats.usersWithCards}</strong>
+          </article>
+        </div>
+      )}
       <div className="admin-table admin-users-table">
         <div className="admin-table-head">
           <span>Пользователь</span>
@@ -871,10 +913,14 @@ function UserDialog({
   user,
   onClose,
   onAction,
+  onRestore,
+  onDelete,
 }: {
   user: AdminUserDetails;
   onClose: () => void;
   onAction: (action: "block" | "unblock" | "revoke-sessions", reason: string) => Promise<void>;
+  onRestore: (reason: string) => Promise<void>;
+  onDelete: (reason: string) => Promise<void>;
 }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -913,6 +959,10 @@ function UserDialog({
             <small>Аренды</small>
             <b>{user.rentalCount}</b>
           </div>
+          <div>
+            <small>Активные сессии</small>
+            <b>{user.activeSessions}</b>
+          </div>
         </div>
         <label className="admin-reason">
           Причина действия
@@ -945,6 +995,38 @@ function UserDialog({
               onClick={() => action("block")}
             >
               Заблокировать
+            </button>
+          )}
+          {user.status === "deleted" && (
+            <button
+              className="ui-button ui-button-primary"
+              disabled={busy || reason.trim().length < 3}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await onRestore(reason);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Восстановить
+            </button>
+          )}
+          {user.status !== "deleted" && (
+            <button
+              className="ui-button ui-button-danger"
+              disabled={busy || reason.trim().length < 3}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await onDelete(reason);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Удалить
             </button>
           )}
         </div>

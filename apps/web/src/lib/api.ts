@@ -281,6 +281,17 @@ export type AdminUser = {
   createdAt: string;
 };
 export type AdminUserPage = { items: AdminUser[]; total: number; page: number; limit: number };
+export type AdminUserStats = {
+  totalUsers: number;
+  activeUsers: number;
+  blockedUsers: number;
+  deletedUsers: number;
+  newToday: number;
+  newWeek: number;
+  newMonth: number;
+  usersWithCards: number;
+  usersWithRentals: number;
+};
 export type AdminUserDetails = {
   userId: string;
   status: string;
@@ -290,6 +301,7 @@ export type AdminUserDetails = {
   payments: Array<{ paymentId: string; status: string; amountMinor: number; currency: string; createdAt: string }>;
   rentalCount: number;
   wallets: Array<{ currency: string; availableMinor: number }>;
+  activeSessions: number;
 };
 export type AdminActivity = {
   items: Array<{
@@ -417,6 +429,19 @@ export async function getAdminUsers(params: { q?: string; status?: string; page?
   return adminFetch<AdminUserPage>(`/users?${query}`);
 }
 export const getAdminUser = (id: string) => adminFetch<AdminUserDetails>(`/users/${id}`);
+export const getAdminUserStats = () => adminFetch<AdminUserStats>("/users/stats");
+export const adminRestoreUser = (id: string, reason: string) =>
+  adminFetch(`/users/${id}/restore`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+export const adminDeleteUser = (id: string, reason: string) =>
+  adminFetch(`/users/${id}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ reason }),
+  });
 export const getAdminActivity = (page = 1) => adminFetch<AdminActivity>(`/activity?page=${page}`);
 export const getAdminSales = (days = 30) => adminFetch<AdminSales>(`/sales?days=${days}`);
 export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
