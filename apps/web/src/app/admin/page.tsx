@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Activity,
   BarChart3,
+  CreditCard,
   FileText,
   LayoutDashboard,
   Megaphone,
@@ -65,11 +66,13 @@ import {
   type AdminReferralOverview,
   type AdminUserStats,
 } from "../../lib/api";
+import CardsAdmin from "../../components/admin/CardsAdmin";
 
 const sections = [
   ["Обзор", LayoutDashboard],
   ["Пользователи", Users],
   ["Продажи", BarChart3],
+  ["Карты", CreditCard],
   ["Платежи и возвраты", WalletCards],
   ["Цены и продукты", Package],
   ["Маркетинг", Megaphone],
@@ -253,6 +256,7 @@ export default function AdminPage() {
         )}
         {active === "Журнал действий" && <ActivityView activity={activity} />}
         {active === "Продажи" && <SalesView sales={sales} />}
+        {active === "Карты" && <CardsAdmin />}
         {active === "Цены и продукты" && <CatalogView products={products} prices={prices} setPrices={setPrices} />}
         {active === "Система" && <SystemView system={system} />}
         {active === "Маркетинг" && <MarketingView campaigns={campaigns} promos={promos} onChanged={loadMarketing} />}

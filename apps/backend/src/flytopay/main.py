@@ -9,6 +9,7 @@ from flytopay.admin_platform.routes_dashboard import router as admin_platform_ro
 from flytopay.api.correlation import CorrelationIdMiddleware
 from flytopay.api.health import router as health_router
 from flytopay.auth.routes import router as auth_router
+from flytopay.card_admin.routes import router as card_admin_router
 from flytopay.cards.lifecycle_routes import router as card_lifecycle_router
 from flytopay.cards.onboarding import router as issuance_router
 from flytopay.cards.routes import router as cards_router
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(cards_router)
     app.include_router(card_lifecycle_router)
     app.include_router(issuance_router)
+    app.include_router(card_admin_router)
     app.include_router(admin_router)
     app.include_router(admin_management_router)
     app.include_router(admin_platform_router)

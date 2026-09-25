@@ -585,6 +585,137 @@ export const updateAdminTemplate = (
   });
 export const getAdminPayments = () => adminFetch<AdminPayment[]>("/finance/payments");
 export const getAdminRefunds = () => adminFetch<AdminRefund[]>("/finance/refunds");
+export type AdminCardOverview = {
+  total: number;
+  active: number;
+  frozen: number;
+  closed: number;
+  demo: number;
+  pendingOperations: number;
+  failedOperations: number;
+};
+export type AdminCard = {
+  cardId: string;
+  userId: string;
+  telegramId: number | null;
+  status: string;
+  lastFour: string | null;
+  isDemo: boolean;
+  currency: string;
+  balanceMinor: number | null;
+  productCode: string | null;
+  productName: string | null;
+  createdAt: string;
+};
+export type AdminCardDetail = AdminCard & {
+  userStatus: string | null;
+  rentals: Array<{
+    id: string;
+    status: string;
+    termDays: number;
+    expiresAt: string | null;
+    priceMinor: number;
+    currency: string;
+  }>;
+  transactions: Array<{
+    id: string;
+    type: string;
+    status: string;
+    amountMinor: number;
+    feeMinor: number;
+    currency: string;
+    merchantName: string | null;
+    occurredAt: string;
+  }>;
+  operations: Array<{
+    id: string;
+    kind: string;
+    status: string;
+    providerOrderId: string | null;
+    createdAt: string;
+    error: string | null;
+  }>;
+};
+export type AdminIssuance = {
+  issuanceId: string;
+  userId: string;
+  telegramId: number | null;
+  productCode: string;
+  providerCode: string;
+  termDays: number;
+  status: string;
+  amountMinor: number;
+  totalChargeMinor: number | null;
+  currency: string;
+  providerOrderId: string | null;
+  createdAt: string;
+};
+export type AdminRental = {
+  id: string;
+  userId: string;
+  telegramId: number | null;
+  cardId: string;
+  status: string;
+  termDays: number;
+  priceMinor: number;
+  currency: string;
+  startsAt: string | null;
+  expiresAt: string | null;
+};
+export type AdminTransaction = {
+  id: string;
+  cardId: string;
+  type: string;
+  status: string;
+  amountMinor: number;
+  feeMinor: number;
+  currency: string;
+  merchantName: string | null;
+  declineCode: string | null;
+  occurredAt: string;
+};
+export type AdminCaasOperation = {
+  id: string;
+  kind: string;
+  status: string;
+  providerOrderId: string | null;
+  error: string | null;
+  createdAt: string;
+};
+export type AdminPage<T> = { items: T[]; total: number; page: number; limit: number };
+async function adminPage<T>(
+  path: string,
+  params: Record<string, string | number | boolean | undefined> = {},
+): Promise<AdminPage<T>> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(
+    ([key, value]) => value !== undefined && value !== "" && query.set(key, String(value)),
+  );
+  return adminFetch<AdminPage<T>>(`${path}?${query}`);
+}
+export const getAdminCardsOverview = () => adminFetch<AdminCardOverview>("/cards/overview");
+export const getAdminCards = (params: { q?: string; status?: string; is_demo?: boolean; page?: number } = {}) =>
+  adminPage<AdminCard>("/cards", params);
+export const getAdminCard = (id: string) => adminFetch<AdminCardDetail>(`/cards/${id}`);
+export const getAdminIssuances = (params: { status?: string; page?: number } = {}) =>
+  adminPage<AdminIssuance>("/issuances", params);
+export const getAdminRentals = (params: { status?: string; page?: number } = {}) =>
+  adminPage<AdminRental>("/rentals", params);
+export const getAdminTransactions = (params: { card_id?: string; status?: string; page?: number } = {}) =>
+  adminPage<AdminTransaction>("/transactions", params);
+export const getAdminCaasOperations = (params: { status?: string; page?: number } = {}) =>
+  adminPage<AdminCaasOperation>("/caas-operations", params);
+export const adminCardAction = (
+  id: string,
+  action: "freeze" | "unfreeze" | "close" | "fund" | "unload",
+  reason: string,
+  amountMinor?: number,
+) =>
+  adminFetch(`/cards/${id}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ reason, amount_minor: amountMinor }),
+  });
 export const getAdminReferralOverview = () => adminFetch<AdminReferralOverview>("/referrals/overview");
 export async function adminUserAction(
   id: string,
