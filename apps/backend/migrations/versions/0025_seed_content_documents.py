@@ -11,8 +11,10 @@ depends_on = None
 
 INSERT_DOCUMENT = sa.text(
     "INSERT INTO content_documents (id, kind, slug, locale, title, body, is_published, created_at, updated_at) "
-    "SELECT gen_random_uuid(), :kind, :slug, 'ru', :title, :body, true, now(), now() "
-    "WHERE NOT EXISTS (SELECT 1 FROM content_documents WHERE kind = :kind AND slug = :slug)"
+    "SELECT gen_random_uuid(), CAST(:kind AS varchar), CAST(:slug AS varchar), 'ru', "
+    "CAST(:title AS varchar), CAST(:body AS text), true, now(), now() "
+    "WHERE NOT EXISTS (SELECT 1 FROM content_documents "
+    "WHERE kind = CAST(:kind AS varchar) AND slug = CAST(:slug AS varchar))"
 )
 
 FAQ_ITEMS = (
