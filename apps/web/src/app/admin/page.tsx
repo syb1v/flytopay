@@ -62,6 +62,7 @@ import ReferralsAdmin from "../../components/admin/ReferralsAdmin";
 import BroadcastsAdmin from "../../components/admin/BroadcastsAdmin";
 import SystemAdmin from "../../components/admin/SystemAdmin";
 import SecurityAdmin from "../../components/admin/SecurityAdmin";
+import UserNotesTags from "../../components/admin/UserNotesTags";
 
 const sections = [
   ["Обзор", LayoutDashboard],
@@ -258,13 +259,44 @@ export default function AdminPage() {
 }
 
 function SalesView({ sales }: { sales: AdminSales | null }) {
-  const total = sales?.items.reduce((sum, item) => sum + item.amountMinor, 0) ?? 0;
-  const orders = sales?.items.reduce((sum, item) => sum + item.orders, 0) ?? 0;
+  const [days, setDays] = useState(30);
+  const [groupBy, setGroupBy] = useState("day");
+  const [data, setData] = useState<AdminSales | null>(sales);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => setData(sales), [sales]);
+  useEffect(() => {
+    setLoading(true);
+    getAdminSales(days, groupBy)
+      .then(setData)
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [days, groupBy]);
+  const total = data?.items.reduce((sum, item) => sum + item.amountMinor, 0) ?? 0;
+  const orders = data?.items.reduce((sum, item) => sum + item.orders, 0) ?? 0;
+  const groupLabel =
+    groupBy === "day" ? "Период" : groupBy === "product" ? "Продукт" : groupBy === "currency" ? "Валюта" : "Назначение";
   return (
     <section className="admin-panel">
+      <div className="admin-toolbar">
+        <h2>Статистика продаж</h2>
+        <div className="admin-toolbar-actions">
+          <select value={days} onChange={(event) => setDays(Number(event.target.value))}>
+            <option value={7}>7 дней</option>
+            <option value={30}>30 дней</option>
+            <option value={90}>90 дней</option>
+            <option value={365}>365 дней</option>
+          </select>
+          <select value={groupBy} onChange={(event) => setGroupBy(event.target.value)}>
+            <option value="day">По дням</option>
+            <option value="product">По продуктам</option>
+            <option value="currency">По валютам</option>
+            <option value="purpose">По назначению</option>
+          </select>
+        </div>
+      </div>
       <div className="admin-stat-grid admin-stat-grid-small">
         <article>
-          <span>Выручка за 30 дней</span>
+          <span>Выручка</span>
           <strong>{(total / 100).toLocaleString("ru-RU")} USD</strong>
         </article>
         <article>
@@ -276,20 +308,21 @@ function SalesView({ sales }: { sales: AdminSales | null }) {
           <strong>{orders ? Math.round(total / orders / 100).toLocaleString("ru-RU") : 0} USD</strong>
         </article>
       </div>
-      <h2>Продажи по дням</h2>
+      {loading && <p className="settings-muted">Загрузка...</p>}
       <div className="admin-table">
-        <div className="admin-table-head">
-          <span>Период</span>
+        <div className="admin-table-head sales-row">
+          <span>{groupLabel}</span>
           <span>Заказы</span>
           <span>Сумма</span>
         </div>
-        {sales?.items.map((item) => (
+        {data?.items.map((item) => (
           <div className="admin-table-row sales-row" key={item.key}>
             <span>{item.key}</span>
             <span>{item.orders}</span>
             <span>{(item.amountMinor / 100).toLocaleString("ru-RU")} USD</span>
           </div>
         ))}
+        {!loading && (data?.items.length ?? 0) === 0 && <p className="settings-muted">Данных за период нет.</p>}
       </div>
     </section>
   );
@@ -1344,6 +1377,7 @@ function UserDialog({
             <b>{user.activeSessions}</b>
           </div>
         </div>
+        <UserNotesTags userId={user.userId} />
         <label className="admin-reason">
           Причина действия
           <textarea

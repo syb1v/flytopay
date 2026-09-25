@@ -30,6 +30,7 @@ from flytopay.payments.webhooks import router as webhooks_router
 from flytopay.preferences.routes import router as preferences_router
 from flytopay.referrals.routes_admin import router as referrals_admin_router
 from flytopay.telegram.routes import router as telegram_router
+from flytopay.user_admin.routes import router as user_admin_router
 from flytopay.wallet.routes import router as wallet_router
 
 
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_platform_router)
     app.include_router(admin_operations_router)
     app.include_router(admin_security_router)
+    app.include_router(user_admin_router)
     app.include_router(catalog_admin_router)
     app.include_router(content_admin_router)
     app.include_router(referrals_admin_router)

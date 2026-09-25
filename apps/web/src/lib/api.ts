@@ -457,7 +457,40 @@ export const adminBulkUsers = (
     },
   );
 export const getAdminActivity = (page = 1) => adminFetch<AdminActivity>(`/activity?page=${page}`);
-export const getAdminSales = (days = 30) => adminFetch<AdminSales>(`/sales?days=${days}`);
+export type AdminUserNote = { id: string; body: string; authorUserId: string | null; createdAt: string };
+export type AdminUserTag = { id: string; name: string; color: string | null };
+export const getUserNotes = (userId: string) => adminFetch<AdminUserNote[]>(`/users/${userId}/notes`);
+export const addUserNote = (userId: string, body: string) =>
+  adminFetch<{ id: string }>(`/users/${userId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ body }),
+  });
+export const deleteUserNote = (userId: string, noteId: string) =>
+  adminFetch(`/users/${userId}/notes/${noteId}`, {
+    method: "DELETE",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
+export const getTagCatalog = () => adminFetch<AdminUserTag[]>("/users/tags/catalog");
+export const createUserTag = (name: string, color: string | null) =>
+  adminFetch<AdminUserTag>("/users/tags/catalog", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ name, color }),
+  });
+export const getUserTags = (userId: string) => adminFetch<AdminUserTag[]>(`/users/${userId}/tags`);
+export const assignUserTag = (userId: string, tagId: string) =>
+  adminFetch(`/users/${userId}/tags/${tagId}`, {
+    method: "PUT",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
+export const removeUserTag = (userId: string, tagId: string) =>
+  adminFetch(`/users/${userId}/tags/${tagId}`, {
+    method: "DELETE",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
+export const getAdminSales = (days = 30, groupBy = "day") =>
+  adminFetch<AdminSales>(`/sales?days=${days}&group_by=${groupBy}`);
 export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
 export type AdminFeatureFlag = {
   key: string;

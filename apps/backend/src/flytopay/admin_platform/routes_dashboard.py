@@ -79,23 +79,44 @@ async def dashboard_overview(_: ReadAdmin, db: Annotated[AsyncSession, Depends(g
 async def sales(
     _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.sales.read"))],
     db: Annotated[AsyncSession, Depends(get_db)],
-    group_by: Literal["day", "currency", "purpose"] = "day",
+    group_by: Literal["day", "currency", "purpose", "product"] = "day",
     days: int = Query(30, ge=1, le=366),
+    date_from: str | None = None,
+    date_to: str | None = None,
 ) -> dict[str, object]:
-    start = datetime.now(UTC) - timedelta(days=days)
-    successful = PaymentAttempt.status == "succeeded"
-    if group_by == "day":
-        key = func.date(PaymentAttempt.created_at)
-    elif group_by == "currency":
-        key = PaymentAttempt.currency
+    def parse_bound(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError:
+            return None
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+    start = parse_bound(date_from) or (datetime.now(UTC) - timedelta(days=days))
+    end = parse_bound(date_to)
+    if group_by == "product":
+        statement = select(IssuanceRequest.product_code, func.count(IssuanceRequest.id),
+                           func.sum(func.coalesce(IssuanceRequest.total_charge_minor, IssuanceRequest.amount_minor)))
+        statement = statement.where(IssuanceRequest.created_at >= start)
+        if end:
+            statement = statement.where(IssuanceRequest.created_at <= end)
+        statement = statement.group_by(IssuanceRequest.product_code).order_by(IssuanceRequest.product_code)
+        result = await db.execute(statement)
     else:
-        key = PaymentAttempt.purpose
-    result = await db.execute(
-        select(key, func.count(PaymentAttempt.id), func.sum(PaymentAttempt.amount_minor))
-        .where(successful, PaymentAttempt.created_at >= start)
-        .group_by(key)
-        .order_by(key)
-    )
+        successful = PaymentAttempt.status == "succeeded"
+        if group_by == "day":
+            key = func.date(PaymentAttempt.created_at)
+        elif group_by == "currency":
+            key = PaymentAttempt.currency
+        else:
+            key = PaymentAttempt.purpose
+        statement = select(key, func.count(PaymentAttempt.id), func.sum(PaymentAttempt.amount_minor))
+        statement = statement.where(successful, PaymentAttempt.created_at >= start)
+        if end:
+            statement = statement.where(PaymentAttempt.created_at <= end)
+        statement = statement.group_by(key).order_by(key)
+        result = await db.execute(statement)
     return {"success": True, "data": {"groupBy": group_by, "days": days, "items": [
         {"key": str(key), "orders": count, "amountMinor": amount or 0} for key, count, amount in result.all()
     ]}}

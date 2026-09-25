@@ -19,6 +19,7 @@ from flytopay.ledger import models as ledger_models  # noqa: F401
 from flytopay.marketing import models as marketing_models  # noqa: F401
 from flytopay.payments import models as payment_models  # noqa: F401
 from flytopay.referrals import models as referral_models  # noqa: F401
+from flytopay.user_admin import models as user_admin_models  # noqa: F401
 
 config = context.config
 if os.getenv("DATABASE_URL"):

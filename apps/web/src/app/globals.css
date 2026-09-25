@@ -654,6 +654,76 @@ button.admin-table-row {
 .admin-permission-grid .admin-toggle {
   font-size: 12px;
 }
+.admin-dialog {
+  max-height: 90dvh;
+  overflow: auto;
+}
+.admin-notes {
+  display: grid;
+  gap: 12px;
+  margin: 18px 0;
+  padding-top: 16px;
+  border-top: 1px solid #2c363d;
+}
+.admin-notes h3 {
+  margin: 0;
+}
+.admin-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.admin-tag {
+  padding: 6px 12px;
+  border: 1px solid #354147;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.admin-tag.active {
+  border-color: #b8f13d66;
+  background: #b8f13d14;
+  color: var(--lime);
+}
+.admin-tag-input {
+  width: 130px;
+  padding: 8px 10px;
+  border: 1px solid #354147;
+  border-radius: 10px;
+  background: #101619;
+  color: var(--white);
+  font: inherit;
+}
+.admin-note-list {
+  display: grid;
+  gap: 8px;
+}
+.admin-note {
+  padding: 12px;
+  border: 1px solid #2c363d;
+  border-radius: 12px;
+  background: #101619;
+}
+.admin-note p {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+}
+.admin-note small {
+  color: var(--muted);
+}
+.admin-note-delete {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  color: #ffaaa9;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
 .admin-badge {
   display: inline-flex;
   width: fit-content;
