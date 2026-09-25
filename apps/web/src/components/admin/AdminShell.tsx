@@ -82,7 +82,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     <div className="adm-shell">
       <aside className="adm-sidebar">
         <Link className="adm-brand" href="/admin">
-          <img src="/logo.svg" alt="" />
+          <img src="/logo.svg" alt="" width={34} height={34} />
           <span>Flytopay</span>
         </Link>
         <p className="adm-kicker">Управление</p>
@@ -104,7 +104,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <div className="adm-body">
         <header className="adm-mobile-bar">
           <Link className="adm-mobile-brand" href="/admin">
-            <img src="/logo.svg" alt="" />
+            <img src="/logo.svg" alt="" width={28} height={28} />
             <span>{nav.find((item) => isActive(item))?.label ?? "Админка"}</span>
           </Link>
           <button

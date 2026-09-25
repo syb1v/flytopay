@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, type ReactNode } from "react";
 
 export function Page({
   title,
@@ -228,6 +228,14 @@ export function ActionDialog({
   onConfirm: (values: Record<string, string>) => void;
 }) {
   const id = useId();
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onCancel]);
   if (!open) return null;
   return (
     <div className="adm-modal-backdrop" role="presentation" onClick={onCancel}>

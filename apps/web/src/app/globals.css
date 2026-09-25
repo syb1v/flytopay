@@ -4971,6 +4971,8 @@ button.tx-row:hover {
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .adm-nav-link:hover {
   background: #ffffff08;
@@ -5119,6 +5121,8 @@ button.tx-row:hover {
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .adm-btn-primary {
   background: var(--lime);
@@ -5228,6 +5232,7 @@ button.tx-row:hover {
   border-top: 1px solid #2c363d;
   color: var(--white);
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
   vertical-align: middle;
 }
 .adm-table tr:hover td {
@@ -5260,6 +5265,7 @@ button.tx-row:hover {
   padding: 20px;
   background: #05090bcc;
   backdrop-filter: blur(6px);
+  overscroll-behavior: contain;
 }
 .adm-modal {
   width: min(520px, 100%);
