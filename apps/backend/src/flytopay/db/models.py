@@ -21,6 +21,8 @@ class TelegramAccount(Timestamped, Base):
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     username: Mapped[str | None] = mapped_column(String(255))
+    first_name: Mapped[str | None] = mapped_column(String(255))
+    last_name: Mapped[str | None] = mapped_column(String(255))
     user: Mapped[User] = relationship(back_populates="telegram_accounts")
 
 

@@ -3913,6 +3913,46 @@ button.account-stat:hover {
   font-size: 13px;
   line-height: 1.65;
 }
+.help-documents {
+  display: grid;
+  gap: 10px;
+}
+.help-document-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 17px;
+  border: 1px solid #2c363d;
+  border-radius: 15px;
+  background: #192126;
+  color: var(--white);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.help-document-button span {
+  flex: 1;
+}
+.help-document-button > svg:last-child {
+  color: var(--lime);
+}
+.help-document-button:hover {
+  border-color: #b8f13d66;
+}
+.help-document-body {
+  max-height: 60dvh;
+  overflow: auto;
+  color: #b0bec2;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.details-dialog h2 {
+  margin: 0 32px 12px 0;
+}
 .help-contact {
   display: flex;
   align-items: center;

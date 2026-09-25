@@ -24,6 +24,18 @@ import type {
   AdminWebhookEvent,
 } from "../../../lib/api";
 import { Badge, Button, Empty, Field, Page, Panel, StatGrid, Tabs, TextInput } from "../../../components/admin/ui";
+import {
+  chargedFromLabels,
+  collectionLabels,
+  describeFlag,
+  describeSetting,
+  feeItemDescriptions,
+  feeItemLabels,
+  label,
+  periodLabels,
+  severityLabels,
+  webhookStatusLabels,
+} from "../../../lib/adminLabels";
 
 const tabs = [
   { key: "health", label: "Состояние" },
@@ -47,7 +59,9 @@ export default function AdminSystemPage() {
   const [provider, setProvider] = useState<AdminProviderStatus | null>(null);
   const [providerError, setProviderError] = useState<string | null>(null);
   const [newFlag, setNewFlag] = useState("");
+  const [newFlagDescription, setNewFlagDescription] = useState("");
   const [settingKey, setSettingKey] = useState("");
+  const [settingDescription, setSettingDescription] = useState("");
   const [settingValue, setSettingValue] = useState("{}");
   const [maintenanceMessage, setMaintenanceMessage] = useState("Технические работы");
   const [busy, setBusy] = useState(false);
@@ -93,8 +107,13 @@ export default function AdminSystemPage() {
     setBusy(true);
     setError(null);
     try {
-      await upsertAdminFeatureFlag(newFlag.trim(), { description: null, enabled: false, config: {} });
+      await upsertAdminFeatureFlag(newFlag.trim(), {
+        description: newFlagDescription.trim() || null,
+        enabled: false,
+        config: {},
+      });
       setNewFlag("");
+      setNewFlagDescription("");
       setMessage("Флаг создан");
       load();
     } catch (reason) {
@@ -125,11 +144,12 @@ export default function AdminSystemPage() {
     try {
       await upsertAdminSetting(settingKey.trim(), {
         value: JSON.parse(settingValue || "{}") as Record<string, unknown>,
-        description: null,
+        description: settingDescription.trim() || null,
         is_public_business_setting: false,
       });
       setSettingKey("");
       setSettingValue("{}");
+      setSettingDescription("");
       setMessage("Настройка сохранена");
       load();
     } catch (reason) {
@@ -217,7 +237,7 @@ export default function AdminSystemPage() {
                   },
                   {
                     label: "Статус аккаунта",
-                    value: provider.account?.status ?? "—",
+                    value: provider.account?.status === "active" ? "Активен" : (provider.account?.status ?? "—"),
                     hint: provider.account?.environment,
                   },
                   { label: "Account ID", value: provider.account?.accountId?.slice(0, 8) ?? "—" },
@@ -274,13 +294,16 @@ export default function AdminSystemPage() {
                   <tbody>
                     {(provider.pricing?.fees ?? []).map((fee, index) => (
                       <tr key={`${fee.feeItem}-${index}`}>
-                        <td>{fee.feeItem}</td>
                         <td>
-                          {fee.collection} · {fee.chargedFrom}
+                          <b>{label(feeItemLabels, fee.feeItem)}</b>
+                          <span className="adm-cell-sub">{feeItemDescriptions[fee.feeItem ?? ""] ?? ""}</span>
+                        </td>
+                        <td>
+                          {label(collectionLabels, fee.collection)} · {label(chargedFromLabels, fee.chargedFrom)}
                         </td>
                         <td>{(fee.flatMinor ?? 0) / 10 ** (provider.pricing?.scale ?? 2)}</td>
                         <td>{((fee.bps ?? 0) / 100).toFixed(2)}%</td>
-                        <td>{fee.period ?? "—"}</td>
+                        <td>{label(periodLabels, fee.period)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -347,7 +370,7 @@ export default function AdminSystemPage() {
                 {flags.map((flag) => (
                   <tr key={flag.key}>
                     <td>{flag.key}</td>
-                    <td>{flag.description ?? "—"}</td>
+                    <td>{describeFlag(flag.key, flag.description)}</td>
                     <td>
                       <Badge tone={flag.enabled ? "success" : "neutral"}>{flag.enabled ? "Включён" : "Выключен"}</Badge>
                     </td>
@@ -426,11 +449,15 @@ export default function AdminSystemPage() {
               <tbody>
                 {errors.map((event) => (
                   <tr key={event.id}>
-                    <td>{event.source}</td>
+                    <td>
+                      {event.source === "caas" ? "2328 CaaS" : event.source === "payments" ? "Платежи" : event.source}
+                    </td>
                     <td>{event.message}</td>
                     <td>{event.correlationId ?? "—"}</td>
                     <td>
-                      <Badge tone={event.severity === "error" ? "danger" : "warning"}>{event.severity}</Badge>
+                      <Badge tone={event.severity === "error" ? "danger" : "warning"}>
+                        {label(severityLabels, event.severity)}
+                      </Badge>
                     </td>
                     <td>{new Date(event.createdAt).toLocaleString("ru-RU")}</td>
                   </tr>

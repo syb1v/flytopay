@@ -5,6 +5,13 @@ import { useParams } from "next/navigation";
 import { adminCardAction, getAdminCard } from "../../../../lib/api";
 import type { AdminCardDetail } from "../../../../lib/api";
 import { ActionDialog, Badge, Button, Empty, Page, Panel, StatGrid } from "../../../../components/admin/ui";
+import {
+  cardStatusLabels,
+  label,
+  operationStatusLabels,
+  rentalStatusLabels,
+  transactionStatusLabels,
+} from "../../../../lib/adminLabels";
 
 type CardAction = "freeze" | "unfreeze" | "fund" | "unload" | "close";
 
@@ -94,7 +101,11 @@ export default function AdminCardDetailPage() {
             items={[
               {
                 label: "Статус",
-                value: <Badge tone={card.status === "active" ? "success" : "neutral"}>{card.status}</Badge>,
+                value: (
+                  <Badge tone={card.status === "active" ? "success" : "neutral"}>
+                    {label(cardStatusLabels, card.status)}
+                  </Badge>
+                ),
               },
               {
                 label: "Баланс",
@@ -130,7 +141,9 @@ export default function AdminCardDetailPage() {
                     <tr key={rental.id}>
                       <td>{rental.id.slice(0, 8)}</td>
                       <td>
-                        <Badge tone={rental.status === "active" ? "success" : "neutral"}>{rental.status}</Badge>
+                        <Badge tone={rental.status === "active" ? "success" : "neutral"}>
+                          {label(rentalStatusLabels, rental.status)}
+                        </Badge>
                       </td>
                       <td>{rental.termDays} дней</td>
                       <td>{rental.expiresAt ? new Date(rental.expiresAt).toLocaleDateString("ru-RU") : "—"}</td>
@@ -162,7 +175,7 @@ export default function AdminCardDetailPage() {
                       <td>{transaction.type}</td>
                       <td>
                         <Badge tone={transaction.status === "completed" ? "success" : "danger"}>
-                          {transaction.status}
+                          {label(transactionStatusLabels, transaction.status)}
                         </Badge>
                       </td>
                       <td>
@@ -195,7 +208,7 @@ export default function AdminCardDetailPage() {
                       <td>{operation.kind}</td>
                       <td>
                         <Badge tone={operation.status === "completed" ? "success" : "warning"}>
-                          {operation.status}
+                          {label(operationStatusLabels, operation.status)}
                         </Badge>
                       </td>
                       <td>{operation.providerOrderId ?? "—"}</td>

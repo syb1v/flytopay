@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getAdminBroadcasts } from "../../../lib/api";
 import type { AdminBroadcast } from "../../../lib/api";
 import { Badge, Button, Empty, Page, Panel } from "../../../components/admin/ui";
+import { audienceSegmentLabels, broadcastStatusLabels, label } from "../../../lib/adminLabels";
 
 const statusTone = (status: string) =>
   status === "sent"
@@ -57,9 +58,9 @@ export default function AdminBroadcastsPage() {
                       {broadcast.title}
                     </Link>
                   </td>
-                  <td>{broadcast.audience.segment}</td>
+                  <td>{label(audienceSegmentLabels, broadcast.audience.segment)}</td>
                   <td>
-                    <Badge tone={statusTone(broadcast.status)}>{broadcast.status}</Badge>
+                    <Badge tone={statusTone(broadcast.status)}>{label(broadcastStatusLabels, broadcast.status)}</Badge>
                   </td>
                   <td>
                     {broadcast.sentCount} отправлено / {broadcast.failedCount} ошибок

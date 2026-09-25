@@ -45,7 +45,7 @@ export default function AdminContentPage() {
     >
       <Tabs base="/admin/content" tabs={tabs} />
       {tab === "documents" && (
-        <Panel title="Документы">
+        <Panel title="Документы" actions={<Badge tone="info">FAQ и документы показываются в кабинете</Badge>}>
           <div className="adm-table">
             <table>
               <thead>
@@ -60,7 +60,7 @@ export default function AdminContentPage() {
               <tbody>
                 {documents.map((document) => (
                   <tr key={document.id}>
-                    <td>{document.kind}</td>
+                    <td>{document.kind === "faq" ? "FAQ" : document.kind === "news" ? "Новость" : "Юр. документ"}</td>
                     <td>
                       <Link className="adm-link" href={`/admin/content/documents/${document.id}`}>
                         {document.title}
@@ -87,7 +87,7 @@ export default function AdminContentPage() {
         </Panel>
       )}
       {tab === "templates" && (
-        <Panel title="Шаблоны">
+        <Panel title="Шаблоны" actions={<Badge tone="neutral">Telegram и email сообщения</Badge>}>
           <div className="adm-table">
             <table>
               <thead>

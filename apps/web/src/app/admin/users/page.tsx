@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { adminBulkUsers, getAdminUserStats, getAdminUsers } from "../../../lib/api";
 import type { AdminUser, AdminUserStats } from "../../../lib/api";
+import { label, userStatusLabels } from "../../../lib/adminLabels";
 import {
   ActionDialog,
   Badge,
@@ -17,11 +18,8 @@ import {
   TextInput,
 } from "../../../components/admin/ui";
 
-const statusLabels: Record<string, string> = {
-  active: "Активен",
-  blocked: "Заблокирован",
-  deleted: "Удалён",
-};
+const fullName = (user: AdminUser) =>
+  [user.firstName, user.lastName].filter(Boolean).join(" ") || (user.username ? `@${user.username}` : "Без имени");
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -100,7 +98,7 @@ export default function AdminUsersPage() {
       <Panel>
         <div className="adm-form-grid">
           <TextInput
-            placeholder="Поиск: UUID, Telegram ID или username"
+            placeholder="Поиск: UUID, Telegram ID, username или имя"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -173,16 +171,19 @@ export default function AdminUsersPage() {
                   </td>
                   <td>
                     <Link className="adm-link" href={`/admin/users/${user.userId}`}>
-                      {user.username ? `@${user.username}` : "Без username"}
+                      {fullName(user)}
                     </Link>
-                    <span className="adm-cell-sub">{user.userId}</span>
+                    <span className="adm-cell-sub">
+                      {user.username ? `@${user.username} · ` : ""}
+                      {user.userId}
+                    </span>
                   </td>
                   <td>{user.telegramId ?? "—"}</td>
                   <td>
                     <Badge
                       tone={user.status === "active" ? "success" : user.status === "blocked" ? "danger" : "neutral"}
                     >
-                      {statusLabels[user.status] ?? user.status}
+                      {label(userStatusLabels, user.status)}
                     </Badge>
                   </td>
                   <td>{new Date(user.createdAt).toLocaleDateString("ru-RU")}</td>

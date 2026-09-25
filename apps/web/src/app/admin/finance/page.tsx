@@ -13,6 +13,7 @@ import {
 } from "../../../lib/api";
 import type { AdminFinanceSummary, AdminPayment, AdminReconciliationCase, AdminRefund } from "../../../lib/api";
 import { ActionDialog, Badge, Button, Empty, Page, Panel, Select, StatGrid, Tabs } from "../../../components/admin/ui";
+import { label, paymentStatusLabels, reconciliationStatusLabels, refundStatusLabels } from "../../../lib/adminLabels";
 
 const tabs = [
   { key: "summary", label: "Сводка" },
@@ -200,7 +201,7 @@ export default function AdminFinancePage() {
                       </td>
                       <td>{payment.purpose}</td>
                       <td>
-                        <Badge tone={tone(payment.status)}>{payment.status}</Badge>
+                        <Badge tone={tone(payment.status)}>{label(paymentStatusLabels, payment.status)}</Badge>
                       </td>
                       <td>
                         {(payment.amountMinor / 100).toLocaleString("ru-RU")} {payment.currency}
@@ -236,7 +237,7 @@ export default function AdminFinancePage() {
                     </td>
                     <td>{refund.reason}</td>
                     <td>
-                      <Badge tone={tone(refund.status)}>{refund.status}</Badge>
+                      <Badge tone={tone(refund.status)}>{label(refundStatusLabels, refund.status)}</Badge>
                     </td>
                     <td>
                       <div className="adm-cell-actions">
@@ -302,7 +303,7 @@ export default function AdminFinancePage() {
                     <td>{item.type}</td>
                     <td>{item.reason}</td>
                     <td>
-                      <Badge tone={tone(item.status)}>{item.status}</Badge>
+                      <Badge tone={tone(item.status)}>{label(reconciliationStatusLabels, item.status)}</Badge>
                     </td>
                     <td>
                       {item.status === "open" && (

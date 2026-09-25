@@ -6,6 +6,7 @@ import { adminDeleteUser, adminRestoreUser, adminUserAction, getAdminUser } from
 import type { AdminUserDetails } from "../../../../lib/api";
 import { ActionDialog, Badge, Button, Empty, Page, Panel, StatGrid } from "../../../../components/admin/ui";
 import UserNotesTags from "../../../../components/admin/UserNotesTags";
+import { label, userStatusLabels } from "../../../../lib/adminLabels";
 
 type Action = "block" | "unblock" | "revoke-sessions" | "restore" | "delete";
 
@@ -53,14 +54,16 @@ export default function AdminUserDetailPage() {
   };
 
   const statusTone = user?.status === "active" ? "success" : user?.status === "blocked" ? "danger" : "neutral";
+  const displayName = user?.accounts
+    .map(
+      (account) =>
+        [account.firstName, account.lastName].filter(Boolean).join(" ") || account.username || account.telegramId,
+    )
+    .join(", ");
 
   return (
     <Page
-      title={
-        user
-          ? user.accounts.map((account) => account.username ?? account.telegramId).join(", ") || "Пользователь"
-          : "Пользователь"
-      }
+      title={displayName || "Пользователь"}
       description={user ? `UUID ${user.userId}` : undefined}
       backHref="/admin/users"
       backLabel="Все пользователи"
@@ -98,7 +101,7 @@ export default function AdminUserDetailPage() {
         <>
           <StatGrid
             items={[
-              { label: "Статус", value: <Badge tone={statusTone}>{user.status}</Badge> },
+              { label: "Статус", value: <Badge tone={statusTone}>{label(userStatusLabels, user.status)}</Badge> },
               { label: "Активные сессии", value: user.activeSessions },
               { label: "Карты", value: user.cards.length },
               { label: "Платежи", value: user.payments.length },
@@ -112,15 +115,17 @@ export default function AdminUserDetailPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>Telegram ID</th>
+                    <th>Имя</th>
                     <th>Username</th>
+                    <th>Telegram ID</th>
                   </tr>
                 </thead>
                 <tbody>
                   {user.accounts.map((account) => (
                     <tr key={account.telegramId}>
-                      <td>{account.telegramId}</td>
+                      <td>{[account.firstName, account.lastName].filter(Boolean).join(" ") || "—"}</td>
                       <td>{account.username ? `@${account.username}` : "—"}</td>
+                      <td>{account.telegramId}</td>
                     </tr>
                   ))}
                 </tbody>

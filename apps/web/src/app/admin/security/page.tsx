@@ -16,6 +16,7 @@ import {
 } from "../../../lib/api";
 import type { AdminAllowlistEntry, AdminAuditEntry, AdminPermission, AdminRole } from "../../../lib/api";
 import { Badge, Button, Empty, Field, Page, Panel, Select, Tabs, TextInput } from "../../../components/admin/ui";
+import { adminActionLabels, label } from "../../../lib/adminLabels";
 
 const tabs = [
   { key: "audit", label: "Журнал действий" },
@@ -169,7 +170,7 @@ export default function AdminSecurityPage() {
               <tbody>
                 {audit.map((entry) => (
                   <tr key={entry.id}>
-                    <td>{entry.action}</td>
+                    <td>{label(adminActionLabels, entry.action)}</td>
                     <td>{entry.actorUserId ?? "—"}</td>
                     <td>
                       {entry.resource}
@@ -235,7 +236,10 @@ export default function AdminSecurityPage() {
                       })
                     }
                   />
-                  {permission.name}
+                  <span>
+                    {permission.name}
+                    {permission.description && <small className="adm-cell-sub">{permission.description}</small>}
+                  </span>
                 </label>
               ))}
             </div>

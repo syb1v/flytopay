@@ -11,6 +11,7 @@ import {
   updateAdminReferralSettings,
 } from "../../../lib/api";
 import type { AdminPayout, AdminReferralOverview, AdminReferralPartner, AdminReferralTreeItem } from "../../../lib/api";
+import { label, payoutStatusLabels } from "../../../lib/adminLabels";
 import {
   ActionDialog,
   Badge,
@@ -181,7 +182,7 @@ export default function AdminReferralsPage() {
                           payout.status === "approved" ? "success" : payout.status === "rejected" ? "danger" : "warning"
                         }
                       >
-                        {payout.status}
+                        {label(payoutStatusLabels, payout.status)}
                       </Badge>
                     </td>
                     <td>

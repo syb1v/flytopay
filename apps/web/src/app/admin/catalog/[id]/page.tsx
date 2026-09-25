@@ -13,6 +13,14 @@ import {
 } from "../../../../lib/api";
 import type { AdminPrice, AdminPricingPreview, AdminProduct } from "../../../../lib/api";
 import { Badge, Button, Empty, Field, Page, Panel, StatGrid, TextInput } from "../../../../components/admin/ui";
+import {
+  chargedFromLabels,
+  collectionLabels,
+  feeItemDescriptions,
+  feeItemLabels,
+  label,
+  periodLabels,
+} from "../../../../lib/adminLabels";
 
 export default function AdminProductEditorPage() {
   const params = useParams<{ id: string }>();
@@ -280,15 +288,19 @@ export default function AdminProductEditorPage() {
                             <th>Flat</th>
                             <th>Bps</th>
                             <th>Мин.</th>
-                            <th>Себестоимость при сумме</th>
+                            <th>Себестоимость</th>
                           </tr>
                         </thead>
                         <tbody>
                           {preview.costs.map((cost) => (
                             <tr key={`${cost.feeItem}-${cost.collection}-${cost.period}`}>
-                              <td>{cost.feeItem}</td>
                               <td>
-                                {cost.collection} · {cost.chargedFrom}
+                                <b>{label(feeItemLabels, cost.feeItem)}</b>
+                                <span className="adm-cell-sub">{feeItemDescriptions[cost.feeItem ?? ""] ?? ""}</span>
+                              </td>
+                              <td>
+                                {label(collectionLabels, cost.collection)} ·{" "}
+                                {label(chargedFromLabels, cost.chargedFrom)}
                               </td>
                               <td>{(cost.flatMinor / 10 ** (preview.scale || 2)).toLocaleString("ru-RU")}</td>
                               <td>{(cost.bps / 100).toFixed(2)}%</td>

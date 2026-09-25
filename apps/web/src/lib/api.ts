@@ -285,6 +285,8 @@ export type AdminUser = {
   userId: string;
   telegramId: number | null;
   username: string | null;
+  firstName: string | null;
+  lastName: string | null;
   status: string;
   createdAt: string;
 };
@@ -304,7 +306,7 @@ export type AdminUserDetails = {
   userId: string;
   status: string;
   createdAt: string;
-  accounts: Array<{ telegramId: number; username: string | null }>;
+  accounts: Array<{ telegramId: number; username: string | null; firstName: string | null; lastName: string | null }>;
   cards: Array<{ cardId: string; status: string; lastFour: string | null; isDemo: boolean }>;
   payments: Array<{ paymentId: string; status: string; amountMinor: number; currency: string; createdAt: string }>;
   rentalCount: number;
@@ -547,6 +549,18 @@ export type AdminProviderStatus = {
   transactionsError?: string;
 };
 export const getAdminProvider = () => adminFetch<AdminProviderStatus>("/system/provider");
+export type PublicFaqItem = { id: string; title: string; body: string };
+export type PublicLegalItem = { slug: string; title: string };
+async function publicContent<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/content${path}`);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.detail ?? "content_load_failed");
+  return payload.data as T;
+}
+export const getPublicFaq = (locale = "ru") => publicContent<PublicFaqItem[]>(`/faq?locale=${locale}`);
+export const getPublicLegal = (locale = "ru") => publicContent<PublicLegalItem[]>(`/legal?locale=${locale}`);
+export const getPublicLegalDocument = (slug: string) =>
+  publicContent<{ slug: string; title: string; body: string }>(`/legal/${slug}`);
 export type AdminFeatureFlag = {
   key: string;
   description: string | null;

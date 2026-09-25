@@ -1,6 +1,18 @@
 "use client";
 
-import { ArrowLeft, ArrowUpRight, CircleHelp, CreditCard, MessageCircle, ShieldCheck, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  CircleHelp,
+  CreditCard,
+  FileText,
+  MessageCircle,
+  ShieldCheck,
+  Wallet,
+} from "lucide-react";
+import { getPublicFaq, getPublicLegal, getPublicLegalDocument } from "../../lib/api";
+import type { PublicFaqItem, PublicLegalItem } from "../../lib/api";
 
 const copy = {
   ru: {
@@ -10,6 +22,8 @@ const copy = {
     contactText: "Напишите нам в Telegram. Поможем разобраться с картой, балансом или платежом.",
     action: "Написать в поддержку",
     faq: "Частые вопросы",
+    documents: "Документы",
+    documentsHint: "Тексты документов настраиваются в админке.",
     items: [
       {
         title: "Как выпустить карту?",
@@ -40,6 +54,8 @@ const copy = {
     contactText: "Message us on Telegram. We'll help with your card, balance or payment.",
     action: "Contact support",
     faq: "Frequently asked questions",
+    documents: "Documents",
+    documentsHint: "Document texts are managed in the admin panel.",
     items: [
       {
         title: "How do I issue a card?",
@@ -69,6 +85,35 @@ const icons = [CreditCard, Wallet, ShieldCheck, CreditCard, CircleHelp] as const
 
 export function HelpPanel({ language, onBack }: { language: "ru" | "en"; onBack: () => void }) {
   const t = copy[language];
+  const [faq, setFaq] = useState<PublicFaqItem[] | null>(null);
+  const [legal, setLegal] = useState<PublicLegalItem[]>([]);
+  const [document, setDocument] = useState<{ title: string; body: string } | null>(null);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getPublicFaq(language)
+      .then((items) => setFaq(items))
+      .catch(() => setFaq(null));
+    getPublicLegal(language)
+      .then(setLegal)
+      .catch(() => setLegal([]));
+  }, [language]);
+
+  const openDocument = async (item: PublicLegalItem) => {
+    setDocumentError(null);
+    try {
+      const full = await getPublicLegalDocument(item.slug);
+      setDocument({ title: full.title, body: full.body });
+    } catch {
+      setDocumentError("Документ временно недоступен.");
+    }
+  };
+
+  const questions =
+    faq && faq.length > 0
+      ? faq.slice(0, 8)
+      : t.items.map((item) => ({ id: item.title, title: item.title, body: item.text }));
+
   return (
     <section className="help-page">
       <button className="help-back" onClick={onBack}>
@@ -84,10 +129,10 @@ export function HelpPanel({ language, onBack }: { language: "ru" | "en"; onBack:
       </div>
       <div className="account-group-label">{t.faq}</div>
       <div className="help-faq">
-        {t.items.map((item, index) => {
-          const Icon = icons[index];
+        {questions.map((item, index) => {
+          const Icon = icons[index % icons.length];
           return (
-            <details key={item.title} className="help-question">
+            <details key={item.id} className="help-question">
               <summary>
                 <span className="help-question-icon">
                   <Icon size={19} />
@@ -97,11 +142,26 @@ export function HelpPanel({ language, onBack }: { language: "ru" | "en"; onBack:
                   ＋
                 </span>
               </summary>
-              <p>{item.text}</p>
+              <p>{item.body}</p>
             </details>
           );
         })}
       </div>
+      {legal.length > 0 && (
+        <>
+          <div className="account-group-label">{t.documents}</div>
+          <div className="help-documents">
+            {legal.map((item) => (
+              <button key={item.slug} className="help-document-button" onClick={() => openDocument(item)}>
+                <FileText size={18} />
+                <span>{item.title}</span>
+                <ArrowUpRight size={16} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {documentError && <p className="settings-muted">{documentError}</p>}
       <div className="help-contact">
         <span className="help-contact-icon">
           <MessageCircle size={23} />
@@ -114,6 +174,25 @@ export function HelpPanel({ language, onBack }: { language: "ru" | "en"; onBack:
           {t.action} <ArrowUpRight size={17} />
         </a>
       </div>
+      {document && (
+        <div className="details-overlay" onClick={() => setDocument(null)} role="presentation">
+          <section
+            className="details-dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <button className="admin-dialog-close" onClick={() => setDocument(null)} aria-label="Закрыть">
+              ×
+            </button>
+            <h2>{document.title}</h2>
+            <p className="help-document-body">{document.body}</p>
+            <button className="ui-button ui-button-secondary" onClick={() => setDocument(null)}>
+              Закрыть
+            </button>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

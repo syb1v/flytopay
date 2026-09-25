@@ -11,6 +11,7 @@ import {
   updateAdminBroadcast,
 } from "../../../../lib/api";
 import type { AdminBroadcastDelivery } from "../../../../lib/api";
+import { broadcastStatusLabels, label } from "../../../../lib/adminLabels";
 import {
   ActionDialog,
   Badge,
@@ -130,7 +131,11 @@ export default function AdminBroadcastEditorPage() {
   return (
     <Page
       title={isNew ? "Новая рассылка" : title || "Рассылка"}
-      description={isNew ? "Сегмент all/active/blocked отправляется через Telegram" : `Статус: ${status}`}
+      description={
+        isNew
+          ? "Сегмент all/active/blocked отправляется через Telegram"
+          : `Статус: ${label(broadcastStatusLabels, status)}`
+      }
       backHref="/admin/broadcasts"
       backLabel="Рассылки"
       actions={
@@ -215,7 +220,9 @@ export default function AdminBroadcastEditorPage() {
                   <tr key={delivery.id}>
                     <td>{delivery.userId.slice(0, 8)}</td>
                     <td>
-                      <Badge tone={delivery.status === "sent" ? "success" : "danger"}>{delivery.status}</Badge>
+                      <Badge tone={delivery.status === "sent" ? "success" : "danger"}>
+                        {label(broadcastStatusLabels, delivery.status)}
+                      </Badge>
                     </td>
                     <td>{delivery.error ?? "—"}</td>
                   </tr>

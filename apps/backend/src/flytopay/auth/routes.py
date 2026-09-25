@@ -37,12 +37,23 @@ async def telegram_login(payload: TelegramLoginRequest, response: Response, requ
         raise HTTPException(status_code=422, detail="Telegram user payload is invalid") from exc
     account_result = await db.execute(select(TelegramAccount).where(TelegramAccount.telegram_id == telegram_id))
     account = account_result.scalar_one_or_none()
+    first_name = str(telegram_user.get("first_name") or "")[:255] or None
+    last_name = str(telegram_user.get("last_name") or "")[:255] or None
+    username = str(telegram_user.get("username") or "")[:255] or None
     if account is None:
         user = User()
         db.add(user)
         await db.flush()
-        account = TelegramAccount(user_id=user.id, telegram_id=telegram_id, username=telegram_user.get("username"))
+        account = TelegramAccount(
+            user_id=user.id, telegram_id=telegram_id, username=username,
+            first_name=first_name, last_name=last_name,
+        )
         db.add(account)
+    else:
+        # Telegram names change; refresh them on every login so admin stays current.
+        account.username = username
+        account.first_name = first_name
+        account.last_name = last_name
     token, session = await create_session(db, account.user_id)
     await db.commit()
     response.set_cookie(SESSION_COOKIE, token, httponly=True, secure=get_settings().app_env == "production", samesite="lax", max_age=30 * 24 * 60 * 60)

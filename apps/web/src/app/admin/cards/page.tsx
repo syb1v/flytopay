@@ -20,21 +20,18 @@ import type {
   AdminTransaction,
 } from "../../../lib/api";
 import { Badge, Empty, Page, Pager, Panel, Select, StatGrid, Tabs, TextInput } from "../../../components/admin/ui";
+import {
+  cardStatusLabels,
+  issuanceStatusLabels,
+  operationStatusLabels,
+  rentalStatusLabels,
+} from "../../../lib/adminLabels";
 
 const statusLabels: Record<string, string> = {
-  active: "Активна",
-  frozen: "Заморожена",
-  closed: "Закрыта",
-  closing: "Закрывается",
-  issuing: "Выпускается",
-  completed: "Завершена",
-  processing: "В обработке",
-  failed: "Ошибка",
-  succeeded: "Успешно",
-  quoted: "Квота",
-  paid: "Оплачена",
-  issued: "Выпущена",
-  pending: "Ожидает",
+  ...cardStatusLabels,
+  ...issuanceStatusLabels,
+  ...rentalStatusLabels,
+  ...operationStatusLabels,
 };
 
 const tabs = [

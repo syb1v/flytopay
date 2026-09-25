@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from flytopay.admin.audit import record_admin_action
@@ -90,7 +90,8 @@ async def search_users(
     if order not in {"asc", "desc"}:
         order = "desc"
     statement = select(User.id, User.status, User.created_at, TelegramAccount.telegram_id,
-                       TelegramAccount.username).outerjoin(TelegramAccount, TelegramAccount.user_id == User.id)
+                       TelegramAccount.username, TelegramAccount.first_name,
+                       TelegramAccount.last_name).outerjoin(TelegramAccount, TelegramAccount.user_id == User.id)
     if status:
         statement = statement.where(User.status == status)
     if activity:
@@ -106,14 +107,20 @@ async def search_users(
         elif term.lstrip("@").isdigit():
             statement = statement.where(TelegramAccount.telegram_id == int(term.lstrip("@")))
         else:
-            statement = statement.where(TelegramAccount.username.ilike(f"%{term.lstrip('@')}%"))
+            pattern = f"%{term.lstrip('@')}%"
+            statement = statement.where(or_(
+                TelegramAccount.username.ilike(pattern),
+                TelegramAccount.first_name.ilike(pattern),
+                TelegramAccount.last_name.ilike(pattern),
+            ))
     total = await db.scalar(select(func.count()).select_from(statement.subquery())) or 0
     column = User.created_at if sort == "createdAt" else TelegramAccount.telegram_id
     statement = statement.order_by(column.asc() if order == "asc" else column.desc(), User.id.asc())
     rows = (await db.execute(statement.offset((page - 1) * limit).limit(limit))).all()
     return {"success": True, "data": {"items": [
-        {"userId": str(uid), "telegramId": tid, "username": username, "status": state,
-         "createdAt": created.isoformat()} for uid, state, created, tid, username in rows
+        {"userId": str(uid), "telegramId": tid, "username": username, "firstName": first_name,
+         "lastName": last_name, "status": state, "createdAt": created.isoformat()}
+        for uid, state, created, tid, username, first_name, last_name in rows
     ], "total": total, "page": page, "limit": limit}}
 
 
@@ -136,7 +143,8 @@ async def user_detail(user_id: UUID, _: ReadAdmin, db: Annotated[AsyncSession, D
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(404, "User not found")
-    accounts = (await db.execute(select(TelegramAccount.telegram_id, TelegramAccount.username)
+    accounts = (await db.execute(select(TelegramAccount.telegram_id, TelegramAccount.username,
+                                        TelegramAccount.first_name, TelegramAccount.last_name)
                                  .where(TelegramAccount.user_id == user_id))).all()
     cards = (await db.execute(select(UserCard.id, UserCard.status, UserCard.last_four, UserCard.is_demo)
                               .where(UserCard.user_id == user_id).order_by(UserCard.created_at.desc()).limit(50))).all()
@@ -147,7 +155,8 @@ async def user_detail(user_id: UUID, _: ReadAdmin, db: Annotated[AsyncSession, D
     active_sessions = await _count(db, Session, Session.user_id == user_id, Session.revoked_at.is_(None))
     return {"success": True, "data": {"userId": str(user.id), "status": user.status,
         "createdAt": user.created_at.isoformat(),
-        "accounts": [{"telegramId": tid, "username": name} for tid, name in accounts],
+        "accounts": [{"telegramId": tid, "username": name, "firstName": first_name, "lastName": last_name}
+                     for tid, name, first_name, last_name in accounts],
         "cards": [{"cardId": str(cid), "status": state, "lastFour": last, "isDemo": demo}
                   for cid, state, last, demo in cards],
         "payments": [{"paymentId": str(pid), "status": state, "amountMinor": amount,
