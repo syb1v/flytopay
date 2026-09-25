@@ -877,6 +877,16 @@ button.admin-table-row {
   color: var(--white);
 }
 @media (max-width: 760px) {
+  .admin-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -18px 22px;
+    padding: 14px 18px 12px;
+    background: linear-gradient(180deg, rgb(16 22 25 / 96%), rgb(16 22 25 / 72%) 68%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
   .admin-header h1 {
     font-size: 26px;
   }
@@ -1917,36 +1927,22 @@ button.admin-table-row {
   }
 }
 @media (max-width: 760px) {
-  .dashboard-main::before,
-  .dashboard-main::after {
-    content: "";
-    position: fixed;
-    right: 0;
-    left: 0;
-    z-index: 4;
-    height: 34px;
-    pointer-events: none;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-  }
-  .dashboard-main::before {
-    top: 0;
-    background: linear-gradient(180deg, #101619f2, #10161900);
-  }
-  .dashboard-main::after {
-    bottom: 0;
-    height: 112px;
-    background: linear-gradient(0deg, #101619f2, #10161900);
-  }
   .dashboard-sidebar {
     display: none;
   }
   .dashboard-main {
     margin: 0;
-    padding: 22px 18px 110px;
+    padding: 0 18px 110px;
   }
   .dashboard-header {
-    margin-bottom: 22px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -18px 18px;
+    padding: calc(16px + var(--app-safe-top)) 18px 12px;
+    background: linear-gradient(180deg, rgb(16 22 25 / 96%), rgb(16 22 25 / 78%) 68%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
   .dashboard-header h1 {
     font-size: 24px;
@@ -1959,6 +1955,17 @@ button.admin-table-row {
   }
   .dashboard-header-actions .avatar-mark {
     display: none;
+  }
+  .dashboard-shell::after {
+    content: "";
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 4;
+    height: calc(104px + var(--app-safe-bottom));
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 0%, rgb(16 22 25 / 62%) 58%, rgb(16 22 25 / 94%) 100%);
   }
   .balance-grid {
     gap: 12px;
