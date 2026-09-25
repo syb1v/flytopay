@@ -33,5 +33,6 @@ class FeePolicy(Timestamped, Base):
     issue_fee_minor: Mapped[int] = mapped_column(BigInteger, default=0)
     fund_fee_bps: Mapped[int] = mapped_column(Integer, default=0)
     unload_fee_bps: Mapped[int] = mapped_column(Integer, default=0)
+    markup_bps: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     currency: Mapped[str] = mapped_column(String(3), default="USD")
     scale: Mapped[int] = mapped_column(Integer, default=2)

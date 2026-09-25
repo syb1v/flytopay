@@ -14,6 +14,7 @@ from flytopay.auth.csrf import verify_csrf
 from flytopay.cards.models import CardProduct
 from flytopay.catalog.models import FeePolicy, ProductPrice
 from flytopay.db.session import get_db
+from flytopay.integrations.caas2328.client import CaaSClient, CaaSError
 
 router = APIRouter(prefix="/api/v1/admin/catalog", tags=["Admin Catalog"])
 ReadCatalog = Annotated[AdminPrincipal, Depends(require_admin_permission("admin.products.read"))]
@@ -37,6 +38,7 @@ class FeePolicyInput(BaseModel):
     issue_fee_minor: int = Field(default=0, ge=0)
     fund_fee_bps: int = Field(default=0, ge=0, le=10000)
     unload_fee_bps: int = Field(default=0, ge=0, le=10000)
+    markup_bps: int = Field(default=0, ge=0, le=10000)
     currency: str = Field(default="USD", min_length=3, max_length=3)
     scale: int = Field(default=2, ge=0, le=4)
 
@@ -119,7 +121,8 @@ async def create_price(
 async def fees(product_id: UUID, _: ReadCatalog, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
     policy = await db.scalar(select(FeePolicy).where(FeePolicy.product_id == product_id))
     return {"success": True, "data": None if policy is None else {"id": str(policy.id), "issueFeeMinor": policy.issue_fee_minor,
-        "fundFeeBps": policy.fund_fee_bps, "unloadFeeBps": policy.unload_fee_bps, "currency": policy.currency, "scale": policy.scale}}
+        "fundFeeBps": policy.fund_fee_bps, "unloadFeeBps": policy.unload_fee_bps, "markupBps": policy.markup_bps,
+        "currency": policy.currency, "scale": policy.scale}}
 
 
 @router.put("/products/{product_id}/fees", dependencies=[Depends(verify_csrf)])
@@ -144,4 +147,65 @@ async def update_fees(
             setattr(policy, key, value)
     await db.commit()
     return {"success": True, "data": {"id": str(policy.id), "issueFeeMinor": policy.issue_fee_minor,
-        "fundFeeBps": policy.fund_fee_bps, "unloadFeeBps": policy.unload_fee_bps, "currency": policy.currency, "scale": policy.scale}}
+        "fundFeeBps": policy.fund_fee_bps, "unloadFeeBps": policy.unload_fee_bps, "markupBps": policy.markup_bps,
+        "currency": policy.currency, "scale": policy.scale}}
+
+
+@router.get("/products/{product_id}/pricing-preview")
+async def pricing_preview(
+    product_id: UUID,
+    _: ReadCatalog,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    amount_minor: int = 1000,
+) -> dict[str, object]:
+    """Compare admin retail prices with the provider's live fee grid and quote."""
+    product = await db.get(CardProduct, product_id)
+    if product is None:
+        raise HTTPException(404, "Product not found")
+    prices = (await db.execute(select(ProductPrice).where(
+        ProductPrice.product_id == product_id, ProductPrice.is_active.is_(True)
+    ).order_by(ProductPrice.term_days))).scalars().all()
+    policy = await db.scalar(select(FeePolicy).where(FeePolicy.product_id == product_id))
+
+    provider: dict[str, object] = {"configured": False}
+    client = CaaSClient()
+    if client.is_configured:
+        provider["configured"] = True
+        try:
+            grid = await client.account_pricing()
+            provider["pricing"] = grid
+        except (CaaSError, RuntimeError) as exc:
+            provider["pricingError"] = str(exc)
+        try:
+            quote = await client.quote(operation="issuance", amount_minor=amount_minor, product_code=product.provider_code)
+            provider["quote"] = quote
+        except (CaaSError, RuntimeError) as exc:
+            provider["quoteError"] = str(exc)
+
+    quote_fee = None
+    quote_data = provider.get("quote")
+    if isinstance(quote_data, dict):
+        quote_fee = quote_data.get("feeMinor")
+        if quote_fee is None and isinstance(quote_data.get("totalChargeMinor"), int):
+            quote_fee = quote_data["totalChargeMinor"] - amount_minor
+    items = []
+    for price in prices:
+        margin_minor = None
+        margin_bps = None
+        if isinstance(quote_fee, int):
+            margin_minor = price.amount_minor - quote_fee
+            margin_bps = round(margin_minor * 10000 / price.amount_minor) if price.amount_minor else None
+        items.append({
+            "id": str(price.id), "termDays": price.term_days, "amountMinor": price.amount_minor,
+            "feeMinor": price.fee_minor, "currency": price.currency,
+            "marginMinor": margin_minor, "marginBps": margin_bps,
+        })
+    return {"success": True, "data": {
+        "productCode": product.code, "providerCode": product.provider_code,
+        "quoteAmountMinor": amount_minor, "providerFeeMinor": quote_fee,
+        "feePolicy": None if policy is None else {
+            "issueFeeMinor": policy.issue_fee_minor, "fundFeeBps": policy.fund_fee_bps,
+            "unloadFeeBps": policy.unload_fee_bps, "markupBps": policy.markup_bps,
+            "currency": policy.currency, "scale": policy.scale,
+        },
+        "prices": items, "provider": provider}}

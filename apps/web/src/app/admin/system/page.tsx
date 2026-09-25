@@ -6,6 +6,7 @@ import {
   getAdminErrors,
   getAdminFeatureFlags,
   getAdminMaintenance,
+  getAdminProvider,
   getAdminSettings,
   getAdminSystemHealth,
   getAdminWebhooks,
@@ -17,6 +18,7 @@ import {
 import type {
   AdminErrorEvent,
   AdminFeatureFlag,
+  AdminProviderStatus,
   AdminSystemHealth,
   AdminSystemSetting,
   AdminWebhookEvent,
@@ -25,6 +27,7 @@ import { Badge, Button, Empty, Field, Page, Panel, StatGrid, Tabs, TextInput } f
 
 const tabs = [
   { key: "health", label: "Состояние" },
+  { key: "provider", label: "Провайдер 2328" },
   { key: "flags", label: "Feature flags" },
   { key: "settings", label: "Настройки" },
   { key: "errors", label: "Ошибки" },
@@ -41,6 +44,7 @@ export default function AdminSystemPage() {
   const [errors, setErrors] = useState<AdminErrorEvent[]>([]);
   const [webhooks, setWebhooks] = useState<AdminWebhookEvent[]>([]);
   const [maintenance, setMaintenance] = useState<{ enabled: boolean; message: string | null } | null>(null);
+  const [provider, setProvider] = useState<AdminProviderStatus | null>(null);
   const [newFlag, setNewFlag] = useState("");
   const [settingKey, setSettingKey] = useState("");
   const [settingValue, setSettingValue] = useState("{}");
@@ -71,6 +75,9 @@ export default function AdminSystemPage() {
         if (state.message) setMaintenanceMessage(state.message);
       })
       .catch(() => setMaintenance(null));
+    getAdminProvider()
+      .then(setProvider)
+      .catch(() => setProvider(null));
   }, []);
   useEffect(() => load(), [load]);
 
@@ -169,6 +176,126 @@ export default function AdminSystemPage() {
             />
           ) : (
             <Empty>Состояние недоступно.</Empty>
+          )}
+        </Panel>
+      )}
+      {tab === "provider" && (
+        <Panel
+          title="2328 CaaS"
+          actions={
+            <Badge tone={provider?.status === "ok" ? "success" : provider?.configured ? "danger" : "neutral"}>
+              {provider?.status === "ok" ? "API отвечает" : provider?.configured ? "Недоступен" : "Не настроен"}
+            </Badge>
+          }
+        >
+          {provider ? (
+            <>
+              <StatGrid
+                items={[
+                  {
+                    label: "Latency",
+                    value: provider.ping ? `${provider.ping.latencyMs} мс` : "—",
+                    hint: provider.ping?.error ?? provider.ping?.api,
+                  },
+                  {
+                    label: "Статус аккаунта",
+                    value: provider.account?.status ?? "—",
+                    hint: provider.account?.environment,
+                  },
+                  { label: "Account ID", value: provider.account?.accountId?.slice(0, 8) ?? "—" },
+                ]}
+              />
+              {(provider.accountError || provider.walletError || provider.pricingError) && (
+                <p className="adm-modal-error">
+                  {provider.accountError ?? provider.walletError ?? provider.pricingError}
+                </p>
+              )}
+              <h3>Баланс кошелька</h3>
+              <div className="adm-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Программа</th>
+                      <th>Доступно</th>
+                      <th>Резерв</th>
+                      <th>На картах</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(provider.wallet?.items ?? []).map((item, index) => (
+                      <tr key={`${item.providerCode}-${index}`}>
+                        <td>{item.providerCode ?? "—"}</td>
+                        <td>
+                          {(item.availableMinor ?? 0) / 10 ** (item.scale ?? 6)} {item.currency ?? "USDT"}
+                          {item.availableUsd ? ` · $${item.availableUsd}` : ""}
+                        </td>
+                        <td>
+                          {(item.reservedMinor ?? 0) / 10 ** (item.scale ?? 6)} {item.currency ?? "USDT"}
+                        </td>
+                        <td>
+                          {(item.onCardsMinor ?? 0) / 10 ** (item.onCardsScale ?? 2)} {item.onCardsCurrency ?? ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(provider.wallet?.items ?? []).length === 0 && <Empty>Баланс недоступен.</Empty>}
+              </div>
+              <h3 style={{ marginTop: 20 }}>Тарифная сетка провайдера</h3>
+              <div className="adm-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Статья</th>
+                      <th>Списание</th>
+                      <th>Flat</th>
+                      <th>Bps</th>
+                      <th>Период</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(provider.pricing?.fees ?? []).map((fee, index) => (
+                      <tr key={`${fee.feeItem}-${index}`}>
+                        <td>{fee.feeItem}</td>
+                        <td>
+                          {fee.collection} · {fee.chargedFrom}
+                        </td>
+                        <td>{(fee.flatMinor ?? 0) / 10 ** (provider.pricing?.scale ?? 2)}</td>
+                        <td>{((fee.bps ?? 0) / 100).toFixed(2)}%</td>
+                        <td>{fee.period ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(provider.pricing?.fees ?? []).length === 0 && <Empty>Прайс недоступен.</Empty>}
+              </div>
+              <h3 style={{ marginTop: 20 }}>Последние движения по кошельку</h3>
+              <div className="adm-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Тип</th>
+                      <th>Сумма</th>
+                      <th>Баланс после</th>
+                      <th>Дата</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(provider.transactions ?? []).slice(0, 10).map((movement, index) => (
+                      <tr key={String(movement.id ?? index)}>
+                        <td>{String(movement.type ?? "—")}</td>
+                        <td>{String(movement.amountMinor ?? movement.amount ?? "—")}</td>
+                        <td>{String(movement.balanceAfterMinor ?? "—")}</td>
+                        <td>{String(movement.occurredAt ?? "—")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(provider.transactions ?? []).length === 0 && <Empty>Движений нет.</Empty>}
+              </div>
+            </>
+          ) : (
+            <Empty>Провайдер не отвечает или ключ не настроен.</Empty>
           )}
         </Panel>
       )}

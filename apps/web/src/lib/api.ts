@@ -500,6 +500,53 @@ export const removeUserTag = (userId: string, tagId: string) =>
 export const getAdminSales = (days = 30, groupBy = "day") =>
   adminFetch<AdminSales>(`/sales?days=${days}&group_by=${groupBy}`);
 export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
+export type AdminProviderStatus = {
+  configured: boolean;
+  baseUrl?: string;
+  status?: string;
+  ping?: { ok: boolean; latencyMs: number; api?: string; error?: string };
+  account?: {
+    accountId?: string;
+    status?: string;
+    environment?: string;
+    currencies?: string[];
+    features?: Record<string, unknown>;
+  };
+  wallet?: {
+    items?: Array<{
+      providerCode?: string;
+      currency?: string;
+      scale?: number;
+      availableMinor?: number;
+      reservedMinor?: number;
+      totalMinor?: number;
+      onCardsMinor?: number;
+      onCardsCurrency?: string;
+      onCardsScale?: number;
+      availableUsd?: string;
+    }>;
+  };
+  pricing?: {
+    planCode?: string;
+    currency?: string;
+    scale?: number;
+    fees?: Array<{
+      feeItem?: string;
+      collection?: string;
+      chargedFrom?: string;
+      flatMinor?: number;
+      bps?: number;
+      minMinor?: number;
+      period?: string;
+    }>;
+  };
+  transactions?: Array<Record<string, unknown>>;
+  accountError?: string;
+  walletError?: string;
+  pricingError?: string;
+  transactionsError?: string;
+};
+export const getAdminProvider = () => adminFetch<AdminProviderStatus>("/system/provider");
 export type AdminFeatureFlag = {
   key: string;
   description: string | null;
@@ -649,6 +696,50 @@ export async function downloadAdminAuditCsv(days = 30): Promise<void> {
 }
 export const getAdminProducts = () => adminFetch<AdminProduct[]>("/catalog/products");
 export const getAdminPrices = (productId: string) => adminFetch<AdminPrice[]>(`/catalog/products/${productId}/prices`);
+export type AdminFeePolicy = {
+  issueFeeMinor: number;
+  fundFeeBps: number;
+  unloadFeeBps: number;
+  markupBps: number;
+  currency: string;
+  scale: number;
+};
+export const getAdminFees = (productId: string) =>
+  adminFetch<AdminFeePolicy | null>(`/catalog/products/${productId}/fees`);
+export type AdminPricingPreview = {
+  productCode: string;
+  providerCode: string;
+  quoteAmountMinor: number;
+  providerFeeMinor: number | null;
+  feePolicy: AdminFeePolicy | null;
+  prices: Array<{
+    id: string;
+    termDays: number;
+    amountMinor: number;
+    feeMinor: number;
+    currency: string;
+    marginMinor: number | null;
+    marginBps: number | null;
+  }>;
+  provider: {
+    configured: boolean;
+    pricingError?: string;
+    quoteError?: string;
+    pricing?: Record<string, unknown>;
+    quote?: Record<string, unknown>;
+  };
+};
+export const getAdminPricingPreview = (productId: string, amountMinor = 1000) =>
+  adminFetch<AdminPricingPreview>(`/catalog/products/${productId}/pricing-preview?amount_minor=${amountMinor}`);
+export const createAdminPrice = (
+  productId: string,
+  body: { term_days: number; amount_minor: number; fee_minor: number; currency: string; scale: number },
+) =>
+  adminFetch(`/catalog/products/${productId}/prices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
 export const updateAdminProduct = (
   id: string,
   body: { name: string; enabled: boolean; max_cards_per_cardholder: number | null },
@@ -660,7 +751,14 @@ export const updateAdminProduct = (
   });
 export const updateAdminFees = (
   id: string,
-  body: { issue_fee_minor: number; fund_fee_bps: number; unload_fee_bps: number; currency: string; scale: number },
+  body: {
+    issue_fee_minor: number;
+    fund_fee_bps: number;
+    unload_fee_bps: number;
+    markup_bps: number;
+    currency: string;
+    scale: number;
+  },
 ) =>
   adminFetch(`/catalog/products/${id}/fees`, {
     method: "PUT",

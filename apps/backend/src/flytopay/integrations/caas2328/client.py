@@ -64,6 +64,18 @@ class CaaSClient:
     async def account_info(self) -> dict[str, Any]:
         return await self._get("/account/info")
 
+    async def account_wallet(self) -> dict[str, Any]:
+        return await self._get("/account/wallet")
+
+    async def account_pricing(self) -> dict[str, Any]:
+        return await self._get("/account/pricing")
+
+    async def account_transactions(self, *, limit: int = 20) -> dict[str, Any]:
+        return await self._get("/account/transactions", limit=limit)
+
+    async def ping(self) -> dict[str, Any]:
+        return await self._get("/ping")
+
     async def products(self) -> list[dict[str, Any]]:
         data = await self._get("/cards/products")
         items = data.get("items", [])
