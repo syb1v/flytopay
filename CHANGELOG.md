@@ -7,8 +7,16 @@ and project versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Full Russian back-office under `/admin`: dashboard with real aggregates, sales analytics with period/product/currency/purpose grouping, card and issuance management with guarded freeze/unfreeze/close/fund/unload, payments with reconciliation, CSV export, refund approval workflow, referral settings/payouts/tree, campaign and promo CRUD, content, templates and broadcast delivery, feature flags, system settings, error log, webhook requeue, maintenance mode, roles/permissions/allowlist management, filtered audit log with CSV export, and user notes/tags.
+- Granular admin permissions (`admin.sales.read`, `admin.prices.write`, `admin.refunds.write`, `admin.broadcasts.send`, `admin.system.write`, `admin.roles.read/write`, `admin.audit.read`, and more) seeded through `/api/v1/admin/system/permissions/seed`.
+- Alembic migrations `0016`–`0022` for operational controls, versioned catalog pricing, marketing, content/communications, referrals, refunds, and user notes/tags.
+
 ### Changed
 
+- Admin mutations require granular permission, CSRF, `Idempotency-Key`, and audit events; refunds and card operations never mutate the ledger or provider outside existing service boundaries.
+- Mobile cabinet and admin headers are sticky with a soft blur, and the bottom navigation fades content instead of clipping it.
 - README rewritten for the current state: full API surface, environment reference, 2328 CaaS issuance/webhook flow, operations (deploy, workers, backups, cleanup), and server access.
 - `.env.example` lists the production-only `POSTGRES_PASSWORD` and `REDIS_PASSWORD`.
 
