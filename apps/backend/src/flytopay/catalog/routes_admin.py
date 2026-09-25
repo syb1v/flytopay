@@ -20,6 +20,11 @@ router = APIRouter(prefix="/api/v1/admin/catalog", tags=["Admin Catalog"])
 ReadCatalog = Annotated[AdminPrincipal, Depends(require_admin_permission("admin.products.read"))]
 
 
+def suggested_retail_minor(cost_minor: int, markup_bps: int) -> int:
+    """Retail price that applies the target markup over provider cost, rounded up."""
+    return (cost_minor * (10000 + markup_bps) + 9999) // 10000
+
+
 class ProductPatch(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     enabled: bool
@@ -215,7 +220,7 @@ async def pricing_preview(
     markup_bps = policy.markup_bps if policy else 0
     suggested_retail = None
     if isinstance(reference_fee, int):
-        suggested_retail = (reference_fee * (10000 + markup_bps) + 9999) // 10000
+        suggested_retail = suggested_retail_minor(reference_fee, markup_bps)
 
     items = []
     for price in prices:

@@ -32,3 +32,12 @@ def test_catalog_quotes_use_the_documented_operation_value():
     source = Path(catalog_routes.__file__).read_text()
     assert 'operation="issuance"' not in source
     assert 'operation="issue"' in source
+
+
+def test_suggested_retail_applies_markup_over_cost():
+    from flytopay.catalog.routes_admin import suggested_retail_minor
+
+    assert suggested_retail_minor(300, 0) == 300
+    assert suggested_retail_minor(300, 2000) == 360
+    assert suggested_retail_minor(300, 2500) == 375
+    assert suggested_retail_minor(333, 1000) == 367
