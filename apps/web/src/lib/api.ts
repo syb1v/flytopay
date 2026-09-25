@@ -524,6 +524,88 @@ export const updateAdminMaintenance = (enabled: boolean, message: string) =>
     headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
     body: JSON.stringify({ enabled, message }),
   });
+export type AdminPermission = { name: string; description: string | null };
+export type AdminRole = {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  permissions: string[];
+};
+export type AdminAllowlistEntry = {
+  id: string;
+  telegramId: number;
+  roleId: string;
+  roleName: string | null;
+  isActive: boolean;
+  note: string | null;
+};
+export type AdminAuditEntry = {
+  id: string;
+  actorUserId: string | null;
+  action: string;
+  resource: string;
+  resourceId: string | null;
+  reason: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+};
+export const getAdminPermissions = () => adminFetch<AdminPermission[]>("/system/permissions");
+export const seedAdminPermissions = () =>
+  adminFetch<{ created: number }>("/system/permissions/seed", {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
+export const getAdminRoles = () => adminFetch<AdminRole[]>("/system/roles");
+export const createAdminRole = (body: {
+  name: string;
+  description: string | null;
+  permissions: string[];
+  is_active: boolean;
+}) =>
+  adminFetch<AdminRole>("/system/roles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const updateAdminRole = (
+  id: string,
+  body: { name: string; description: string | null; permissions: string[]; is_active: boolean },
+) =>
+  adminFetch<AdminRole>(`/system/roles/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const getAdminAllowlist = () => adminFetch<AdminAllowlistEntry[]>("/system/admins");
+export const addAdminAllowlist = (body: { telegram_id: number; role_id: string; note: string | null }) =>
+  adminFetch("/system/admins", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const updateAdminAllowlist = (id: string, body: { role_id?: string; is_active?: boolean; note?: string }) =>
+  adminFetch(`/system/admins/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const getAdminAudit = (params: { action?: string; actor?: string; days?: number; page?: number } = {}) =>
+  adminPage<AdminAuditEntry>("/system/audit", params);
+export async function downloadAdminAuditCsv(days = 30): Promise<void> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/admin/system/audit/export?days=${days}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("csv_failed");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `audit-${days}d.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 export const getAdminProducts = () => adminFetch<AdminProduct[]>("/catalog/products");
 export const getAdminPrices = (productId: string) => adminFetch<AdminPrice[]>(`/catalog/products/${productId}/prices`);
 export const updateAdminProduct = (

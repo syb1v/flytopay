@@ -640,6 +640,20 @@ button.admin-table-row {
   color: var(--white);
   font: inherit;
 }
+.admin-permission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #2c363d;
+  border-radius: 12px;
+  background: #101619;
+}
+.admin-permission-grid .admin-toggle {
+  font-size: 12px;
+}
 .admin-badge {
   display: inline-flex;
   width: fit-content;

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  Activity,
   BarChart3,
   CreditCard,
   FileText,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import {
   adminUserAction,
-  getAdminActivity,
   getAdminDashboard,
   getAdminUser,
   getAdminUsers,
@@ -46,7 +44,6 @@ import {
   createAdminPromo,
   createAdminDocument,
   createAdminTemplate,
-  type AdminActivity,
   type AdminDashboard,
   type AdminUser,
   type AdminUserDetails,
@@ -64,6 +61,7 @@ import FinanceAdmin from "../../components/admin/FinanceAdmin";
 import ReferralsAdmin from "../../components/admin/ReferralsAdmin";
 import BroadcastsAdmin from "../../components/admin/BroadcastsAdmin";
 import SystemAdmin from "../../components/admin/SystemAdmin";
+import SecurityAdmin from "../../components/admin/SecurityAdmin";
 
 const sections = [
   ["Обзор", LayoutDashboard],
@@ -76,14 +74,9 @@ const sections = [
   ["Рефералы", Users],
   ["Контент и рассылки", FileText],
   ["Рассылки", SendHorizonal],
-  ["Журнал действий", Activity],
+  ["Безопасность", ShieldCheck],
   ["Система", ServerCog],
 ] as const;
-const labels: Record<string, string> = {
-  "user.block": "Блокировка пользователя",
-  "user.unblock": "Разблокировка пользователя",
-  "user.revoke_sessions": "Отзыв сессий",
-};
 const date = (value: string) => new Date(value).toLocaleString("ru-RU", { dateStyle: "medium", timeStyle: "short" });
 
 export default function AdminPage() {
@@ -91,7 +84,6 @@ export default function AdminPage() {
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersTotal, setUsersTotal] = useState(0);
-  const [activity, setActivity] = useState<AdminActivity | null>(null);
   const [sales, setSales] = useState<AdminSales | null>(null);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [prices, setPrices] = useState<AdminPrice[]>([]);
@@ -146,10 +138,6 @@ export default function AdminPage() {
       getAdminUserStats()
         .then(setUserStats)
         .catch(() => setUserStats(null));
-    if (active === "Журнал действий")
-      getAdminActivity()
-        .then(setActivity)
-        .catch(() => setActivity(null));
     if (active === "Продажи")
       getAdminSales()
         .then(setSales)
@@ -232,8 +220,7 @@ export default function AdminPage() {
             onBulkDone={() => void loadUsers()}
           />
         )}
-        {active === "Журнал действий" && <ActivityView activity={activity} />}
-        {active === "Продажи" && <SalesView sales={sales} />}
+        {active === "Безопасность" && <SecurityAdmin />} {active === "Продажи" && <SalesView sales={sales} />}
         {active === "Карты" && <CardsAdmin />}
         {active === "Цены и продукты" && <CatalogView products={products} prices={prices} setPrices={setPrices} />}
         {active === "Система" && <SystemAdmin />}
@@ -1298,33 +1285,6 @@ function UsersView({
           </button>
         </div>
       )}
-    </section>
-  );
-}
-
-function ActivityView({ activity }: { activity: AdminActivity | null }) {
-  return (
-    <section className="admin-panel">
-      <h2>Журнал действий</h2>
-      <div className="admin-table admin-users-table">
-        <div className="admin-table-head">
-          <span>Действие</span>
-          <span>Пользователь</span>
-          <span>Причина</span>
-          <span>Дата</span>
-        </div>
-        {activity?.items.map((event, index) => (
-          <div className="admin-table-row" key={`${event.createdAt}-${index}`}>
-            <span>
-              <b>{labels[event.action] ?? event.action}</b>
-              <small>{event.resourceId ?? "—"}</small>
-            </span>
-            <span>{event.actorUserId ?? "—"}</span>
-            <span>{event.reason || "—"}</span>
-            <span>{date(event.createdAt)}</span>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
