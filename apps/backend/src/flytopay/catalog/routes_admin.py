@@ -175,7 +175,7 @@ async def pricing_preview(
         declared_scale = 2
         declared_currency = product.currency
         try:
-            grid = await client.account_pricing(product_code=product.provider_code)
+            grid = await client.account_pricing(product_code=product.code)
             provider["pricing"] = grid
             declared_scale = int(grid.get("scale") or 2)
             declared_currency = str(grid.get("currency") or product.currency)
@@ -195,7 +195,7 @@ async def pricing_preview(
         except (CaaSError, RuntimeError) as exc:
             provider["pricingError"] = str(exc)
         try:
-            quote = await client.quote(operation="issuance", amount_minor=amount_minor, product_code=product.provider_code)
+            quote = await client.quote(operation="issue", amount_minor=amount_minor, product_code=product.code)
             provider["quote"] = quote
         except (CaaSError, RuntimeError) as exc:
             provider["quoteError"] = str(exc)
@@ -223,7 +223,7 @@ async def pricing_preview(
         if len(prices) > 1:
             try:
                 cost = quote_fee_for(await client.quote(
-                    operation="issuance", amount_minor=price.amount_minor, product_code=product.provider_code
+                    operation="issue", amount_minor=price.amount_minor, product_code=product.code
                 ))
             except (CaaSError, RuntimeError):
                 cost = None

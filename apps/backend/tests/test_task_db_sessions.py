@@ -1,9 +1,10 @@
-"""Guard against event-loop connection leaks in Celery task paths."""
+"""Guards against provider contract drift and Celery connection leaks."""
 
 from pathlib import Path
 
 from flytopay import worker
 from flytopay.cards import lifecycle_routes
+from flytopay.catalog import routes_admin as catalog_routes
 from flytopay.db.session import task_session
 from flytopay.payments import reconciliation
 
@@ -23,3 +24,11 @@ def test_celery_task_paths_do_not_use_the_shared_engine():
         source = Path(module.__file__).read_text()
         assert "session_factory()" not in source, f"{module.__name__} must not open the shared engine"
         assert "task_session()" in source, f"{module.__name__} must use task_session()"
+
+
+def test_catalog_quotes_use_the_documented_operation_value():
+    """2328 accepts operation=issue|fund|unload; 'issuance' returns 422 and would
+    silently blank the provider cost shown to admins."""
+    source = Path(catalog_routes.__file__).read_text()
+    assert 'operation="issuance"' not in source
+    assert 'operation="issue"' in source
