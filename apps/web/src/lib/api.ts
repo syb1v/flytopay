@@ -585,6 +585,60 @@ export const updateAdminTemplate = (
   });
 export const getAdminPayments = () => adminFetch<AdminPayment[]>("/finance/payments");
 export const getAdminRefunds = () => adminFetch<AdminRefund[]>("/finance/refunds");
+export type AdminFinanceSummary = {
+  days: number;
+  groupBy: string;
+  grossMinor: number;
+  orders: number;
+  failedPayments: number;
+  knownIssuanceFeesMinor: number;
+  openReconciliation: number;
+  averageOrderMinor: number;
+  groups: Array<{ key: string; orders: number; amountMinor: number }>;
+};
+export type AdminReconciliationCase = {
+  id: string;
+  paymentAttemptId: string;
+  type: string;
+  status: string;
+  reason: string;
+  providerStatus: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+};
+export const getAdminFinanceSummary = (days = 30, groupBy = "provider") =>
+  adminFetch<AdminFinanceSummary>(`/finance/reports/summary?days=${days}&group_by=${groupBy}`);
+export const getAdminReconciliation = (status = "open") =>
+  adminFetch<AdminReconciliationCase[]>(`/finance/reconciliation?status=${status}`);
+export const adminRefundDecision = (
+  id: string,
+  action: "approve" | "reject" | "process" | "complete",
+  reason: string,
+) =>
+  adminFetch(`/finance/refunds/${id}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+export const adminResolveCase = (id: string, reason: string) =>
+  adminFetch(`/finance/reconciliation/${id}/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+export async function downloadAdminPaymentsCsv(days = 30): Promise<void> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/admin/finance/reports/payments.csv?days=${days}`, {
+    credentials: "include",
+  });
+  if (!response.ok) throw new Error("csv_failed");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `payments-${days}d.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 export type AdminCardOverview = {
   total: number;
   active: number;

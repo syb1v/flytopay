@@ -29,8 +29,6 @@ import {
   getAdminPromoCodes,
   getAdminDocuments,
   getAdminTemplates,
-  getAdminPayments,
-  getAdminRefunds,
   getAdminReferralOverview,
   updateAdminPromo,
   archiveAdminPromo,
@@ -61,12 +59,11 @@ import {
   type AdminPromoCode,
   type AdminContentDocument,
   type AdminTemplate,
-  type AdminPayment,
-  type AdminRefund,
   type AdminReferralOverview,
   type AdminUserStats,
 } from "../../lib/api";
 import CardsAdmin from "../../components/admin/CardsAdmin";
+import FinanceAdmin from "../../components/admin/FinanceAdmin";
 
 const sections = [
   ["Обзор", LayoutDashboard],
@@ -102,8 +99,6 @@ export default function AdminPage() {
   const [promos, setPromos] = useState<AdminPromoCode[]>([]);
   const [documents, setDocuments] = useState<AdminContentDocument[]>([]);
   const [templates, setTemplates] = useState<AdminTemplate[]>([]);
-  const [payments, setPayments] = useState<AdminPayment[]>([]);
-  const [refunds, setRefunds] = useState<AdminRefund[]>([]);
   const [referrals, setReferrals] = useState<AdminReferralOverview | null>(null);
   const [userStats, setUserStats] = useState<AdminUserStats | null>(null);
   const [selected, setSelected] = useState<AdminUserDetails | null>(null);
@@ -170,14 +165,6 @@ export default function AdminPage() {
         .catch(() => setSystem(null));
     if (active === "Маркетинг") void loadMarketing();
     if (active === "Контент и рассылки") void loadContent();
-    if (active === "Платежи и возвраты") {
-      getAdminPayments()
-        .then(setPayments)
-        .catch(() => setPayments([]));
-      getAdminRefunds()
-        .then(setRefunds)
-        .catch(() => setRefunds([]));
-    }
     if (active === "Рефералы")
       getAdminReferralOverview()
         .then(setReferrals)
@@ -263,7 +250,7 @@ export default function AdminPage() {
         {active === "Контент и рассылки" && (
           <ContentView documents={documents} templates={templates} onChanged={loadContent} />
         )}
-        {active === "Платежи и возвраты" && <FinanceView payments={payments} refunds={refunds} />}
+        {active === "Платежи и возвраты" && <FinanceAdmin />}
         {active === "Рефералы" && <ReferralView referrals={referrals} />}
       </section>
       {selected && (
@@ -954,71 +941,6 @@ function ContentView({
           }}
         />
       )}
-    </>
-  );
-}
-
-function FinanceView({ payments, refunds }: { payments: AdminPayment[]; refunds: AdminRefund[] }) {
-  return (
-    <>
-      <section className="admin-panel">
-        <div className="section-heading">
-          <h2>Платежи</h2>
-          <span className="status-dot">
-            <i />
-            Реальные операции
-          </span>
-        </div>
-        <div className="admin-table">
-          <div className="admin-table-head">
-            <span>Провайдер</span>
-            <span>Назначение</span>
-            <span>Статус</span>
-            <span>Сумма</span>
-            <span>Дата</span>
-          </div>
-          {payments.map((payment) => (
-            <div className="admin-table-row" key={payment.id}>
-              <span>
-                <b>{payment.provider}</b>
-                <small>{payment.id}</small>
-              </span>
-              <span>{payment.purpose}</span>
-              <span>
-                <em className={`admin-badge ${payment.status === "succeeded" ? "active" : "blocked"}`}>
-                  {payment.status}
-                </em>
-              </span>
-              <span>
-                {(payment.amountMinor / 100).toLocaleString("ru-RU")} {payment.currency}
-              </span>
-              <span>{new Date(payment.createdAt).toLocaleDateString("ru-RU")}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="admin-panel">
-        <h2>Запросы на возврат</h2>
-        <div className="admin-table">
-          <div className="admin-table-head">
-            <span>Платёж</span>
-            <span>Сумма</span>
-            <span>Причина</span>
-            <span>Статус</span>
-          </div>
-          {refunds.map((refund) => (
-            <div className="admin-table-row content-row" key={refund.id}>
-              <span>{refund.paymentAttemptId}</span>
-              <span>
-                {refund.amountMinor / 100} {refund.currency}
-              </span>
-              <span>{refund.reason}</span>
-              <span>{refund.status}</span>
-            </div>
-          ))}
-          {refunds.length === 0 && <p className="settings-muted">Возвратов пока нет.</p>}
-        </div>
-      </section>
     </>
   );
 }
