@@ -67,3 +67,17 @@ def caas_poll_closes_task() -> int:
             return await poll_pending_closes(db)
 
     return asyncio.run(run())
+
+
+@celery_app.task(name="flytopay.broadcast.send")
+def broadcast_send_task(broadcast_id: str) -> dict[str, int]:
+    import asyncio
+
+    from flytopay.content.broadcasts import send_broadcast
+    from flytopay.db.session import session_factory
+
+    async def run() -> dict[str, int]:
+        async with session_factory() as db:
+            return await send_broadcast(db, broadcast_id)
+
+    return asyncio.run(run())

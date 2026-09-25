@@ -549,6 +549,65 @@ export const createAdminDocument = (body: {
     body: JSON.stringify(body),
   });
 export const getAdminTemplates = () => adminFetch<AdminTemplate[]>("/content/templates");
+export type AdminBroadcast = {
+  id: string;
+  title: string;
+  channel: string;
+  audience: { segment: string };
+  body: string;
+  status: string;
+  scheduledAt: string | null;
+  sentCount: number;
+  failedCount: number;
+  createdAt: string;
+};
+export type AdminBroadcastDelivery = {
+  id: string;
+  userId: string;
+  status: string;
+  error: string | null;
+  createdAt: string;
+};
+export const getAdminBroadcasts = () => adminFetch<AdminBroadcast[]>("/content/broadcasts");
+export const createAdminBroadcast = (body: {
+  title: string;
+  channel: "telegram";
+  audience: { segment: string };
+  body: string;
+  scheduled_at: string | null;
+}) =>
+  adminFetch<AdminBroadcast>("/content/broadcasts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const updateAdminBroadcast = (
+  id: string,
+  body: {
+    title: string;
+    channel: "telegram";
+    audience: { segment: string };
+    body: string;
+    scheduled_at: string | null;
+  },
+) =>
+  adminFetch<AdminBroadcast>(`/content/broadcasts/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const previewAdminBroadcast = (id: string) =>
+  adminFetch<{ title: string; body: string; audience: { segment: string }; recipients: number }>(
+    `/content/broadcasts/${id}/preview`,
+    { method: "POST", headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() } },
+  );
+export const sendAdminBroadcast = (id: string) =>
+  adminFetch<{ id: string; status: string; queued: number }>(`/content/broadcasts/${id}/send`, {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
+export const getAdminBroadcastDeliveries = (id: string) =>
+  adminFetch<AdminBroadcastDelivery[]>(`/content/broadcasts/${id}/deliveries`);
 export const createAdminTemplate = (body: {
   key: string;
   channel: string;

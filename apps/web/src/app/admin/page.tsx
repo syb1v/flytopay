@@ -11,6 +11,7 @@ import {
   Package,
   Search,
   ServerCog,
+  SendHorizonal,
   ShieldCheck,
   Users,
   WalletCards,
@@ -63,6 +64,7 @@ import {
 import CardsAdmin from "../../components/admin/CardsAdmin";
 import FinanceAdmin from "../../components/admin/FinanceAdmin";
 import ReferralsAdmin from "../../components/admin/ReferralsAdmin";
+import BroadcastsAdmin from "../../components/admin/BroadcastsAdmin";
 
 const sections = [
   ["Обзор", LayoutDashboard],
@@ -74,6 +76,7 @@ const sections = [
   ["Маркетинг", Megaphone],
   ["Рефералы", Users],
   ["Контент и рассылки", FileText],
+  ["Рассылки", SendHorizonal],
   ["Журнал действий", Activity],
   ["Система", ServerCog],
 ] as const;
@@ -246,6 +249,7 @@ export default function AdminPage() {
         )}
         {active === "Платежи и возвраты" && <FinanceAdmin />}
         {active === "Рефералы" && <ReferralsAdmin />}
+        {active === "Рассылки" && <BroadcastsAdmin />}
       </section>
       {selected && (
         <UserDialog
