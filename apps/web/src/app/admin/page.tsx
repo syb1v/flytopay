@@ -25,7 +25,6 @@ import {
   getAdminSales,
   getAdminProducts,
   getAdminPrices,
-  getAdminSystemHealth,
   getAdminCampaigns,
   getAdminPromoCodes,
   getAdminDocuments,
@@ -54,7 +53,6 @@ import {
   type AdminSales,
   type AdminProduct,
   type AdminPrice,
-  type AdminSystemHealth,
   type AdminCampaign,
   type AdminPromoCode,
   type AdminContentDocument,
@@ -65,6 +63,7 @@ import CardsAdmin from "../../components/admin/CardsAdmin";
 import FinanceAdmin from "../../components/admin/FinanceAdmin";
 import ReferralsAdmin from "../../components/admin/ReferralsAdmin";
 import BroadcastsAdmin from "../../components/admin/BroadcastsAdmin";
+import SystemAdmin from "../../components/admin/SystemAdmin";
 
 const sections = [
   ["Обзор", LayoutDashboard],
@@ -96,7 +95,6 @@ export default function AdminPage() {
   const [sales, setSales] = useState<AdminSales | null>(null);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [prices, setPrices] = useState<AdminPrice[]>([]);
-  const [system, setSystem] = useState<AdminSystemHealth | null>(null);
   const [campaigns, setCampaigns] = useState<AdminCampaign[]>([]);
   const [promos, setPromos] = useState<AdminPromoCode[]>([]);
   const [documents, setDocuments] = useState<AdminContentDocument[]>([]);
@@ -160,10 +158,6 @@ export default function AdminPage() {
       getAdminProducts()
         .then(setProducts)
         .catch(() => setProducts([]));
-    if (active === "Система")
-      getAdminSystemHealth()
-        .then(setSystem)
-        .catch(() => setSystem(null));
     if (active === "Маркетинг") void loadMarketing();
     if (active === "Контент и рассылки") void loadContent();
   }, [active, page]);
@@ -242,7 +236,7 @@ export default function AdminPage() {
         {active === "Продажи" && <SalesView sales={sales} />}
         {active === "Карты" && <CardsAdmin />}
         {active === "Цены и продукты" && <CatalogView products={products} prices={prices} setPrices={setPrices} />}
-        {active === "Система" && <SystemView system={system} />}
+        {active === "Система" && <SystemAdmin />}
         {active === "Маркетинг" && <MarketingView campaigns={campaigns} promos={promos} onChanged={loadMarketing} />}
         {active === "Контент и рассылки" && (
           <ContentView documents={documents} templates={templates} onChanged={loadContent} />
@@ -432,38 +426,6 @@ function CatalogView({
           </div>
         </div>
       )}
-    </section>
-  );
-}
-
-function SystemView({ system }: { system: AdminSystemHealth | null }) {
-  return (
-    <section className="admin-panel">
-      <div className="section-heading">
-        <h2>Контроль API и системы</h2>
-        <span className="status-dot">
-          <i />
-          Без секретов в браузере
-        </span>
-      </div>
-      <div className="admin-system-grid">
-        {system?.services.map((service) => (
-          <article key={service.name}>
-            <span>{service.name}</span>
-            <b>{service.status === "available" ? "Доступен" : "Настроен"}</b>
-          </article>
-        ))}
-      </div>
-      <div className="admin-status-row">
-        <span>Ошибки за 24 часа</span>
-        <b>{system?.errorsLast24h ?? "—"}</b>
-        <small>Из журнала backend</small>
-      </div>
-      <div className="admin-status-row">
-        <span>Неудачные задачи</span>
-        <b>{system?.failedJobs ?? "—"}</b>
-        <small>Celery/admin jobs</small>
-      </div>
     </section>
   );
 }

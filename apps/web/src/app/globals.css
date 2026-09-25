@@ -631,6 +631,15 @@ button.admin-table-row {
   padding: 5px 9px;
   font-size: 11px;
 }
+.admin-setting-value {
+  min-width: 260px;
+  padding: 9px 12px;
+  border: 1px solid #354147;
+  border-radius: 10px;
+  background: #101619;
+  color: var(--white);
+  font: inherit;
+}
 .admin-badge {
   display: inline-flex;
   width: fit-content;

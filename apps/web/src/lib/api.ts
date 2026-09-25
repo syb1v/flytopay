@@ -459,6 +459,71 @@ export const adminBulkUsers = (
 export const getAdminActivity = (page = 1) => adminFetch<AdminActivity>(`/activity?page=${page}`);
 export const getAdminSales = (days = 30) => adminFetch<AdminSales>(`/sales?days=${days}`);
 export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
+export type AdminFeatureFlag = {
+  key: string;
+  description: string | null;
+  enabled: boolean;
+  config: Record<string, unknown>;
+};
+export type AdminSystemSetting = {
+  key: string;
+  value: Record<string, unknown>;
+  description: string | null;
+  isPublicBusinessSetting: boolean;
+};
+export type AdminErrorEvent = {
+  id: string;
+  source: string;
+  severity: string;
+  message: string;
+  correlationId: string | null;
+  context: Record<string, unknown>;
+  createdAt: string;
+};
+export type AdminWebhookEvent = {
+  id: string;
+  provider: string;
+  eventType: string;
+  status: string;
+  deduplicationKey: string;
+  createdAt: string;
+};
+export const getAdminFeatureFlags = () => adminFetch<AdminFeatureFlag[]>("/system/feature-flags");
+export const upsertAdminFeatureFlag = (
+  key: string,
+  body: { description: string | null; enabled: boolean; config: Record<string, unknown> },
+) =>
+  adminFetch(`/system/feature-flags/${key}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const getAdminSettings = () => adminFetch<AdminSystemSetting[]>("/system/settings");
+export const upsertAdminSetting = (
+  key: string,
+  body: { value: Record<string, unknown>; description: string | null; is_public_business_setting: boolean },
+) =>
+  adminFetch(`/system/settings/${key}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const getAdminErrors = (page = 1, severity = "") =>
+  adminPage<AdminErrorEvent>("/system/errors", { page, severity });
+export const getAdminWebhooks = (status = "") => adminPage<AdminWebhookEvent>("/system/webhooks", { status });
+export const requeueAdminWebhook = (id: string) =>
+  adminFetch(`/system/webhooks/${id}/requeue`, {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+  });
+export const getAdminMaintenance = () =>
+  adminFetch<{ enabled: boolean; message: string | null }>("/system/maintenance");
+export const updateAdminMaintenance = (enabled: boolean, message: string) =>
+  adminFetch<{ enabled: boolean; message: string }>("/system/maintenance", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ enabled, message }),
+  });
 export const getAdminProducts = () => adminFetch<AdminProduct[]>("/catalog/products");
 export const getAdminPrices = (productId: string) => adminFetch<AdminPrice[]>(`/catalog/products/${productId}/prices`);
 export const updateAdminProduct = (
