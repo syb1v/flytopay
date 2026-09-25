@@ -51,7 +51,7 @@ async def test_execute_lifecycle_unknown_operation_returns_unknown(monkeypatch) 
         async def __aexit__(self, *args):
             return False
 
-    monkeypatch.setattr("flytopay.db.session.session_factory", lambda: FakeSessionFactory())
+    monkeypatch.setattr("flytopay.db.session.task_session", lambda: FakeSessionFactory())
     status = await execute_lifecycle("missing-key", str(uuid4()), "freeze")
     assert status == "failed"
 

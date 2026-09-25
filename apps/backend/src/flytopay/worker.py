@@ -46,10 +46,10 @@ def caas_poll_issues_task() -> int:
     import asyncio
 
     from flytopay.cards.issuance import poll_pending_issues
-    from flytopay.db.session import session_factory
+    from flytopay.db.session import task_session
 
     async def run() -> int:
-        async with session_factory() as db:
+        async with task_session() as db:
             return await poll_pending_issues(db)
 
     return asyncio.run(run())
@@ -60,10 +60,10 @@ def caas_poll_closes_task() -> int:
     import asyncio
 
     from flytopay.cards.lifecycle_routes import poll_pending_closes
-    from flytopay.db.session import session_factory
+    from flytopay.db.session import task_session
 
     async def run() -> int:
-        async with session_factory() as db:
+        async with task_session() as db:
             return await poll_pending_closes(db)
 
     return asyncio.run(run())
@@ -74,10 +74,10 @@ def broadcast_send_task(broadcast_id: str) -> dict[str, int]:
     import asyncio
 
     from flytopay.content.broadcasts import send_broadcast
-    from flytopay.db.session import session_factory
+    from flytopay.db.session import task_session
 
     async def run() -> dict[str, int]:
-        async with session_factory() as db:
+        async with task_session() as db:
             return await send_broadcast(db, broadcast_id)
 
     return asyncio.run(run())

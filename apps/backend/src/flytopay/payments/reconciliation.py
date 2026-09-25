@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from flytopay.db.session import session_factory
+from flytopay.db.session import task_session
 from flytopay.logging_config import get_logger
 from flytopay.payments.finalization import FinalizationError, finalize_payment
 from flytopay.payments.models import PaymentAttempt
@@ -37,7 +37,7 @@ async def reconcile_stale_attempts(*, limit: int = 20) -> dict[str, int]:
     """Retry remote verification for stale attempts; report per-outcome counts."""
     service = PaymentService()
     counts = {"retried": 0, "finalized": 0, "still_pending": 0, "failed": 0}
-    async with session_factory() as db:
+    async with task_session() as db:
         candidates = await reconciliation_candidates(db, limit=limit)
         counts["retried"] = len(candidates)
         for attempt in candidates:

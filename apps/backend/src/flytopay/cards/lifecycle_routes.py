@@ -403,9 +403,9 @@ async def _execute_demo_lifecycle(db: AsyncSession, card: UserCard, record, kind
 
 async def execute_lifecycle(operation_key: str, card_id: str, kind: str) -> str:
     """Worker-side: perform the queued CaaS call and persist its outcome."""
-    from flytopay.db.session import session_factory
+    from flytopay.db.session import task_session
 
-    async with session_factory() as db:
+    async with task_session() as db:
         result = await db.execute(select(UserCard).where(UserCard.id == UUID(card_id)))
         card = result.scalar_one_or_none()
         if card is None:
