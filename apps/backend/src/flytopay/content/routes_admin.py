@@ -82,6 +82,16 @@ async def create_document(body: ContentCreate, _: WriteContent, db: Annotated[As
     return {"success": True, "data": {"id": str(document.id), "slug": document.slug}}
 
 
+@router.get("/documents/{document_id}")
+async def document_detail(document_id: UUID, _: ReadContent, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    document = await db.get(ContentDocument, document_id)
+    if document is None:
+        raise HTTPException(404, "Document not found")
+    return {"success": True, "data": {"id": str(document.id), "kind": document.kind, "slug": document.slug,
+        "locale": document.locale, "title": document.title, "body": document.body,
+        "isPublished": document.is_published}}
+
+
 @router.patch("/documents/{document_id}", dependencies=[Depends(verify_csrf)])
 async def update_document(document_id: UUID, body: ContentPatch, _: WriteContent, db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
     if not idempotency_key:
@@ -127,6 +137,16 @@ async def create_template(body: TemplateCreate, _: WriteContent, db: Annotated[A
     return {"success": True, "data": {"id": str(template.id), "key": template.key}}
 
 
+@router.get("/templates/{template_id}")
+async def template_detail(template_id: UUID, _: ReadContent, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    template = await db.get(MessageTemplate, template_id)
+    if template is None:
+        raise HTTPException(404, "Template not found")
+    return {"success": True, "data": {"id": str(template.id), "key": template.key,
+        "channel": template.channel, "locale": template.locale, "subject": template.subject,
+        "body": template.body, "isActive": template.is_active}}
+
+
 @router.patch("/templates/{template_id}", dependencies=[Depends(verify_csrf)])
 async def update_template(template_id: UUID, body: TemplatePatch, _: WriteContent, db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
     if not idempotency_key:
@@ -155,6 +175,14 @@ async def create_broadcast(body: BroadcastInput, _: WriteContent, db: Annotated[
                           scheduled_at=body.scheduled_at, status="scheduled" if body.scheduled_at else "draft")
     db.add(broadcast)
     await db.commit()
+    return {"success": True, "data": _broadcast_payload(broadcast)}
+
+
+@router.get("/broadcasts/{broadcast_id}")
+async def broadcast_detail(broadcast_id: UUID, _: ReadContent, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    broadcast = await db.get(Broadcast, broadcast_id)
+    if broadcast is None:
+        raise HTTPException(404, "Broadcast not found")
     return {"success": True, "data": _broadcast_payload(broadcast)}
 
 

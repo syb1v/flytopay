@@ -38,6 +38,14 @@ export async function getAdminStatus(): Promise<boolean> {
   return payload.data?.isAdmin === true;
 }
 
+export async function getAdminSession(): Promise<"admin" | "forbidden" | "anonymous"> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/admin/status`, { credentials: "include" });
+  if (response.status === 401) return "anonymous";
+  if (!response.ok) return "forbidden";
+  const payload = (await response.json()) as { data?: { isAdmin?: boolean } };
+  return payload.data?.isAdmin === true ? "admin" : "forbidden";
+}
+
 export async function updatePreferences(patch: Partial<Preferences>): Promise<Preferences> {
   const response = await fetch(`${API_ORIGIN}/api/v1/me/preferences`, {
     method: "PATCH",
@@ -660,6 +668,32 @@ export const updateAdminFees = (
     body: JSON.stringify(body),
   });
 export const getAdminCampaigns = () => adminFetch<AdminCampaign[]>("/marketing/campaigns");
+export type AdminCampaignDetail = {
+  id: string;
+  name: string;
+  startParameter: string;
+  source: string | null;
+  channel: string | null;
+  budgetMinor: number | null;
+  currency: string;
+  isActive: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+};
+export const getAdminCampaign = (id: string) => adminFetch<AdminCampaignDetail>(`/marketing/campaigns/${id}`);
+export type AdminPromoCodeDetail = {
+  id: string;
+  code: string;
+  discountBps: number;
+  bonusMinor: number;
+  currency: string;
+  maxRedemptions: number | null;
+  maxRedemptionsPerUser: number;
+  redemptions: number;
+  isActive: boolean;
+  expiresAt: string | null;
+};
+export const getAdminPromoCode = (id: string) => adminFetch<AdminPromoCodeDetail>(`/marketing/promo-codes/${id}`);
 export const createAdminCampaign = (body: {
   name: string;
   start_parameter: string;
@@ -715,6 +749,8 @@ export const archiveAdminPromo = (id: string) =>
     headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
   });
 export const getAdminDocuments = () => adminFetch<AdminContentDocument[]>("/content/documents");
+export const getAdminDocument = (id: string) => adminFetch<AdminContentDocument>(`/content/documents/${id}`);
+export const getAdminTemplate = (id: string) => adminFetch<AdminTemplate>(`/content/templates/${id}`);
 export const createAdminDocument = (body: {
   kind: string;
   slug: string;
@@ -749,6 +785,7 @@ export type AdminBroadcastDelivery = {
   createdAt: string;
 };
 export const getAdminBroadcasts = () => adminFetch<AdminBroadcast[]>("/content/broadcasts");
+export const getAdminBroadcast = (id: string) => adminFetch<AdminBroadcast>(`/content/broadcasts/${id}`);
 export const createAdminBroadcast = (body: {
   title: string;
   channel: "telegram";

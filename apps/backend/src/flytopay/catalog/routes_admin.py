@@ -50,6 +50,17 @@ async def products(_: ReadCatalog, db: Annotated[AsyncSession, Depends(get_db)])
         "maxCardsPerCardholder": row.max_cards_per_cardholder} for row in rows]}
 
 
+@router.get("/products/{product_id}")
+async def product_detail(product_id: UUID, _: ReadCatalog, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    product = await db.get(CardProduct, product_id)
+    if product is None:
+        raise HTTPException(404, "Product not found")
+    return {"success": True, "data": {"id": str(product.id), "code": product.code, "name": product.name,
+        "scheme": product.scheme, "currency": product.currency, "enabled": product.enabled,
+        "cardType": product.card_type, "maxCardsPerCardholder": product.max_cards_per_cardholder,
+        "features": product.features, "controls": product.controls}}
+
+
 @router.patch("/products/{product_id}", dependencies=[Depends(verify_csrf)])
 async def update_product(
     product_id: UUID, body: ProductPatch,

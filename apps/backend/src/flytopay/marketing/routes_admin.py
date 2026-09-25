@@ -75,6 +75,18 @@ async def create_campaign(body: CampaignCreate, _: Annotated[AdminPrincipal, Dep
     return {"success": True, "data": {"id": str(campaign.id), "name": campaign.name, "startParameter": campaign.start_parameter}}
 
 
+@router.get("/campaigns/{campaign_id}")
+async def campaign_detail(campaign_id: UUID, _: ReadMarketing, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    campaign = await db.get(Campaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(404, "Campaign not found")
+    return {"success": True, "data": {"id": str(campaign.id), "name": campaign.name,
+        "startParameter": campaign.start_parameter, "source": campaign.source, "channel": campaign.channel,
+        "budgetMinor": campaign.budget_minor, "currency": campaign.currency, "isActive": campaign.is_active,
+        "startsAt": campaign.starts_at.isoformat() if campaign.starts_at else None,
+        "endsAt": campaign.ends_at.isoformat() if campaign.ends_at else None}}
+
+
 @router.patch("/campaigns/{campaign_id}", dependencies=[Depends(verify_csrf)])
 async def update_campaign(campaign_id: UUID, body: CampaignPatch, _: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.marketing.write"))], db: Annotated[AsyncSession, Depends(get_db)], idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict[str, object]:
     if not idempotency_key:
@@ -117,6 +129,18 @@ async def create_promo_code(body: PromoCodeCreate, _: Annotated[AdminPrincipal, 
         await db.rollback()
         raise HTTPException(409, "Promo code already exists") from exc
     return {"success": True, "data": {"id": str(promo.id), "code": promo.code}}
+
+
+@router.get("/promo-codes/{promo_id}")
+async def promo_code_detail(promo_id: UUID, _: ReadMarketing, db: Annotated[AsyncSession, Depends(get_db)]) -> dict[str, object]:
+    promo = await db.get(PromoCode, promo_id)
+    if promo is None:
+        raise HTTPException(404, "Promo code not found")
+    return {"success": True, "data": {"id": str(promo.id), "code": promo.code,
+        "discountBps": promo.discount_bps, "bonusMinor": promo.bonus_minor, "currency": promo.currency,
+        "maxRedemptions": promo.max_redemptions, "maxRedemptionsPerUser": promo.max_redemptions_per_user,
+        "redemptions": promo.redemptions, "isActive": promo.is_active,
+        "expiresAt": promo.expires_at.isoformat() if promo.expires_at else None}}
 
 
 @router.patch("/promo-codes/{promo_id}", dependencies=[Depends(verify_csrf)])
