@@ -519,6 +519,53 @@ button.admin-table-row {
   color: #718089;
   font-size: 11px;
 }
+.admin-users-table .admin-table-head,
+.admin-users-table .admin-table-row {
+  grid-template-columns: 34px 1.6fr 1fr 1fr 1.1fr 32px;
+}
+.admin-row-open,
+.admin-row-arrow {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.admin-row-open span {
+  display: grid;
+  gap: 5px;
+}
+.admin-row-arrow {
+  color: var(--lime);
+  font-size: 16px;
+}
+.admin-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #b8f13d55;
+  border-radius: 14px;
+  background: #b8f13d0d;
+}
+.admin-bulk-bar input {
+  flex: 1;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid #354147;
+  border-radius: 10px;
+  background: #101619;
+  color: var(--white);
+  font: inherit;
+}
+.admin-bulk-bar .ui-button {
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 12px;
+}
 .admin-badge {
   display: inline-flex;
   width: fit-content;

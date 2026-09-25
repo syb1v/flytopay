@@ -38,11 +38,16 @@ import {
   updateAdminTemplate,
   adminRestoreUser,
   adminDeleteUser,
+  adminBulkUsers,
   getAdminUserStats,
   updateAdminProduct,
   updateAdminFees,
   updateAdminCampaign,
   archiveAdminCampaign,
+  createAdminCampaign,
+  createAdminPromo,
+  createAdminDocument,
+  createAdminTemplate,
   type AdminActivity,
   type AdminDashboard,
   type AdminUser,
@@ -117,6 +122,22 @@ export default function AdminPage() {
       setLoading(false);
     }
   };
+  const loadMarketing = async () => {
+    getAdminCampaigns()
+      .then(setCampaigns)
+      .catch(() => setCampaigns([]));
+    getAdminPromoCodes()
+      .then(setPromos)
+      .catch(() => setPromos([]));
+  };
+  const loadContent = async () => {
+    getAdminDocuments()
+      .then(setDocuments)
+      .catch(() => setDocuments([]));
+    getAdminTemplates()
+      .then(setTemplates)
+      .catch(() => setTemplates([]));
+  };
   useEffect(() => {
     getAdminDashboard()
       .then(setDashboard)
@@ -144,22 +165,8 @@ export default function AdminPage() {
       getAdminSystemHealth()
         .then(setSystem)
         .catch(() => setSystem(null));
-    if (active === "Маркетинг") {
-      getAdminCampaigns()
-        .then(setCampaigns)
-        .catch(() => setCampaigns([]));
-      getAdminPromoCodes()
-        .then(setPromos)
-        .catch(() => setPromos([]));
-    }
-    if (active === "Контент и рассылки") {
-      getAdminDocuments()
-        .then(setDocuments)
-        .catch(() => setDocuments([]));
-      getAdminTemplates()
-        .then(setTemplates)
-        .catch(() => setTemplates([]));
-    }
+    if (active === "Маркетинг") void loadMarketing();
+    if (active === "Контент и рассылки") void loadContent();
     if (active === "Платежи и возвраты") {
       getAdminPayments()
         .then(setPayments)
@@ -241,14 +248,17 @@ export default function AdminPage() {
             setStatus={setStatus}
             loading={loading}
             onOpen={(id) => getAdminUser(id).then(setSelected)}
+            onBulkDone={() => void loadUsers()}
           />
         )}
         {active === "Журнал действий" && <ActivityView activity={activity} />}
         {active === "Продажи" && <SalesView sales={sales} />}
         {active === "Цены и продукты" && <CatalogView products={products} prices={prices} setPrices={setPrices} />}
         {active === "Система" && <SystemView system={system} />}
-        {active === "Маркетинг" && <MarketingView campaigns={campaigns} promos={promos} />}
-        {active === "Контент и рассылки" && <ContentView documents={documents} templates={templates} />}
+        {active === "Маркетинг" && <MarketingView campaigns={campaigns} promos={promos} onChanged={loadMarketing} />}
+        {active === "Контент и рассылки" && (
+          <ContentView documents={documents} templates={templates} onChanged={loadContent} />
+        )}
         {active === "Платежи и возвраты" && <FinanceView payments={payments} refunds={refunds} />}
         {active === "Рефералы" && <ReferralView referrals={referrals} />}
       </section>
@@ -469,20 +479,106 @@ function SystemView({ system }: { system: AdminSystemHealth | null }) {
   );
 }
 
-function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; promos: AdminPromoCode[] }) {
+function MarketingView({
+  campaigns,
+  promos,
+  onChanged,
+}: {
+  campaigns: AdminCampaign[];
+  promos: AdminPromoCode[];
+  onChanged: () => void;
+}) {
   const [editing, setEditing] = useState<AdminCampaign | null>(null);
   const [name, setName] = useState("");
   const [promoEditing, setPromoEditing] = useState<AdminPromoCode | null>(null);
+  const [creating, setCreating] = useState<"campaign" | "promo" | null>(null);
+  const [form, setForm] = useState({ name: "", startParameter: "", source: "", code: "", discount: "10", bonus: "0" });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const create = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      if (creating === "campaign") {
+        if (!form.name.trim() || !form.startParameter.trim()) return;
+        await createAdminCampaign({
+          name: form.name.trim(),
+          start_parameter: form.startParameter.trim(),
+          source: form.source.trim() || null,
+          channel: null,
+          budget_minor: null,
+          currency: "USD",
+        });
+      } else {
+        if (!form.code.trim()) return;
+        await createAdminPromo({
+          code: form.code.trim().toUpperCase(),
+          discount_bps: Number(form.discount) || 0,
+          bonus_minor: Number(form.bonus) || 0,
+          currency: "USD",
+          max_redemptions: null,
+        });
+      }
+      setCreating(null);
+      setForm({ name: "", startParameter: "", source: "", code: "", discount: "10", bonus: "0" });
+      onChanged();
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "Не удалось создать запись");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <>
       <section className="admin-panel">
-        <div className="section-heading">
-          <h2>Рекламные кампании</h2>
-          <span className="status-dot">
-            <i />
-            Атрибуция
-          </span>
+        <div className="admin-toolbar">
+          <div className="section-heading">
+            <h2>Рекламные кампании</h2>
+            <span className="status-dot">
+              <i />
+              Атрибуция
+            </span>
+          </div>
+          <button
+            className="ui-button ui-button-primary"
+            onClick={() => setCreating(creating === "campaign" ? null : "campaign")}
+          >
+            Создать кампанию
+          </button>
         </div>
+        {creating === "campaign" && (
+          <div className="admin-inline-editor">
+            <h3>Новая кампания</h3>
+            <label>
+              Название
+              <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+            </label>
+            <label>
+              Start parameter
+              <input
+                value={form.startParameter}
+                onChange={(event) => setForm({ ...form, startParameter: event.target.value })}
+                placeholder="spring_sale"
+              />
+            </label>
+            <label>
+              Источник
+              <input
+                value={form.source}
+                onChange={(event) => setForm({ ...form, source: event.target.value })}
+                placeholder="telegram"
+              />
+            </label>
+            <div className="admin-dialog-actions">
+              <button className="ui-button ui-button-secondary" onClick={() => setCreating(null)}>
+                Отмена
+              </button>
+              <button className="ui-button ui-button-primary" disabled={busy} onClick={create}>
+                Создать
+              </button>
+            </div>
+          </div>
+        )}
         <div className="admin-table">
           <div className="admin-table-head">
             <span>Кампания</span>
@@ -536,6 +632,7 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
                   is_active: editing.isActive,
                 });
                 setEditing(null);
+                onChanged();
               }}
             >
               Сохранить
@@ -545,6 +642,7 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
               onClick={async () => {
                 await archiveAdminCampaign(editing.id);
                 setEditing(null);
+                onChanged();
               }}
             >
               Архивировать
@@ -553,7 +651,52 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
         </div>
       )}
       <section className="admin-panel">
-        <h2>Промокоды</h2>
+        <div className="admin-toolbar">
+          <h2>Промокоды</h2>
+          <button
+            className="ui-button ui-button-primary"
+            onClick={() => setCreating(creating === "promo" ? null : "promo")}
+          >
+            Создать промокод
+          </button>
+        </div>
+        {creating === "promo" && (
+          <div className="admin-inline-editor">
+            <h3>Новый промокод</h3>
+            <label>
+              Код
+              <input
+                value={form.code}
+                onChange={(event) => setForm({ ...form, code: event.target.value })}
+                placeholder="WELCOME10"
+              />
+            </label>
+            <label>
+              Скидка, basis points
+              <input
+                inputMode="numeric"
+                value={form.discount}
+                onChange={(event) => setForm({ ...form, discount: event.target.value })}
+              />
+            </label>
+            <label>
+              Бонус, minor units
+              <input
+                inputMode="numeric"
+                value={form.bonus}
+                onChange={(event) => setForm({ ...form, bonus: event.target.value })}
+              />
+            </label>
+            <div className="admin-dialog-actions">
+              <button className="ui-button ui-button-secondary" onClick={() => setCreating(null)}>
+                Отмена
+              </button>
+              <button className="ui-button ui-button-primary" disabled={busy} onClick={create}>
+                Создать
+              </button>
+            </div>
+          </div>
+        )}
         <div className="admin-table">
           <div className="admin-table-head">
             <span>Код</span>
@@ -584,18 +727,121 @@ function MarketingView({ campaigns, promos }: { campaigns: AdminCampaign[]; prom
           ))}
         </div>
       </section>
-      {promoEditing && <PromoEditor promo={promoEditing} onClose={() => setPromoEditing(null)} />}
+      {message && <p className="settings-muted">{message}</p>}
+      {promoEditing && (
+        <PromoEditor
+          promo={promoEditing}
+          onClose={() => {
+            setPromoEditing(null);
+            onChanged();
+          }}
+        />
+      )}
     </>
   );
 }
 
-function ContentView({ documents, templates }: { documents: AdminContentDocument[]; templates: AdminTemplate[] }) {
+function ContentView({
+  documents,
+  templates,
+  onChanged,
+}: {
+  documents: AdminContentDocument[];
+  templates: AdminTemplate[];
+  onChanged: () => void;
+}) {
   const [editing, setEditing] = useState<AdminContentDocument | null>(null);
   const [templateEditing, setTemplateEditing] = useState<AdminTemplate | null>(null);
+  const [creating, setCreating] = useState<"document" | "template" | null>(null);
+  const [form, setForm] = useState({ kind: "faq", slug: "", title: "", body: "", key: "", channel: "telegram" });
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const create = async () => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      if (creating === "document") {
+        if (!form.slug.trim() || !form.title.trim() || !form.body.trim()) return;
+        await createAdminDocument({
+          kind: form.kind,
+          slug: form.slug.trim(),
+          locale: "ru",
+          title: form.title.trim(),
+          body: form.body,
+          is_published: false,
+        });
+      } else {
+        if (!form.key.trim() || !form.body.trim()) return;
+        await createAdminTemplate({
+          key: form.key.trim(),
+          channel: form.channel,
+          locale: "ru",
+          subject: null,
+          body: form.body,
+        });
+      }
+      setCreating(null);
+      setForm({ kind: "faq", slug: "", title: "", body: "", key: "", channel: "telegram" });
+      onChanged();
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "Не удалось создать запись");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <>
       <section className="admin-panel">
-        <h2>FAQ, новости и документы</h2>
+        <div className="admin-toolbar">
+          <h2>FAQ, новости и документы</h2>
+          <button
+            className="ui-button ui-button-primary"
+            onClick={() => setCreating(creating === "document" ? null : "document")}
+          >
+            Создать документ
+          </button>
+        </div>
+        {creating === "document" && (
+          <div className="admin-inline-editor">
+            <h3>Новый документ</h3>
+            <label>
+              Тип
+              <select value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value })}>
+                <option value="faq">FAQ</option>
+                <option value="news">Новость</option>
+                <option value="legal">Юридический документ</option>
+              </select>
+            </label>
+            <label>
+              Slug
+              <input
+                value={form.slug}
+                onChange={(event) => setForm({ ...form, slug: event.target.value })}
+                placeholder="faq-payments"
+              />
+            </label>
+            <label>
+              Название
+              <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+            </label>
+            <label>
+              Текст
+              <textarea
+                value={form.body}
+                onChange={(event) => setForm({ ...form, body: event.target.value })}
+                rows={5}
+              />
+            </label>
+            <div className="admin-dialog-actions">
+              <button className="ui-button ui-button-secondary" onClick={() => setCreating(null)}>
+                Отмена
+              </button>
+              <button className="ui-button ui-button-primary" disabled={busy} onClick={create}>
+                Создать
+              </button>
+            </div>
+          </div>
+        )}
         <div className="admin-table">
           <div className="admin-table-head">
             <span>Тип</span>
@@ -617,7 +863,51 @@ function ContentView({ documents, templates }: { documents: AdminContentDocument
         </div>
       </section>
       <section className="admin-panel">
-        <h2>Шаблоны сообщений</h2>
+        <div className="admin-toolbar">
+          <h2>Шаблоны сообщений</h2>
+          <button
+            className="ui-button ui-button-primary"
+            onClick={() => setCreating(creating === "template" ? null : "template")}
+          >
+            Создать шаблон
+          </button>
+        </div>
+        {creating === "template" && (
+          <div className="admin-inline-editor">
+            <h3>Новый шаблон</h3>
+            <label>
+              Ключ
+              <input
+                value={form.key}
+                onChange={(event) => setForm({ ...form, key: event.target.value })}
+                placeholder="payment_success"
+              />
+            </label>
+            <label>
+              Канал
+              <select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value })}>
+                <option value="telegram">Telegram</option>
+                <option value="email">Email</option>
+              </select>
+            </label>
+            <label>
+              Текст
+              <textarea
+                value={form.body}
+                onChange={(event) => setForm({ ...form, body: event.target.value })}
+                rows={5}
+              />
+            </label>
+            <div className="admin-dialog-actions">
+              <button className="ui-button ui-button-secondary" onClick={() => setCreating(null)}>
+                Отмена
+              </button>
+              <button className="ui-button ui-button-primary" disabled={busy} onClick={create}>
+                Создать
+              </button>
+            </div>
+          </div>
+        )}
         <div className="admin-table">
           <div className="admin-table-head">
             <span>Ключ</span>
@@ -641,8 +931,25 @@ function ContentView({ documents, templates }: { documents: AdminContentDocument
           ))}
         </div>
       </section>
-      {editing && <ContentEditor document={editing} onClose={() => setEditing(null)} />}
-      {templateEditing && <TemplateEditor template={templateEditing} onClose={() => setTemplateEditing(null)} />}
+      {message && <p className="settings-muted">{message}</p>}
+      {editing && (
+        <ContentEditor
+          document={editing}
+          onClose={() => {
+            setEditing(null);
+            onChanged();
+          }}
+        />
+      )}
+      {templateEditing && (
+        <TemplateEditor
+          template={templateEditing}
+          onClose={() => {
+            setTemplateEditing(null);
+            onChanged();
+          }}
+        />
+      )}
     </>
   );
 }
@@ -955,6 +1262,7 @@ function UsersView({
   setStatus,
   loading,
   onOpen,
+  onBulkDone,
 }: {
   users: AdminUser[];
   userStats: AdminUserStats | null;
@@ -965,7 +1273,31 @@ function UsersView({
   setStatus: (value: string) => void;
   loading: boolean;
   onOpen: (id: string) => void;
+  onBulkDone: () => void;
 }) {
+  const [checked, setChecked] = useState<string[]>([]);
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  const allChecked = users.length > 0 && checked.length === users.length;
+  const toggle = (id: string) =>
+    setChecked((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
+  const run = async (action: "block" | "unblock" | "restore" | "delete" | "revoke-sessions") => {
+    if (checked.length === 0 || bulkReason.trim().length < 3) return;
+    setBulkBusy(true);
+    setBulkMessage(null);
+    try {
+      const result = await adminBulkUsers(checked, action, bulkReason.trim());
+      setBulkMessage(`Выполнено: ${result.succeeded}, ошибок: ${result.failed}`);
+      setChecked([]);
+      setBulkReason("");
+      onBulkDone();
+    } catch (reason) {
+      setBulkMessage(reason instanceof Error ? reason.message : "Массовое действие не выполнено");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
   return (
     <section className="admin-panel">
       <div className="admin-toolbar">
@@ -977,6 +1309,7 @@ function UsersView({
           <option value="">Все статусы</option>
           <option value="active">Активные</option>
           <option value="blocked">Заблокированные</option>
+          <option value="deleted">Удалённые</option>
         </select>
       </div>
       {userStats && (
@@ -999,8 +1332,65 @@ function UsersView({
           </article>
         </div>
       )}
+      {checked.length > 0 && (
+        <div className="admin-bulk-bar">
+          <strong>Выбрано: {checked.length}</strong>
+          <input
+            value={bulkReason}
+            onChange={(event) => setBulkReason(event.target.value)}
+            placeholder="Причина массового действия"
+          />
+          <button
+            className="ui-button ui-button-secondary"
+            disabled={bulkBusy || bulkReason.trim().length < 3}
+            onClick={() => run("revoke-sessions")}
+          >
+            Отозвать сессии
+          </button>
+          <button
+            className="ui-button ui-button-secondary"
+            disabled={bulkBusy || bulkReason.trim().length < 3}
+            onClick={() => run("block")}
+          >
+            Заблокировать
+          </button>
+          <button
+            className="ui-button ui-button-secondary"
+            disabled={bulkBusy || bulkReason.trim().length < 3}
+            onClick={() => run("unblock")}
+          >
+            Разблокировать
+          </button>
+          <button
+            className="ui-button ui-button-primary"
+            disabled={bulkBusy || bulkReason.trim().length < 3}
+            onClick={() => run("restore")}
+          >
+            Восстановить
+          </button>
+          <button
+            className="ui-button ui-button-danger"
+            disabled={bulkBusy || bulkReason.trim().length < 3}
+            onClick={() => run("delete")}
+          >
+            Удалить
+          </button>
+          <button className="ui-button ui-button-ghost" onClick={() => setChecked([])}>
+            Сбросить
+          </button>
+          {bulkMessage && <small className="settings-muted">{bulkMessage}</small>}
+        </div>
+      )}
       <div className="admin-table admin-users-table">
         <div className="admin-table-head">
+          <span>
+            <input
+              type="checkbox"
+              checked={allChecked}
+              onChange={(event) => setChecked(event.target.checked ? users.map((user) => user.userId) : [])}
+              aria-label="Выбрать всех"
+            />
+          </span>
           <span>Пользователь</span>
           <span>Telegram</span>
           <span>Статус</span>
@@ -1010,11 +1400,21 @@ function UsersView({
         {loading && <p className="settings-muted">Загрузка...</p>}
         {!loading &&
           users.map((user) => (
-            <button className="admin-table-row" key={user.userId} onClick={() => onOpen(user.userId)}>
+            <div className="admin-table-row" key={user.userId}>
               <span>
-                <b>{user.username ? `@${user.username}` : "Без username"}</b>
-                <small>{user.userId}</small>
+                <input
+                  type="checkbox"
+                  checked={checked.includes(user.userId)}
+                  onChange={() => toggle(user.userId)}
+                  aria-label={`Выбрать ${user.userId}`}
+                />
               </span>
+              <button className="admin-row-open" onClick={() => onOpen(user.userId)}>
+                <span>
+                  <b>{user.username ? `@${user.username}` : "Без username"}</b>
+                  <small>{user.userId}</small>
+                </span>
+              </button>
               <span>{user.telegramId ?? "—"}</span>
               <span>
                 <em className={`admin-badge ${user.status}`}>
@@ -1022,8 +1422,10 @@ function UsersView({
                 </em>
               </span>
               <span>{date(user.createdAt)}</span>
-              <span>→</span>
-            </button>
+              <button className="admin-row-arrow" onClick={() => onOpen(user.userId)}>
+                →
+              </button>
+            </div>
           ))}
         {!loading && users.length === 0 && <p className="settings-muted">Пользователи не найдены.</p>}
       </div>

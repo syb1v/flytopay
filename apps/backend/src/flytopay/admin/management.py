@@ -244,3 +244,57 @@ async def delete_user(user_id: UUID, body: ActionReason, request: Request,
                       db: Annotated[AsyncSession, Depends(get_db)],
                       idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None) -> dict:
     return await _change_user(user_id, "user.delete", body, request, principal, db, idempotency_key)
+
+
+class BulkAction(BaseModel):
+    user_ids: list[UUID] = Field(min_length=1, max_length=100)
+    action: Literal["block", "unblock", "restore", "delete", "revoke-sessions"]
+    reason: str = Field(min_length=3, max_length=500)
+
+
+_BULK_ACTIONS = {
+    "block": ("user.block", "blocked"),
+    "unblock": ("user.unblock", "active"),
+    "restore": ("user.restore", "active"),
+    "delete": ("user.delete", "deleted"),
+    "revoke-sessions": ("user.revoke_sessions", None),
+}
+
+
+@router.post("/users/bulk", dependencies=[Depends(verify_csrf)])
+async def bulk_users(
+    body: BulkAction, request: Request,
+    principal: Annotated[AdminPrincipal, Depends(require_admin_permission("admin.users.write"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> dict[str, object]:
+    if not idempotency_key:
+        raise HTTPException(400, "Idempotency-Key is required")
+    reason = body.reason.strip()
+    if len(reason) < 3:
+        raise HTTPException(422, "Reason is required")
+    audit_action, new_status = _BULK_ACTIONS[body.action]
+    admin_ids = telegram_admin_ids()
+    results: list[dict[str, object]] = []
+    for user_id in dict.fromkeys(body.user_ids):
+        user = await db.get(User, user_id)
+        if user is None:
+            results.append({"userId": str(user_id), "ok": False, "error": "User not found"})
+            continue
+        if body.action == "block" and admin_ids and await db.scalar(select(TelegramAccount.id).where(
+            TelegramAccount.user_id == user_id, TelegramAccount.telegram_id.in_(admin_ids))):
+            results.append({"userId": str(user_id), "ok": False, "error": "Bootstrap admin is protected"})
+            continue
+        if body.action == "delete" and principal.user_id == user_id:
+            results.append({"userId": str(user_id), "ok": False, "error": "Cannot delete current administrator"})
+            continue
+        if new_status:
+            user.status = new_status
+        revoked = await revoke_user_sessions(db, user_id) if body.action != "unblock" else 0
+        key_hash = hashlib.sha256(f"{principal.user_id}:{idempotency_key}:{user_id}".encode()).hexdigest()
+        record_admin_action(db, request, principal.user_id, audit_action, user_id, reason, key_hash, revoked)
+        results.append({"userId": str(user_id), "ok": True, "revokedSessions": revoked})
+    await db.commit()
+    return {"success": True, "data": {"results": results,
+        "succeeded": sum(1 for item in results if item["ok"]),
+        "failed": sum(1 for item in results if not item["ok"])}}

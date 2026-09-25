@@ -442,6 +442,19 @@ export const adminDeleteUser = (id: string, reason: string) =>
     headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
     body: JSON.stringify({ reason }),
   });
+export const adminBulkUsers = (
+  userIds: string[],
+  action: "block" | "unblock" | "restore" | "delete" | "revoke-sessions",
+  reason: string,
+) =>
+  adminFetch<{ results: Array<{ userId: string; ok: boolean; error?: string }>; succeeded: number; failed: number }>(
+    "/users/bulk",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+      body: JSON.stringify({ user_ids: userIds, action, reason }),
+    },
+  );
 export const getAdminActivity = (page = 1) => adminFetch<AdminActivity>(`/activity?page=${page}`);
 export const getAdminSales = (days = 30) => adminFetch<AdminSales>(`/sales?days=${days}`);
 export const getAdminSystemHealth = () => adminFetch<AdminSystemHealth>("/system/health");
@@ -466,6 +479,19 @@ export const updateAdminFees = (
     body: JSON.stringify(body),
   });
 export const getAdminCampaigns = () => adminFetch<AdminCampaign[]>("/marketing/campaigns");
+export const createAdminCampaign = (body: {
+  name: string;
+  start_parameter: string;
+  source: string | null;
+  channel: string | null;
+  budget_minor: number | null;
+  currency: string;
+}) =>
+  adminFetch<{ id: string; name: string; startParameter: string }>("/marketing/campaigns", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
 export const updateAdminCampaign = (
   id: string,
   body: { name: string; source: string | null; channel: string | null; is_active: boolean },
@@ -481,6 +507,18 @@ export const archiveAdminCampaign = (id: string) =>
     headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
   });
 export const getAdminPromoCodes = () => adminFetch<AdminPromoCode[]>("/marketing/promo-codes");
+export const createAdminPromo = (body: {
+  code: string;
+  discount_bps: number;
+  bonus_minor: number;
+  currency: string;
+  max_redemptions: number | null;
+}) =>
+  adminFetch<{ id: string; code: string }>("/marketing/promo-codes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
 export const updateAdminPromo = (
   id: string,
   body: { discount_bps: number; bonus_minor: number; max_redemptions: number | null; is_active: boolean },
@@ -496,7 +534,32 @@ export const archiveAdminPromo = (id: string) =>
     headers: { "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
   });
 export const getAdminDocuments = () => adminFetch<AdminContentDocument[]>("/content/documents");
+export const createAdminDocument = (body: {
+  kind: string;
+  slug: string;
+  locale: string;
+  title: string;
+  body: string;
+  is_published: boolean;
+}) =>
+  adminFetch<{ id: string; slug: string }>("/content/documents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
 export const getAdminTemplates = () => adminFetch<AdminTemplate[]>("/content/templates");
+export const createAdminTemplate = (body: {
+  key: string;
+  channel: string;
+  locale: string;
+  subject: string | null;
+  body: string;
+}) =>
+  adminFetch<{ id: string; key: string }>("/content/templates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
 export const updateAdminDocument = (
   id: string,
   body: { kind: string; slug: string; locale: string; title: string; body: string; is_published: boolean },
