@@ -877,16 +877,6 @@ button.admin-table-row {
   color: var(--white);
 }
 @media (max-width: 760px) {
-  .admin-header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    margin: 0 -18px 22px;
-    padding: 14px 18px 12px;
-    background: linear-gradient(180deg, rgb(16 22 25 / 96%), rgb(16 22 25 / 72%) 68%, transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
   .admin-header h1 {
     font-size: 26px;
   }
@@ -1932,17 +1922,8 @@ button.admin-table-row {
   }
   .dashboard-main {
     margin: 0;
-    padding: 0 18px 110px;
-  }
-  .dashboard-header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    margin: 0 -18px 18px;
-    padding: calc(16px + var(--app-safe-top)) 18px 12px;
-    background: linear-gradient(180deg, rgb(16 22 25 / 96%), rgb(16 22 25 / 78%) 68%, transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    padding-left: 18px;
+    padding-right: 18px;
   }
   .dashboard-header h1 {
     font-size: 24px;
@@ -5008,7 +4989,8 @@ button.tx-row:hover {
   margin-left: 240px;
   min-width: 0;
 }
-.adm-mobile-nav {
+.adm-mobile-bar,
+.adm-mobile-menu {
   display: none;
 }
 .adm-content {
@@ -5383,40 +5365,92 @@ button.tx-row:hover {
   .adm-body {
     margin-left: 0;
   }
-  .adm-mobile-nav {
+  .adm-mobile-bar {
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 30;
     display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 10px 14px calc(10px + var(--app-safe-top, 0px));
-    border-bottom: 1px solid #263034;
-    background: rgb(13 19 22 / 96%);
-    backdrop-filter: blur(10px);
-  }
-  .adm-mobile-link {
-    display: inline-flex;
-    flex: none;
     align-items: center;
-    gap: 7px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
+    justify-content: space-between;
+    gap: 12px;
+    padding: calc(10px + var(--app-safe-top, 0px)) 14px 10px;
+    border-bottom: 1px solid #263034;
+    background: rgb(13 19 22 / 97%);
+    backdrop-filter: blur(12px);
+  }
+  .adm-mobile-brand {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 700;
     text-decoration: none;
+  }
+  .adm-mobile-brand img {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+  }
+  .adm-mobile-brand span {
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .adm-mobile-link.active {
-    background: #b8f13d14;
+  .adm-mobile-toggle {
+    flex: none;
+    padding: 8px 14px;
+    border: 1px solid #354147;
+    border-radius: 11px;
+    background: #192126;
     color: var(--lime);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .adm-mobile-menu {
+    position: sticky;
+    top: calc(49px + var(--app-safe-top, 0px));
+    z-index: 25;
+    display: grid;
+    gap: 4px;
+    max-height: calc(100dvh - 70px);
+    overflow-y: auto;
+    padding: 10px 14px 16px;
+    border-bottom: 1px solid #263034;
+    background: rgb(13 19 22 / 99%);
+    box-shadow: 0 18px 40px #0009;
+  }
+  .adm-mobile-menu .adm-nav-link {
+    padding: 13px 14px;
+    font-size: 15px;
   }
   .adm-content {
-    padding: 18px 14px 60px;
+    padding: 18px 14px calc(60px + var(--app-safe-bottom, 0px));
+  }
+  .adm-page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
   .adm-page-title h1 {
     font-size: 24px;
+  }
+  .adm-page-actions,
+  .adm-panel-actions {
+    width: 100%;
+  }
+  .adm-page-actions .adm-btn,
+  .adm-panel-actions .adm-btn {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    min-height: 44px;
+  }
+  .adm-panel-head {
+    flex-direction: column;
+    align-items: stretch;
   }
   .adm-panel {
     padding: 16px;
@@ -5425,10 +5459,32 @@ button.tx-row:hover {
   .adm-stats {
     grid-template-columns: repeat(2, 1fr);
   }
+  .adm-table table {
+    min-width: 560px;
+  }
+  .adm-table th,
+  .adm-table td {
+    padding: 10px 10px;
+  }
+  .adm-form-grid {
+    grid-template-columns: 1fr;
+  }
   .adm-modal-actions {
     flex-direction: column;
   }
   .adm-modal-actions .adm-btn {
     width: 100%;
+  }
+}
+@media (min-width: 961px) {
+  .adm-mobile-bar,
+  .adm-mobile-menu {
+    display: none;
+  }
+}
+@media (max-width: 420px) {
+  .adm-page-actions .adm-btn,
+  .adm-panel-actions .adm-btn {
+    flex: 1 1 100%;
   }
 }

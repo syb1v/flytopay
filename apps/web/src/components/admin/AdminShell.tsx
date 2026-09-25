@@ -35,6 +35,7 @@ const nav = [
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [state, setState] = useState<"loading" | "ok" | "forbidden" | "anonymous">("loading");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     getAdminSession()
@@ -101,17 +102,41 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </Link>
       </aside>
       <div className="adm-body">
-        <nav className="adm-mobile-nav" aria-label="Навигация админки">
-          {nav.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} className={`adm-mobile-link ${isActive(item) ? "active" : ""}`} href={item.href}>
-                <Icon size={16} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        <header className="adm-mobile-bar">
+          <Link className="adm-mobile-brand" href="/admin">
+            <img src="/logo.svg" alt="" />
+            <span>{nav.find((item) => isActive(item))?.label ?? "Админка"}</span>
+          </Link>
+          <button
+            className="adm-mobile-toggle"
+            onClick={() => setMenuOpen((value) => !value)}
+            aria-expanded={menuOpen}
+            aria-label="Меню разделов"
+          >
+            {menuOpen ? "Закрыть" : "Разделы"}
+          </button>
+        </header>
+        {menuOpen && (
+          <nav className="adm-mobile-menu" aria-label="Навигация админки">
+            {nav.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  className={`adm-nav-link ${isActive(item) ? "active" : ""}`}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <Icon size={17} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+            <Link className="adm-nav-link" href="/cabinet">
+              ← В кабинет
+            </Link>
+          </nav>
+        )}
         <main className="adm-content">{children}</main>
       </div>
     </div>
