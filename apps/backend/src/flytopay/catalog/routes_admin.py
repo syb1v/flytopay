@@ -158,22 +158,40 @@ async def pricing_preview(
     db: Annotated[AsyncSession, Depends(get_db)],
     amount_minor: int = 1000,
 ) -> dict[str, object]:
-    """Compare admin retail prices with the provider's live fee grid and quote."""
+    """Retail prices versus the provider's live fee grid, per-operation costs, and markup math."""
     product = await db.get(CardProduct, product_id)
     if product is None:
         raise HTTPException(404, "Product not found")
     prices = (await db.execute(select(ProductPrice).where(
         ProductPrice.product_id == product_id, ProductPrice.is_active.is_(True)
-    ).order_by(ProductPrice.term_days))).scalars().all()
+    ).order_by(ProductPrice.term_days).limit(10))).scalars().all()
     policy = await db.scalar(select(FeePolicy).where(FeePolicy.product_id == product_id))
 
     provider: dict[str, object] = {"configured": False}
+    costs: list[dict[str, object]] = []
     client = CaaSClient()
     if client.is_configured:
         provider["configured"] = True
+        declared_scale = 2
+        declared_currency = product.currency
         try:
-            grid = await client.account_pricing()
+            grid = await client.account_pricing(product_code=product.provider_code)
             provider["pricing"] = grid
+            declared_scale = int(grid.get("scale") or 2)
+            declared_currency = str(grid.get("currency") or product.currency)
+            for fee in grid.get("fees") or []:
+                if not isinstance(fee, dict):
+                    continue
+                flat = int(fee.get("flatMinor") or 0)
+                bps = int(fee.get("bps") or 0)
+                minimum = int(fee.get("minMinor") or 0)
+                computed = flat + bps * amount_minor // 10000
+                costs.append({
+                    "feeItem": fee.get("feeItem"), "collection": fee.get("collection"),
+                    "chargedFrom": fee.get("chargedFrom"), "flatMinor": flat, "bps": bps,
+                    "minMinor": minimum, "period": fee.get("period"),
+                    "costAtAmountMinor": max(minimum, computed),
+                })
         except (CaaSError, RuntimeError) as exc:
             provider["pricingError"] = str(exc)
         try:
@@ -182,30 +200,49 @@ async def pricing_preview(
         except (CaaSError, RuntimeError) as exc:
             provider["quoteError"] = str(exc)
 
-    quote_fee = None
-    quote_data = provider.get("quote")
-    if isinstance(quote_data, dict):
-        quote_fee = quote_data.get("feeMinor")
-        if quote_fee is None and isinstance(quote_data.get("totalChargeMinor"), int):
-            quote_fee = quote_data["totalChargeMinor"] - amount_minor
+    def quote_fee_for(data: object) -> int | None:
+        if not isinstance(data, dict):
+            return None
+        fee = data.get("feeMinor")
+        if isinstance(fee, int):
+            return fee
+        total = data.get("totalChargeMinor")
+        if isinstance(total, int):
+            return total - int(data.get("amountMinor") or amount_minor)
+        return None
+
+    reference_fee = quote_fee_for(provider.get("quote"))
+    markup_bps = policy.markup_bps if policy else 0
+    suggested_retail = None
+    if isinstance(reference_fee, int):
+        suggested_retail = (reference_fee * (10000 + markup_bps) + 9999) // 10000
+
     items = []
     for price in prices:
-        margin_minor = None
-        margin_bps = None
-        if isinstance(quote_fee, int):
-            margin_minor = price.amount_minor - quote_fee
-            margin_bps = round(margin_minor * 10000 / price.amount_minor) if price.amount_minor else None
+        cost = reference_fee if len(prices) == 1 else None
+        if len(prices) > 1:
+            try:
+                cost = quote_fee_for(await client.quote(
+                    operation="issuance", amount_minor=price.amount_minor, product_code=product.provider_code
+                ))
+            except (CaaSError, RuntimeError):
+                cost = None
+        margin_minor = price.amount_minor - cost if isinstance(cost, int) else None
         items.append({
             "id": str(price.id), "termDays": price.term_days, "amountMinor": price.amount_minor,
             "feeMinor": price.fee_minor, "currency": price.currency,
-            "marginMinor": margin_minor, "marginBps": margin_bps,
+            "providerCostMinor": cost, "marginMinor": margin_minor,
+            "marginBps": round(margin_minor * 10000 / price.amount_minor) if margin_minor is not None and price.amount_minor else None,
+            "belowCost": margin_minor is not None and margin_minor < 0,
         })
     return {"success": True, "data": {
         "productCode": product.code, "providerCode": product.provider_code,
-        "quoteAmountMinor": amount_minor, "providerFeeMinor": quote_fee,
+        "quoteAmountMinor": amount_minor, "providerFeeMinor": reference_fee,
+        "currency": declared_currency, "scale": declared_scale,
+        "suggestedRetailMinor": suggested_retail, "markupBps": markup_bps,
         "feePolicy": None if policy is None else {
             "issueFeeMinor": policy.issue_fee_minor, "fundFeeBps": policy.fund_fee_bps,
             "unloadFeeBps": policy.unload_fee_bps, "markupBps": policy.markup_bps,
             "currency": policy.currency, "scale": policy.scale,
         },
-        "prices": items, "provider": provider}}
+        "costs": costs, "prices": items, "provider": provider}}

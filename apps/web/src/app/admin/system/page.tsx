@@ -45,6 +45,7 @@ export default function AdminSystemPage() {
   const [webhooks, setWebhooks] = useState<AdminWebhookEvent[]>([]);
   const [maintenance, setMaintenance] = useState<{ enabled: boolean; message: string | null } | null>(null);
   const [provider, setProvider] = useState<AdminProviderStatus | null>(null);
+  const [providerError, setProviderError] = useState<string | null>(null);
   const [newFlag, setNewFlag] = useState("");
   const [settingKey, setSettingKey] = useState("");
   const [settingValue, setSettingValue] = useState("{}");
@@ -76,8 +77,14 @@ export default function AdminSystemPage() {
       })
       .catch(() => setMaintenance(null));
     getAdminProvider()
-      .then(setProvider)
-      .catch(() => setProvider(null));
+      .then((data) => {
+        setProvider(data);
+        setProviderError(null);
+      })
+      .catch((reason) => {
+        setProvider(null);
+        setProviderError(reason instanceof Error ? reason.message : "Не удалось проверить провайдера");
+      });
   }, []);
   useEffect(() => load(), [load]);
 
@@ -183,11 +190,22 @@ export default function AdminSystemPage() {
         <Panel
           title="2328 CaaS"
           actions={
-            <Badge tone={provider?.status === "ok" ? "success" : provider?.configured ? "danger" : "neutral"}>
-              {provider?.status === "ok" ? "API отвечает" : provider?.configured ? "Недоступен" : "Не настроен"}
-            </Badge>
+            <div className="adm-page-actions">
+              <Badge tone={provider?.status === "ok" ? "success" : provider?.configured ? "danger" : "neutral"}>
+                {provider?.status === "ok" ? "API отвечает" : provider?.configured ? "Недоступен" : "Не настроен"}
+              </Badge>
+              <Button variant="secondary" busy={busy} onClick={load}>
+                Проверить снова
+              </Button>
+            </div>
           }
         >
+          {providerError && <p className="adm-modal-error">Запрос проверки не выполнен: {providerError}</p>}
+          {provider && !provider.configured && (
+            <p className="adm-modal-error">
+              На API не задан CAAS_API_KEY — проверьте переменные окружения контейнера api и перезапустите сервис.
+            </p>
+          )}
           {provider ? (
             <>
               <StatGrid
@@ -295,7 +313,7 @@ export default function AdminSystemPage() {
               </div>
             </>
           ) : (
-            <Empty>Провайдер не отвечает или ключ не настроен.</Empty>
+            <Empty>Ответ не получен. Нажмите «Проверить снова».</Empty>
           )}
         </Panel>
       )}

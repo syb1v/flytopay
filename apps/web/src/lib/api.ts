@@ -711,15 +711,31 @@ export type AdminPricingPreview = {
   providerCode: string;
   quoteAmountMinor: number;
   providerFeeMinor: number | null;
+  currency: string;
+  scale: number;
+  suggestedRetailMinor: number | null;
+  markupBps: number;
   feePolicy: AdminFeePolicy | null;
+  costs: Array<{
+    feeItem: string | null;
+    collection: string | null;
+    chargedFrom: string | null;
+    flatMinor: number;
+    bps: number;
+    minMinor: number;
+    period: string | null;
+    costAtAmountMinor: number;
+  }>;
   prices: Array<{
     id: string;
     termDays: number;
     amountMinor: number;
     feeMinor: number;
     currency: string;
+    providerCostMinor: number | null;
     marginMinor: number | null;
     marginBps: number | null;
+    belowCost: boolean;
   }>;
   provider: {
     configured: boolean;

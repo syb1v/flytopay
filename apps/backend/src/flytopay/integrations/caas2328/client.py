@@ -67,8 +67,8 @@ class CaaSClient:
     async def account_wallet(self) -> dict[str, Any]:
         return await self._get("/account/wallet")
 
-    async def account_pricing(self) -> dict[str, Any]:
-        return await self._get("/account/pricing")
+    async def account_pricing(self, *, product_code: str | None = None, currency: str | None = None) -> dict[str, Any]:
+        return await self._get("/account/pricing", productCode=product_code, currency=currency)
 
     async def account_transactions(self, *, limit: int = 20) -> dict[str, Any]:
         return await self._get("/account/transactions", limit=limit)

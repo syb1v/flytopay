@@ -243,36 +243,76 @@ export default function AdminProductEditorPage() {
                 <StatGrid
                   items={[
                     {
-                      label: "Закупка выпуска",
+                      label: "Себестоимость выпуска",
                       value:
                         preview.providerFeeMinor === null
                           ? "—"
-                          : `${(preview.providerFeeMinor / 100).toLocaleString("ru-RU")} USD`,
-                      hint: `quote на ${(preview.quoteAmountMinor / 100).toLocaleString("ru-RU")} USD`,
+                          : `${(preview.providerFeeMinor / 100).toLocaleString("ru-RU")} ${preview.currency}`,
+                      hint: `quote на ${(preview.quoteAmountMinor / 100).toLocaleString("ru-RU")} ${preview.currency}`,
+                    },
+                    {
+                      label: "Рекомендуемая цена",
+                      value:
+                        preview.suggestedRetailMinor === null
+                          ? "—"
+                          : `${(preview.suggestedRetailMinor / 100).toLocaleString("ru-RU")} ${preview.currency}`,
+                      hint: `при накрутке ${(preview.markupBps / 100).toFixed(1)}%`,
                     },
                     {
                       label: "Наша комиссия выпуска",
                       value: `${(preview.feePolicy?.issueFeeMinor ?? 0) / 100} USD`,
-                      hint: `накрутка ${((preview.feePolicy?.markupBps ?? 0) / 100).toFixed(1)}%`,
                     },
                     {
-                      label: "Комиссия пополнения",
-                      value: `${((preview.feePolicy?.fundFeeBps ?? 0) / 100).toFixed(2)}%`,
-                    },
-                    {
-                      label: "Комиссия выгрузки",
-                      value: `${((preview.feePolicy?.unloadFeeBps ?? 0) / 100).toFixed(2)}%`,
+                      label: "Комиссии пополнения / выгрузки",
+                      value: `${((preview.feePolicy?.fundFeeBps ?? 0) / 100).toFixed(2)}% / ${((preview.feePolicy?.unloadFeeBps ?? 0) / 100).toFixed(2)}%`,
                     },
                   ]}
                 />
+                {preview.costs.length > 0 && (
+                  <>
+                    <h3>Себестоимость операций из API</h3>
+                    <div className="adm-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Операция</th>
+                            <th>Списание</th>
+                            <th>Flat</th>
+                            <th>Bps</th>
+                            <th>Мин.</th>
+                            <th>Себестоимость при сумме</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {preview.costs.map((cost) => (
+                            <tr key={`${cost.feeItem}-${cost.collection}-${cost.period}`}>
+                              <td>{cost.feeItem}</td>
+                              <td>
+                                {cost.collection} · {cost.chargedFrom}
+                              </td>
+                              <td>{(cost.flatMinor / 10 ** (preview.scale || 2)).toLocaleString("ru-RU")}</td>
+                              <td>{(cost.bps / 100).toFixed(2)}%</td>
+                              <td>{(cost.minMinor / 10 ** (preview.scale || 2)).toLocaleString("ru-RU")}</td>
+                              <td>
+                                {(cost.costAtAmountMinor / 10 ** (preview.scale || 2)).toLocaleString("ru-RU")}{" "}
+                                {preview.currency}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+                <h3 style={{ marginTop: 18 }}>Цены и маржа</h3>
                 <div className="adm-table">
                   <table>
                     <thead>
                       <tr>
                         <th>Срок</th>
-                        <th>Цена для пользователя</th>
-                        <th>Комиссия сроков</th>
-                        <th>Маржа к закупке</th>
+                        <th>Наша цена</th>
+                        <th>Себестоимость</th>
+                        <th>Маржа</th>
                         <th>Маржа, bps</th>
                       </tr>
                     </thead>
@@ -284,12 +324,19 @@ export default function AdminProductEditorPage() {
                             {(price.amountMinor / 100).toLocaleString("ru-RU")} {price.currency}
                           </td>
                           <td>
-                            {(price.feeMinor / 100).toLocaleString("ru-RU")} {price.currency}
+                            {price.providerCostMinor === null
+                              ? "—"
+                              : `${(price.providerCostMinor / 100).toLocaleString("ru-RU")} ${preview.currency}`}
                           </td>
                           <td>
-                            {price.marginMinor === null
-                              ? "—"
-                              : `${(price.marginMinor / 100).toLocaleString("ru-RU")} USD`}
+                            {price.marginMinor === null ? (
+                              "—"
+                            ) : (
+                              <span style={price.belowCost ? { color: "#ffaaa9", fontWeight: 700 } : undefined}>
+                                {price.belowCost ? "ниже себестоимости · " : ""}
+                                {(price.marginMinor / 100).toLocaleString("ru-RU")} {preview.currency}
+                              </span>
+                            )}
                           </td>
                           <td>{price.marginBps === null ? "—" : `${(price.marginBps / 100).toFixed(2)}%`}</td>
                         </tr>
