@@ -413,6 +413,7 @@ export type AdminReferralOverview = {
   links: number;
   ledgerEntries: number;
   accruedMinor: number;
+  paidMinor: number;
   pendingPayouts: number;
 };
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -771,6 +772,51 @@ export const adminCardAction = (
     body: JSON.stringify({ reason, amount_minor: amountMinor }),
   });
 export const getAdminReferralOverview = () => adminFetch<AdminReferralOverview>("/referrals/overview");
+export type AdminReferralPartner = {
+  userId: string;
+  telegramId: number | null;
+  invited: number;
+  accruedMinor: number;
+  paidMinor: number;
+};
+export type AdminPayout = {
+  id: string;
+  userId: string;
+  amountMinor: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  processedAt: string | null;
+};
+export type AdminReferralTreeItem = {
+  linkId: string;
+  referredUserId: string;
+  telegramId: number | null;
+  status: string;
+  earnedMinor: number;
+  createdAt: string;
+};
+export const updateAdminReferralSettings = (body: {
+  commission_bps: number;
+  minimum_payout_minor: number;
+  currency: string;
+  is_enabled: boolean;
+}) =>
+  adminFetch("/referrals/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify(body),
+  });
+export const getAdminPayouts = () => adminFetch<AdminPayout[]>("/referrals/payouts");
+export const adminPayoutDecision = (id: string, action: "approve" | "reject", reason: string) =>
+  adminFetch(`/referrals/payouts/${id}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ reason }),
+  });
+export const getAdminReferralPartners = () => adminFetch<AdminReferralPartner[]>("/referrals/partners");
+export const getAdminReferralTree = (userId: string) =>
+  adminFetch<{ userId: string; items: AdminReferralTreeItem[]; total: number }>(`/referrals/tree?user_id=${userId}`);
 export async function adminUserAction(
   id: string,
   action: "block" | "unblock" | "revoke-sessions",

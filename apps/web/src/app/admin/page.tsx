@@ -29,7 +29,6 @@ import {
   getAdminPromoCodes,
   getAdminDocuments,
   getAdminTemplates,
-  getAdminReferralOverview,
   updateAdminPromo,
   archiveAdminPromo,
   updateAdminDocument,
@@ -59,11 +58,11 @@ import {
   type AdminPromoCode,
   type AdminContentDocument,
   type AdminTemplate,
-  type AdminReferralOverview,
   type AdminUserStats,
 } from "../../lib/api";
 import CardsAdmin from "../../components/admin/CardsAdmin";
 import FinanceAdmin from "../../components/admin/FinanceAdmin";
+import ReferralsAdmin from "../../components/admin/ReferralsAdmin";
 
 const sections = [
   ["Обзор", LayoutDashboard],
@@ -99,7 +98,6 @@ export default function AdminPage() {
   const [promos, setPromos] = useState<AdminPromoCode[]>([]);
   const [documents, setDocuments] = useState<AdminContentDocument[]>([]);
   const [templates, setTemplates] = useState<AdminTemplate[]>([]);
-  const [referrals, setReferrals] = useState<AdminReferralOverview | null>(null);
   const [userStats, setUserStats] = useState<AdminUserStats | null>(null);
   const [selected, setSelected] = useState<AdminUserDetails | null>(null);
   const [query, setQuery] = useState("");
@@ -165,10 +163,6 @@ export default function AdminPage() {
         .catch(() => setSystem(null));
     if (active === "Маркетинг") void loadMarketing();
     if (active === "Контент и рассылки") void loadContent();
-    if (active === "Рефералы")
-      getAdminReferralOverview()
-        .then(setReferrals)
-        .catch(() => setReferrals(null));
   }, [active, page]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -251,7 +245,7 @@ export default function AdminPage() {
           <ContentView documents={documents} templates={templates} onChanged={loadContent} />
         )}
         {active === "Платежи и возвраты" && <FinanceAdmin />}
-        {active === "Рефералы" && <ReferralView referrals={referrals} />}
+        {active === "Рефералы" && <ReferralsAdmin />}
       </section>
       {selected && (
         <UserDialog
@@ -942,36 +936,6 @@ function ContentView({
         />
       )}
     </>
-  );
-}
-
-function ReferralView({ referrals }: { referrals: AdminReferralOverview | null }) {
-  return (
-    <section className="admin-panel">
-      <div className="admin-stat-grid admin-stat-grid-small">
-        <article>
-          <span>Реферальные ссылки</span>
-          <strong>{referrals?.links ?? "—"}</strong>
-        </article>
-        <article>
-          <span>Начислено</span>
-          <strong>
-            {referrals
-              ? `${(referrals.accruedMinor / 100).toLocaleString("ru-RU")} ${referrals.settings?.currency ?? "USD"}`
-              : "—"}
-          </strong>
-        </article>
-        <article>
-          <span>Ожидают выплаты</span>
-          <strong>{referrals?.pendingPayouts ?? "—"}</strong>
-        </article>
-      </div>
-      <div className="admin-status-row">
-        <span>Реферальная программа</span>
-        <b>{referrals?.settings?.enabled ? "Включена" : "Выключена"}</b>
-        <small>Комиссия: {referrals?.settings ? `${referrals.settings.commissionBps / 100}%` : "—"}</small>
-      </div>
-    </section>
   );
 }
 
