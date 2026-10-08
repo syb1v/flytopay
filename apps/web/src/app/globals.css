@@ -2962,8 +2962,7 @@ button.admin-table-row {
   left: 50%;
   display: flex;
   flex-direction: column;
-  transform: translate(-50%, calc(-50% + var(--modal-drag, 0px)));
-  transition: transform 0.18s ease;
+  transform: translate(-50%, -50%);
   width: min(440px, calc(100% - 32px));
   max-height: 90dvh;
   overflow: hidden;
@@ -2972,10 +2971,6 @@ button.admin-table-row {
   border-radius: 24px;
   background: #192126;
   box-shadow: 0 30px 100px #0009;
-  touch-action: pan-y;
-}
-.modal-content-dragging {
-  transition: none;
 }
 .modal-footer {
   margin-top: 18px;
@@ -3021,12 +3016,15 @@ button.admin-table-row {
   margin-bottom: 14px;
 }
 @media (max-width: 600px) {
-  .modal-content {
+  .modal-content,
+  .modal-content.issue-modal,
+  .document-modal {
     top: auto;
     bottom: 0;
     left: 0;
-    transform: translateY(var(--modal-drag, 0px));
+    transform: none;
     width: 100%;
+    max-width: 100%;
     border-radius: 24px 24px 0 0;
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
@@ -3961,6 +3959,12 @@ button.account-stat:hover {
 .document-modal .modal-body {
   max-height: 70dvh;
   overflow: auto;
+}
+@media (max-width: 600px) {
+  .document-modal {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 .help-contact {
   display: flex;
