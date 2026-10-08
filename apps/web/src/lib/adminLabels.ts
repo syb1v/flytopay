@@ -305,4 +305,5 @@ export const adminActionLabels: Record<string, string> = {
   "admin.allowlist_update": "Изменение доступа администратора",
   "permissions.seed": "Загрузка каталога прав",
   "referral.settings": "Настройки реферальной программы",
+  "payment_provider.toggle": "Платёжная система",
 };

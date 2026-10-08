@@ -567,6 +567,25 @@ export type AdminProviderStatus = {
   transactionsError?: string;
 };
 export const getAdminProvider = () => adminFetch<AdminProviderStatus>("/system/provider");
+export type PaymentProviderOption = { key: string; title: string; description: string };
+export async function getPaymentProviders(): Promise<PaymentProviderOption[]> {
+  const response = await fetch(`${API_ORIGIN}/api/v1/payments/providers`, { credentials: "include" });
+  if (!response.ok) throw new Error("providers_load_failed");
+  const payload = await response.json();
+  return payload.data as PaymentProviderOption[];
+}
+export type AdminPaymentProvider = PaymentProviderOption & {
+  configured: boolean;
+  enabled: boolean;
+  active: boolean;
+};
+export const getAdminPaymentProviders = () => adminFetch<AdminPaymentProvider[]>("/payments/providers");
+export const toggleAdminPaymentProvider = (key: string, enabled: boolean) =>
+  adminFetch<{ key: string; enabled: boolean }>(`/payments/providers/${key}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...csrfHeaders() },
+    body: JSON.stringify({ enabled }),
+  });
 export type PublicFaqItem = { id: string; title: string; body: string };
 export type PublicLegalItem = { slug: string; title: string };
 async function publicContent<T>(path: string): Promise<T> {

@@ -649,7 +649,7 @@ export function Dashboard() {
               onHelp={() => navigate("help")}
             />
           )}
-          {view === "help" && <HelpPanel language={language} onBack={() => navigate(previousView.current)} />}
+          {view === "help" && <HelpPanel language={language} />}
         </div>
         <footer>Flytopay · {t.cardHint}</footer>
       </main>

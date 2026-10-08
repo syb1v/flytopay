@@ -6,11 +6,13 @@ import {
   getAdminErrors,
   getAdminFeatureFlags,
   getAdminMaintenance,
+  getAdminPaymentProviders,
   getAdminProvider,
   getAdminSettings,
   getAdminSystemHealth,
   getAdminWebhooks,
   requeueAdminWebhook,
+  toggleAdminPaymentProvider,
   updateAdminMaintenance,
   upsertAdminFeatureFlag,
   upsertAdminSetting,
@@ -20,6 +22,7 @@ import type {
   AdminFeatureFlag,
   AdminProviderStatus,
   AdminSystemHealth,
+  AdminPaymentProvider,
   AdminSystemSetting,
   AdminWebhookEvent,
 } from "../../../lib/api";
@@ -45,6 +48,7 @@ import {
 const tabs = [
   { key: "health", label: "Состояние" },
   { key: "provider", label: "Провайдер 2328" },
+  { key: "payments", label: "Платёжные системы" },
   { key: "flags", label: "Feature flags" },
   { key: "settings", label: "Настройки" },
   { key: "errors", label: "Ошибки" },
@@ -62,6 +66,7 @@ export default function AdminSystemPage() {
   const [webhooks, setWebhooks] = useState<AdminWebhookEvent[]>([]);
   const [maintenance, setMaintenance] = useState<{ enabled: boolean; message: string | null } | null>(null);
   const [provider, setProvider] = useState<AdminProviderStatus | null>(null);
+  const [paymentProviders, setPaymentProviders] = useState<AdminPaymentProvider[]>([]);
   const [providerError, setProviderError] = useState<string | null>(null);
   const [newFlag, setNewFlag] = useState("");
   const [newFlagDescription, setNewFlagDescription] = useState("");
@@ -104,6 +109,9 @@ export default function AdminSystemPage() {
         setProvider(null);
         setProviderError(reason instanceof Error ? reason.message : "Не удалось проверить провайдера");
       });
+    getAdminPaymentProviders()
+      .then(setPaymentProviders)
+      .catch(() => setPaymentProviders([]));
   }, []);
   useEffect(() => load(), [load]);
 
@@ -171,6 +179,19 @@ export default function AdminSystemPage() {
       load();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Не удалось переобработать webhook");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const togglePaymentProvider = async (item: AdminPaymentProvider) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await toggleAdminPaymentProvider(item.key, !item.enabled);
+      setMessage(item.enabled ? `${item.title} отключён` : `${item.title} включён`);
+      load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Не удалось изменить платёжную систему");
     } finally {
       setBusy(false);
     }
@@ -466,6 +487,62 @@ export default function AdminSystemPage() {
           ) : (
             <Empty>Ответ не получен. Нажмите «Проверить снова».</Empty>
           )}
+        </Panel>
+      )}
+      {tab === "payments" && (
+        <Panel
+          title="Платёжные системы"
+          actions={
+            <Button variant="secondary" busy={busy} onClick={load}>
+              Обновить
+            </Button>
+          }
+        >
+          <p className="adm-page-sub">
+            Ключи и секреты провайдеров задаются только в переменных окружения сервера и не отображаются в браузере.
+            Здесь включается и отключается доступный пользователям способ оплаты.
+          </p>
+          <div className="adm-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Провайдер</th>
+                  <th>Ключи</th>
+                  <th>Доступ</th>
+                  <th>Действие</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentProviders.map((item) => (
+                  <tr key={item.key}>
+                    <td>
+                      <b>{item.title}</b>
+                      <span className="adm-cell-sub">{item.description}</span>
+                    </td>
+                    <td>
+                      <Badge tone={item.configured ? "success" : "danger"}>
+                        {item.configured ? "Настроены" : "Нет ключей"}
+                      </Badge>
+                    </td>
+                    <td>
+                      <Badge tone={item.enabled ? "success" : "neutral"}>{item.enabled ? "Включён" : "Отключён"}</Badge>
+                    </td>
+                    <td>
+                      <Button
+                        variant={item.enabled ? "danger" : "primary"}
+                        busy={busy}
+                        disabled={!item.configured && !item.enabled}
+                        onClick={() => togglePaymentProvider(item)}
+                      >
+                        {item.enabled ? "Отключить" : "Включить"}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {paymentProviders.length === 0 && <Empty>Список платёжных систем недоступен.</Empty>}
+          </div>
         </Panel>
       )}
       {tab === "flags" && (

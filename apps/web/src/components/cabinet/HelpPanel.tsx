@@ -1,22 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  CircleHelp,
-  CreditCard,
-  FileText,
-  MessageCircle,
-  ShieldCheck,
-  Wallet,
-} from "lucide-react";
+import { ArrowUpRight, CircleHelp, CreditCard, FileText, MessageCircle, ShieldCheck, Wallet } from "lucide-react";
 import { getPublicFaq, getPublicLegal, getPublicLegalDocument } from "../../lib/api";
 import type { PublicFaqItem, PublicLegalItem } from "../../lib/api";
+import { Modal } from "../ui/modal";
 
 const copy = {
   ru: {
-    back: "Назад",
     intro: "Ответы на важные вопросы — и поддержка, если нужна помощь лично.",
     contact: "Нужна помощь?",
     contactText: "Напишите нам в Telegram. Поможем разобраться с картой, балансом или платежом.",
@@ -48,7 +39,6 @@ const copy = {
     ],
   },
   en: {
-    back: "Back",
     intro: "Quick answers to common questions, with personal support when you need it.",
     contact: "Need a hand?",
     contactText: "Message us on Telegram. We'll help with your card, balance or payment.",
@@ -83,7 +73,7 @@ const copy = {
 
 const icons = [CreditCard, Wallet, ShieldCheck, CreditCard, CircleHelp] as const;
 
-export function HelpPanel({ language, onBack }: { language: "ru" | "en"; onBack: () => void }) {
+export function HelpPanel({ language }: { language: "ru" | "en" }) {
   const t = copy[language];
   const [faq, setFaq] = useState<PublicFaqItem[] | null>(null);
   const [legal, setLegal] = useState<PublicLegalItem[]>([]);
@@ -116,9 +106,6 @@ export function HelpPanel({ language, onBack }: { language: "ru" | "en"; onBack:
 
   return (
     <section className="help-page">
-      <button className="help-back" onClick={onBack}>
-        <ArrowLeft size={16} /> {t.back}
-      </button>
       <div className="help-hero">
         <div>
           <span className="account-kicker">FLYTOPAY / HELP CENTER</span>
@@ -174,25 +161,16 @@ export function HelpPanel({ language, onBack }: { language: "ru" | "en"; onBack:
           {t.action} <ArrowUpRight size={17} />
         </a>
       </div>
-      {document && (
-        <div className="details-overlay" onClick={() => setDocument(null)} role="presentation">
-          <section
-            className="details-dialog"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-          >
-            <button className="admin-dialog-close" onClick={() => setDocument(null)} aria-label="Закрыть">
-              ×
-            </button>
-            <h2>{document.title}</h2>
-            <p className="help-document-body">{document.body}</p>
-            <button className="ui-button ui-button-secondary" onClick={() => setDocument(null)}>
-              Закрыть
-            </button>
-          </section>
-        </div>
-      )}
+      <Modal
+        open={document !== null}
+        onClose={() => setDocument(null)}
+        title={document?.title ?? ""}
+        eyebrow="FLYTOPAY / DOCUMENTS"
+        closeLabel="Закрыть"
+        className="document-modal"
+      >
+        <p className="help-document-body">{document?.body}</p>
+      </Modal>
     </section>
   );
 }

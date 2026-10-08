@@ -7,7 +7,13 @@ export const metadata: Metadata = {
   description: "Виртуальные карты для зарубежных сервисов.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/logo.svg" },
 };
-export const viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" as const };
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover" as const,
+};
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
