@@ -177,6 +177,97 @@ export function describeSetting(key: string, fallback?: string | null): string {
   return fallback || settingDescriptions[key] || "Пользовательская настройка: уточните назначение у команды";
 }
 
+export const countryNames: Record<string, string> = {
+  KP: "Северная Корея",
+  IR: "Иран",
+  SY: "Сирия",
+  RU: "Россия",
+  US: "США",
+  GB: "Великобритания",
+  DE: "Германия",
+  FR: "Франция",
+  TR: "Турция",
+  AE: "ОАЭ",
+  KZ: "Казахстан",
+  UA: "Украина",
+  BY: "Беларусь",
+  CN: "Китай",
+  IN: "Индия",
+  BR: "Бразилия",
+  JP: "Япония",
+  KR: "Южная Корея",
+};
+
+export const mccLabels: Record<string, string> = {
+  "4829": "Денежные переводы / платёжные поручения",
+  "6010": "Выдача наличных вручную",
+  "6011": "Снятие наличных в банкомате",
+  "6012": "Финансовые учреждения — товары и услуги",
+  "6051": "Квази-наличные / крипто-биржи / форекс",
+  "6211": "Ценные бумаги — брокеры и дилеры",
+  "6540": "Пополнение предоплаченных средств",
+  "7995": "Азартные игры, ставки, лотереи",
+  "9223": "Залоговые и поручительские платежи",
+  "5967": "Прямой маркетинг — взрослый телемаркетинг",
+  "7273": "Знакомства и эскорт-услуги",
+  "7297": "Массажные салоны",
+  "7841": "Аренда видео для взрослых / DVD",
+  "5921": "Алкомаркеты — пиво, вино, крепкий алкоголь",
+  "5912": "Аптеки (рецептурный блок)",
+  "5993": "Сигарные магазины и киоски",
+};
+
+export const providerFeatureLabels: Record<string, string> = {
+  secureReveal: "Просмотр реквизитов через защищённый iframe",
+  secureApiRaw: "Выдача реквизитов напрямую через API",
+  threeDsOtpRelay: "Ретрансляция 3DS/OTP",
+  tokenization: "Токенизация (Apple Pay / Google Pay)",
+  kycRequired: "Обязательный KYC держателя",
+  suspendedClearedByFund: "Снятие приостановки пополнением",
+  closeCooldownHours: "Пауза перед повторным выпуском, часов",
+  physicalCards: "Физические карты",
+};
+
+export const providerLimitLabels: Record<string, string> = {
+  minIssueAmountMinor: "Минимальная сумма выпуска",
+  minFundMinor: "Минимальное пополнение",
+  minUnloadMinor: "Минимальная выгрузка",
+  maxOperationMinor: "Максимум на операцию",
+  maxFundMinor: "Максимум пополнения",
+  maxCardsPerCardholder: "Максимум карт на держателя",
+  maxCardsPerAccount: "Максимум карт на аккаунт",
+  dailyFundingVolumeMinor: "Дневной лимит пополнений",
+};
+
+export const rateLimitLabels: Record<string, string> = {
+  readPerMin: "Чтение, запросов в минуту",
+  writePerMin: "Запись, запросов в минуту",
+  securePerMin: "Реквизиты, запросов в минуту",
+};
+
+export function formatProviderFee(
+  fee: { flatMinor?: number; bps?: number; minMinor?: number; period?: string | null },
+  currency = "USD",
+  scale = 2,
+): string {
+  const parts: string[] = [];
+  const flat = fee.flatMinor ?? 0;
+  const bps = fee.bps ?? 0;
+  if (flat > 0)
+    parts.push(`${(flat / 10 ** scale).toLocaleString("ru-RU", { minimumFractionDigits: scale })} ${currency}`);
+  if (bps > 0) parts.push(`${(bps / 100).toLocaleString("ru-RU", { maximumFractionDigits: 2 })}%`);
+  if (parts.length === 0) return "Не взимается";
+  let result = parts.join(" + ");
+  const minimum = fee.minMinor ?? 0;
+  if (minimum > 0) {
+    result += ` (мин. ${(minimum / 10 ** scale).toLocaleString("ru-RU", { minimumFractionDigits: scale })} ${currency})`;
+  }
+  if (fee.period === "monthly") result += " / мес";
+  if (fee.period === "daily") result += " / день";
+  if (fee.period === "yearly") result += " / год";
+  return result;
+}
+
 export const adminActionLabels: Record<string, string> = {
   "user.block": "Блокировка пользователя",
   "user.unblock": "Разблокировка пользователя",

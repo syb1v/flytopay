@@ -511,8 +511,26 @@ export type AdminProviderStatus = {
     accountId?: string;
     status?: string;
     environment?: string;
-    currencies?: string[];
-    features?: Record<string, unknown>;
+    webhooksConfigured?: boolean;
+    createdAt?: string;
+    cardSchemes?: string[];
+    cardCurrencies?: string[];
+    walletCurrencies?: string[];
+    walletNetworks?: Record<string, string[]>;
+    limits?: {
+      minIssueAmountMinor?: number;
+      minFundMinor?: number;
+      minUnloadMinor?: number;
+      maxOperationMinor?: number;
+      maxFundMinor?: number;
+      maxCardsPerCardholder?: number | null;
+      maxCardsPerAccount?: number | null;
+      dailyFundingVolumeMinor?: number | null;
+      rateLimits?: Record<string, number>;
+    } | null;
+    features?: Record<string, unknown> | null;
+    restrictions?: { blockedMcc?: string[]; blockedCountries?: string[] } | null;
+    programs?: Array<{ code?: string; fundsOnIssue?: boolean; limits?: Record<string, number> }>;
   };
   wallet?: {
     items?: Array<{

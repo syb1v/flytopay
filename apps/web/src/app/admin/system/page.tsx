@@ -27,12 +27,17 @@ import { Badge, Button, Empty, Field, Page, Panel, StatGrid, Tabs, TextInput } f
 import {
   chargedFromLabels,
   collectionLabels,
+  countryNames,
   describeFlag,
   describeSetting,
   feeItemDescriptions,
   feeItemLabels,
+  formatProviderFee,
   label,
-  periodLabels,
+  mccLabels,
+  providerFeatureLabels,
+  providerLimitLabels,
+  rateLimitLabels,
   severityLabels,
   webhookStatusLabels,
 } from "../../../lib/adminLabels";
@@ -231,16 +236,27 @@ export default function AdminSystemPage() {
               <StatGrid
                 items={[
                   {
-                    label: "Latency",
+                    label: "Отклик API",
                     value: provider.ping ? `${provider.ping.latencyMs} мс` : "—",
                     hint: provider.ping?.error ?? provider.ping?.api,
                   },
                   {
                     label: "Статус аккаунта",
                     value: provider.account?.status === "active" ? "Активен" : (provider.account?.status ?? "—"),
-                    hint: provider.account?.environment,
+                    hint:
+                      provider.account?.environment === "live" ? "Боевой контур (live)" : provider.account?.environment,
                   },
-                  { label: "Account ID", value: provider.account?.accountId?.slice(0, 8) ?? "—" },
+                  {
+                    label: "Схемы карт",
+                    value:
+                      (provider.account?.cardSchemes ?? []).map((scheme) => scheme.toUpperCase()).join(" · ") || "—",
+                    hint: `Валюты карт: ${(provider.account?.cardCurrencies ?? []).join(", ") || "—"}`,
+                  },
+                  {
+                    label: "Кошелёк",
+                    value: (provider.account?.walletCurrencies ?? []).join(", ") || "—",
+                    hint: `Webhooks: ${provider.account?.webhooksConfigured ? "настроены" : "нет"}`,
+                  },
                 ]}
               />
               {(provider.accountError || provider.walletError || provider.pricingError) && (
@@ -280,15 +296,17 @@ export default function AdminSystemPage() {
                 {(provider.wallet?.items ?? []).length === 0 && <Empty>Баланс недоступен.</Empty>}
               </div>
               <h3 style={{ marginTop: 20 }}>Тарифная сетка провайдера</h3>
+              <p className="adm-page-sub">
+                Живые ставки 2328 для вашего аккаунта. «С кошелька» списывается с USDT-баланса, «с карты» — с баланса
+                карты.
+              </p>
               <div className="adm-table">
                 <table>
                   <thead>
                     <tr>
                       <th>Статья</th>
                       <th>Списание</th>
-                      <th>Flat</th>
-                      <th>Bps</th>
-                      <th>Период</th>
+                      <th>Комиссия</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -301,14 +319,124 @@ export default function AdminSystemPage() {
                         <td>
                           {label(collectionLabels, fee.collection)} · {label(chargedFromLabels, fee.chargedFrom)}
                         </td>
-                        <td>{(fee.flatMinor ?? 0) / 10 ** (provider.pricing?.scale ?? 2)}</td>
-                        <td>{((fee.bps ?? 0) / 100).toFixed(2)}%</td>
-                        <td>{label(periodLabels, fee.period)}</td>
+                        <td>{formatProviderFee(fee, provider.pricing?.currency, provider.pricing?.scale)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {(provider.pricing?.fees ?? []).length === 0 && <Empty>Прайс недоступен.</Empty>}
+              </div>
+              <h3 style={{ marginTop: 20 }}>Лимиты аккаунта</h3>
+              <div className="adm-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Параметр</th>
+                      <th>Значение</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(provider.account?.limits ?? {})
+                      .filter(([key]) => key !== "rateLimits")
+                      .map(([key, value]) => (
+                        <tr key={key}>
+                          <td>{providerLimitLabels[key] ?? key}</td>
+                          <td>
+                            {value === null || value === undefined
+                              ? "Без ограничения"
+                              : key.endsWith("Minor")
+                                ? `$${((value as number) / 100).toLocaleString("ru-RU", { minimumFractionDigits: 2 })}`
+                                : String(value)}
+                          </td>
+                        </tr>
+                      ))}
+                    {Object.entries(provider.account?.limits?.rateLimits ?? {}).map(([key, value]) => (
+                      <tr key={key}>
+                        <td>{rateLimitLabels[key] ?? key}</td>
+                        <td>{value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {Object.keys(provider.account?.limits ?? {}).length === 0 && (
+                  <Empty>Лимиты не вернулись в ответе API.</Empty>
+                )}
+              </div>
+              <h3 style={{ marginTop: 20 }}>Возможности</h3>
+              <div className="adm-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Возможность</th>
+                      <th>Статус</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(provider.account?.features ?? {}).map(([key, value]) => (
+                      <tr key={key}>
+                        <td>{providerFeatureLabels[key] ?? key}</td>
+                        <td>
+                          {typeof value === "boolean" ? (value ? "Включено" : "Выключено") : String(value ?? "—")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {Object.keys(provider.account?.features ?? {}).length === 0 && (
+                  <Empty>Возможности не вернулись в ответе API.</Empty>
+                )}
+              </div>
+              <h3 style={{ marginTop: 20 }}>Ограничения эмитента</h3>
+              <p className="adm-page-sub">
+                Запрещённые страны держателей и заблокированные категории мерчантов из ответа API.
+              </p>
+              <div className="adm-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Страна</th>
+                      <th>Код</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(provider.account?.restrictions?.blockedCountries ?? []).map((code) => (
+                      <tr key={code}>
+                        <td>{countryNames[code] ?? code}</td>
+                        <td>{code}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(provider.account?.restrictions?.blockedCountries ?? []).length === 0 && (
+                  <Empty>
+                    API вернул пустой список стран. Правила программы на сайте 2328 могут отличаться — уточните у
+                    провайдера.
+                  </Empty>
+                )}
+              </div>
+              <div className="adm-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>MCC</th>
+                      <th>Категория</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(provider.account?.restrictions?.blockedMcc ?? []).map((code) => (
+                      <tr key={code}>
+                        <td>{code}</td>
+                        <td>{mccLabels[code] ?? "Категория из правил программы"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {(provider.account?.restrictions?.blockedMcc ?? []).length === 0 && (
+                  <Empty>
+                    API вернул пустой список MCC. Эмитент применяет правила на уровне программы — сверяйтесь с сайтом
+                    2328.
+                  </Empty>
+                )}
               </div>
               <h3 style={{ marginTop: 20 }}>Последние движения по кошельку</h3>
               <div className="adm-table">

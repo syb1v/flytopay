@@ -32,12 +32,21 @@ async def provider_status(_: ReadProvider) -> dict[str, object]:
 
     try:
         info = await client.account_info()
+        capabilities = info.get("capabilities") or {}
         result["account"] = {
             "accountId": info.get("accountId"),
             "status": info.get("status"),
             "environment": info.get("environment"),
-            "currencies": (info.get("limits") or {}).get("walletCurrencies") or info.get("walletCurrencies"),
-            "features": info.get("features"),
+            "webhooksConfigured": info.get("webhooksConfigured"),
+            "createdAt": info.get("createdAt"),
+            "cardSchemes": capabilities.get("cardSchemes"),
+            "cardCurrencies": capabilities.get("cardCurrencies"),
+            "walletCurrencies": capabilities.get("walletCurrencies"),
+            "walletNetworks": capabilities.get("walletNetworks"),
+            "limits": capabilities.get("limits"),
+            "features": capabilities.get("features"),
+            "restrictions": capabilities.get("restrictions"),
+            "programs": capabilities.get("programs"),
         }
     except (CaaSError, RuntimeError) as exc:
         result["accountError"] = str(exc)
