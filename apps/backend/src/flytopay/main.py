@@ -27,6 +27,7 @@ from flytopay.finance_admin.routes import router as finance_admin_router
 from flytopay.issuance.onboarding import router as issuance_checkout_router
 from flytopay.logging_config import configure_logging
 from flytopay.marketing.routes_admin import router as marketing_admin_router
+from flytopay.payments.admin_routes import router as payments_admin_router
 from flytopay.payments.routes import router as payments_router
 from flytopay.payments.webhooks import router as webhooks_router
 from flytopay.preferences.routes import router as preferences_router
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(preferences_router)
     app.include_router(auth_router)
     app.include_router(payments_router)
+    app.include_router(payments_admin_router)
     # CaaS must be registered before the generic /webhooks/{provider} route.
     app.include_router(caas_webhooks_router)
     app.include_router(webhooks_router)

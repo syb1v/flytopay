@@ -101,6 +101,54 @@ async def _owned_card(db: AsyncSession, user_id: UUID, card_id: UUID) -> UserCar
     return card
 
 
+def fund_charge_minor(amount_minor: int, provider_fee_minor: int, service_fee_bps: int) -> tuple[int, int]:
+    """Return (service_fee, total_charge) for a card funding operation."""
+    service_fee = amount_minor * max(service_fee_bps, 0) // 10000
+    return service_fee, amount_minor + max(provider_fee_minor, 0) + service_fee
+
+
+def unload_credit_minor(gross_minor: int, service_fee_bps: int) -> tuple[int, int]:
+    """Return (service_fee, user_credit) for an unload credited at gross_minor."""
+    service_fee = gross_minor * max(service_fee_bps, 0) // 10000
+    return service_fee, gross_minor - service_fee
+
+
+async def _product_policy(db: AsyncSession, card: UserCard) -> tuple[str | None, int, int]:
+    """Card product public code and the admin service-fee bps for fund/unload."""
+    from flytopay.cards.models import CardProduct
+    from flytopay.catalog.models import FeePolicy
+
+    product = await db.get(CardProduct, card.product_id)
+    if product is None:
+        return None, 0, 0
+    policy = await db.scalar(select(FeePolicy).where(FeePolicy.product_id == product.id))
+    if policy is None:
+        return product.code, 0, 0
+    return product.code, policy.fund_fee_bps, policy.unload_fee_bps
+
+
+async def _fund_charge_quote(db: AsyncSession, card: UserCard, amount_minor: int) -> tuple[int, int, str | None]:
+    """Provider fee from the live quote plus our service fee for a funding operation."""
+    from flytopay.integrations.caas2328.client import CaaSError
+
+    product_code, fund_fee_bps, _ = await _product_policy(db, card)
+    if not product_code:
+        raise HTTPException(status_code=422, detail="card.product_unknown")
+    caas = CaaSClient()
+    if not caas.is_configured:
+        raise HTTPException(status_code=503, detail="caas.not_configured")
+    try:
+        quote = await caas.quote(operation="fund", amount_minor=amount_minor, product_code=product_code)
+    except (CaaSError, RuntimeError) as exc:
+        raise HTTPException(status_code=502, detail="fund.quote_unavailable") from exc
+    provider_fee = quote.get("feeMinor")
+    if not isinstance(provider_fee, int) or isinstance(provider_fee, bool):
+        total = quote.get("totalChargeMinor")
+        provider_fee = (total - amount_minor) if isinstance(total, int) and not isinstance(total, bool) else 0
+    service_fee, total_charge = fund_charge_minor(amount_minor, provider_fee, fund_fee_bps)
+    return service_fee, total_charge, product_code
+
+
 async def _enqueue_lifecycle(
     db: AsyncSession,
     card: UserCard,
@@ -136,12 +184,19 @@ async def _enqueue_lifecycle(
         from flytopay.ledger.service import LedgerError, reserve_wallet
 
         amount = payload.get("amountMinor")
+        if not isinstance(amount, int) or amount <= 0:
+            raise HTTPException(status_code=422, detail="amount_invalid")
+        service_fee, total_charge, product_code = await _fund_charge_quote(db, card, amount)
         try:
-            await reserve_wallet(db, card.user_id, int(amount), external_key=f"fund:{key}")
-        except (LedgerError, TypeError, ValueError) as exc:
+            await reserve_wallet(db, card.user_id, total_charge, external_key=f"fund:{key}")
+        except LedgerError as exc:
             await save_operation_response(db, record, status="failed", response={"error": "wallet_insufficient_balance"})
             await db.commit()
             raise HTTPException(status_code=402, detail="wallet.insufficient_balance") from exc
+        await save_operation_response(db, record, status="processing", response={
+            "amountMinor": amount, "providerFeeMinor": total_charge - amount - service_fee,
+            "serviceFeeMinor": service_fee, "totalChargeMinor": total_charge, "productCode": product_code,
+        })
     await db.commit()
     _enqueue_task(key, str(card.id), kind)
     return LifecycleResponse(card_id=card.id, status=card.status, operation_status="processing", order_id=None)
@@ -299,11 +354,16 @@ async def _finalize_money_order(db: AsyncSession, card: UserCard, record, kind: 
             pass
     elif kind == "unload" and status == "completed":
         credited = order.get("unloadedMinor") or order.get("amountMinor")
-        if isinstance(credited, int) and credited > 0:
-            try:
-                await credit_wallet(db, card.user_id, credited, external_key=f"unload:{key}", kind="card_unload")
-            except LedgerError:
-                pass
+        if isinstance(credited, int) and not isinstance(credited, bool) and credited > 0:
+            _, _, unload_fee_bps = await _product_policy(db, card)
+            service_fee, user_credit = unload_credit_minor(credited, unload_fee_bps)
+            if service_fee > 0:
+                order = {**order, "serviceFeeMinor": service_fee, "userCreditMinor": user_credit}
+            if user_credit > 0:
+                try:
+                    await credit_wallet(db, card.user_id, user_credit, external_key=f"unload:{key}", kind="card_unload")
+                except LedgerError:
+                    pass
     caas = CaaSClient()
     if caas.is_configured and card.provider_card_id:
         with contextlib.suppress(RuntimeError, ValueError, OSError):  # balance refresh is best effort

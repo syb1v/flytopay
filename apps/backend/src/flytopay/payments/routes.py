@@ -9,11 +9,21 @@ from flytopay.auth.csrf import verify_csrf
 from flytopay.auth.session import current_user_id
 from flytopay.config import get_settings
 from flytopay.db.session import get_db
+from flytopay.payments.provider_settings import is_provider_enabled, provider_status
 from flytopay.payments.service import IdempotencyConflictError, PaymentService
 from flytopay.ratelimit import rate_limit
 
 router = APIRouter(prefix="/api/v1/payments", tags=["Payments"], dependencies=[Depends(verify_csrf)])
 service = PaymentService()
+
+
+@router.get("/providers")
+async def available_providers(
+    _: Annotated[UUID, Depends(current_user_id)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, object]:
+    items = [item for item in await provider_status(db) if item["active"]]
+    return {"success": True, "data": items}
 
 
 class CheckoutCreate(BaseModel):
@@ -45,6 +55,8 @@ async def create_checkout(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Idempotency-Key is required")
     if not _return_url_allowed(payload.return_url):
         raise HTTPException(status_code=422, detail="return_url must point to a Flytopay origin")
+    if not await is_provider_enabled(db, payload.provider):
+        raise HTTPException(status_code=409, detail="Платёжный провайдер отключён администратором")
     if not await rate_limit("payments:checkout", str(user_id), limit=20):
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many checkout requests")
     try:
